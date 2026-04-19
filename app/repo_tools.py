@@ -1,4 +1,5 @@
 import os
+import subprocess
 from pathlib import Path
 from typing import List, Dict
 
@@ -15,7 +16,7 @@ SKIP_DIRS = {
 }
 
 
-def get_repo_tree(repo_path: str, max_entries: int = 120) -> str:
+def get_repo_tree(repo_path: str, max_entries: int = 400) -> str:
     repo = Path(repo_path)
     if not repo.exists():
         return f"Repo path not found: {repo_path}"
@@ -43,7 +44,7 @@ def get_repo_tree(repo_path: str, max_entries: int = 120) -> str:
     return "\n".join(lines)
 
 
-def read_file(repo_path: str, relative_path: str, max_chars: int = 8000) -> str:
+def read_file(repo_path: str, relative_path: str, max_chars: int = 20000) -> str:
     p = Path(repo_path) / relative_path
     if not p.exists():
         return f"File not found: {relative_path}"
@@ -60,7 +61,7 @@ def read_file(repo_path: str, relative_path: str, max_chars: int = 8000) -> str:
     return text
 
 
-def search_repo(repo_path: str, query: str, max_hits: int = 8) -> List[Dict]:
+def search_repo(repo_path: str, query: str, max_hits: int = 20) -> List[Dict]:
     repo = Path(repo_path)
     hits = []
     q = query.lower()
@@ -89,3 +90,48 @@ def search_repo(repo_path: str, query: str, max_hits: int = 8) -> List[Dict]:
                 if len(hits) >= max_hits:
                     return hits
     return hits
+
+
+def write_agent_file(repo_path: str, relative_path: str, content: str) -> str:
+    """
+    Only allow writes under agent_outputs/ to avoid touching core source by mistake.
+    """
+    rel = Path(relative_path)
+    if rel.is_absolute():
+        return "Only relative paths are allowed."
+
+    parts = rel.parts
+    if not parts or parts[0] != "agent_outputs":
+        return "Write rejected. Only paths under agent_outputs/ are allowed."
+
+    full = Path(repo_path) / rel
+    full.parent.mkdir(parents=True, exist_ok=True)
+    full.write_text(content, encoding="utf-8")
+    return f"Wrote file: {rel}"
+
+
+def check_python_file(repo_path: str, relative_path: str) -> str:
+    rel = Path(relative_path)
+    full = Path(repo_path) / rel
+    if not full.exists():
+        return f"File not found: {relative_path}"
+    if full.suffix.lower() != ".py":
+        return "Only Python files can be syntax-checked."
+
+    try:
+        result = subprocess.run(
+            ["python", "-m", "py_compile", str(full)],
+            capture_output=True,
+            text=True,
+            cwd=str(Path(repo_path))
+        )
+    except Exception as e:
+        return f"Failed to run syntax check: {e}"
+
+    if result.returncode == 0:
+        return f"Syntax check passed: {relative_path}"
+
+    stderr = (result.stderr or "").strip()
+    stdout = (result.stdout or "").strip()
+    msg = stderr if stderr else stdout
+    return f"Syntax check failed for {relative_path}:\n{msg}"

@@ -5,12 +5,21 @@ from rich.panel import Panel
 
 from agents import Agent, Runner, function_tool
 
-from app.repo_tools import get_repo_tree, read_file, search_repo
+from app.repo_tools import (
+    get_repo_tree,
+    read_file,
+    search_repo,
+    write_agent_file,
+    check_python_file,
+)
+from app.retrieval import format_candidates_for_agent
 
 load_dotenv()
 console = Console()
 
 REPO_PATH = os.environ.get("REPO_PATH", "").strip()
+INDEX_PATH = os.environ.get("INDEX_PATH", "data/repo_index.jsonl").strip()
+
 if not REPO_PATH:
     raise RuntimeError("REPO_PATH is not set in .env")
 
@@ -42,32 +51,65 @@ def repo_search(query: str) -> str:
     return "\n".join(chunks)
 
 
+@function_tool
+def repo_index_search(query: str) -> str:
+    """Search the offline repository index and return the most relevant files first."""
+    return format_candidates_for_agent(query, INDEX_PATH, top_k=8)
+
+
+@function_tool
+def write_file(relative_path: str, content: str) -> str:
+    """Write generated content to a file under agent_outputs/ inside the repo."""
+    return write_agent_file(REPO_PATH, relative_path, content)
+
+
+@function_tool
+def check_python(relative_path: str) -> str:
+    """Run Python syntax check on a file under the repository."""
+    return check_python_file(REPO_PATH, relative_path)
+
+
 agent = Agent(
-    name="DQMC_repo_tutor",
-    model="gpt-4.1-mini",
+    name="physics_repo_builder",
+    model="gpt-5-mini",
     instructions=(
-        "You are an expert code-reading assistant for computational physics repositories. "
-        "Your job is to help the user understand code structure, algorithmic intent, "
-        "and likely physical meaning. "
-        "Always ground your answers in the repo tools first. "
-        "If the user asks about a file or function, inspect the repo before answering. "
-        "When discussing physical meaning, clearly separate: "
-        "(1) what is directly supported by code evidence, "
-        "(2) what is an inference from standard computational physics practice. "
-        "If asked to create a new data-processing script, first inspect relevant existing files "
-        "and outputs, then draft a script that matches the repo style."
+        "You are an expert assistant for computational physics repositories. "
+        "You help users understand source code, identify physical meaning when supported by code evidence, "
+        "and create new postprocessing scripts aligned with repository conventions.\n\n"
+
+        "Workflow rules:\n"
+        "1. For any nontrivial repo question, first call repo_index_search.\n"
+        "2. Then inspect the most relevant files using repo_read.\n"
+        "3. Use repo_search when you need symbol-level or phrase-level confirmation.\n"
+        "4. Separate clearly:\n"
+        "   - direct code evidence\n"
+        "   - inference from standard computational physics practice\n"
+        "5. When asked to create a new script:\n"
+        "   - inspect similar existing files first\n"
+        "   - infer file naming and I/O patterns\n"
+        "   - write the new script under agent_outputs/\n"
+        "   - then run check_python on it\n"
+        "   - report the final saved path and syntax-check result\n"
+        "6. Do not modify core repo files. Only write under agent_outputs/.\n"
+        "7. If repository evidence is incomplete, say so explicitly."
     ),
-    tools=[repo_tree, repo_read, repo_search],
+    tools=[
+        repo_tree,
+        repo_read,
+        repo_search,
+        repo_index_search,
+        write_file,
+        check_python,
+    ],
 )
 
 def main():
     console.print(Panel.fit(
-        "Physics Repo Tutor\n"
-        "Examples:\n"
-        "  - Summarize this repository\n"
-        "  - What does src/dqmc.py do?\n"
-        "  - Search for Green function measurement\n"
-        "  - Create a new script to postprocess conductivity output",
+        "Physics Repo Builder\n"
+        "Recommended tests:\n"
+        "  - Summarize the core data flow of this repository\n"
+        "  - Find files related to Green function measurement\n"
+        "  - Create a new postprocess script for density vs temperature and save it under agent_outputs/",
         title="Agent Ready"
     ))
 
