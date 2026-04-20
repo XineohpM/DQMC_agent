@@ -2,8 +2,8 @@ import os
 from dotenv import load_dotenv
 from rich.console import Console
 from rich.panel import Panel
-
 from agents import Agent, Runner, function_tool
+from agents.exceptions import MaxTurnsExceeded
 
 from app.repo_tools import (
     get_repo_tree,
@@ -13,12 +13,15 @@ from app.repo_tools import (
     check_python_file,
 )
 from app.retrieval import format_candidates_for_agent
+from app.semantic_tools import format_semantic_hits, format_glossary_hits
 
 load_dotenv()
 console = Console()
 
 REPO_PATH = os.environ.get("REPO_PATH", "").strip()
 INDEX_PATH = os.environ.get("INDEX_PATH", "data/repo_index.jsonl").strip()
+SEMANTIC_PATH = os.environ.get("SEMANTIC_PATH", "data/semantic_map.jsonl").strip()
+GLOSSARY_PATH = os.environ.get("GLOSSARY_PATH", "data/theory_glossary.jsonl").strip()
 
 if not REPO_PATH:
     raise RuntimeError("REPO_PATH is not set in .env")
@@ -45,9 +48,7 @@ def repo_search(query: str) -> str:
 
     chunks = []
     for i, hit in enumerate(hits, 1):
-        chunks.append(
-            f"[{i}] {hit['path']}\n{hit['snippet']}\n{'-'*60}"
-        )
+        chunks.append(f"[{i}] {hit['path']}\n{hit['snippet']}\n{'-'*60}")
     return "\n".join(chunks)
 
 
@@ -55,6 +56,18 @@ def repo_search(query: str) -> str:
 def repo_index_search(query: str) -> str:
     """Search the offline repository index and return the most relevant files first."""
     return format_candidates_for_agent(query, INDEX_PATH, top_k=8)
+
+
+@function_tool
+def semantic_search(query: str) -> str:
+    """Search the project semantic map for code-object to physics-concept mappings."""
+    return format_semantic_hits(query, SEMANTIC_PATH, top_k=8)
+
+
+@function_tool
+def theory_search(query: str) -> str:
+    """Search the small theory glossary for background concept definitions."""
+    return format_glossary_hits(query, GLOSSARY_PATH, top_k=6)
 
 
 @function_tool
@@ -70,46 +83,76 @@ def check_python(relative_path: str) -> str:
 
 
 agent = Agent(
-    name="physics_repo_builder",
+    name="DQMC_repo_agent",
     model="gpt-5-mini",
     instructions=(
-        "You are an expert assistant for computational physics repositories. "
-        "You help users understand source code, identify physical meaning when supported by code evidence, "
-        "and create new postprocessing scripts aligned with repository conventions.\n\n"
+        "You are an expert assistant for computational physics repositories.\n\n"
 
-        "Workflow rules:\n"
-        "1. For any nontrivial repo question, first call repo_index_search.\n"
-        "2. Then inspect the most relevant files using repo_read.\n"
-        "3. Use repo_search when you need symbol-level or phrase-level confirmation.\n"
-        "4. Separate clearly:\n"
-        "   - direct code evidence\n"
-        "   - inference from standard computational physics practice\n"
-        "5. When asked to create a new script:\n"
-        "   - inspect similar existing files first\n"
-        "   - infer file naming and I/O patterns\n"
-        "   - write the new script under agent_outputs/\n"
-        "   - then run check_python on it\n"
-        "   - report the final saved path and syntax-check result\n"
-        "6. Do not modify core repo files. Only write under agent_outputs/.\n"
-        "7. If repository evidence is incomplete, say so explicitly."
+        "Your tasks are:\n"
+        "1. Help the user understand source code and data flow.\n"
+        "2. Explain the likely physical meaning of code objects, while clearly separating code evidence from interpretation.\n"
+        "3. Create new postprocessing scripts aligned with repository conventions.\n\n"
+
+        "Required workflow rules:\n"
+        "A. For any nontrivial repository question, first call repo_index_search.\n"
+        "B. For questions about physical meaning, observables, correlators, or parameters, also call semantic_search.\n"
+        "C. If broader background is helpful, call theory_search.\n"
+        "D. Then inspect the most relevant source files with repo_read.\n"
+        "E. Use repo_search when you need phrase-level confirmation.\n\n"
+
+        "When answering a physical-meaning question, structure the answer using these sections:\n"
+        "Code evidence:\n"
+        "Project semantic interpretation:\n"
+        "General theory background or inference:\n\n"
+
+        "Important epistemic rules:\n"
+        "- Code evidence has highest priority.\n"
+        "- The semantic map gives project-specific interpretation, but it may contain tentative entries.\n"
+        "- Theory glossary gives general background only and must not be presented as proof of repository implementation.\n"
+        "- If code evidence is incomplete, say so explicitly.\n"
+        "- Do not pretend that a generic DQMC convention is guaranteed to match this repository.\n\n"
+
+        "When asked to create a new script:\n"
+        "1. inspect similar existing files first\n"
+        "2. use semantic_search if the target quantity has physical meaning implications\n"
+        "3. infer I/O patterns from repo files\n"
+        "4. write the script under agent_outputs/\n"
+        "5. run check_python\n"
+        "6. report saved path and syntax-check result\n\n"
+
+        "Never modify repository files in REPO_PATH."
+
+        "Termination rules:\n"
+        "- Do not call the same search tool repeatedly with near-duplicate queries.\n"
+        "- After you have enough evidence from 2-4 relevant files, stop searching and answer.\n"
+        "- For physical-meaning questions, do at most:\n"
+        "  * 1 repo_index_search\n"
+        "  * 1 semantic_search\n"
+        "  * 1 theory_search\n"
+        "  * 2-4 repo_read calls\n"
+        "- If uncertainty remains after those steps, answer with explicit uncertainty instead of continuing to search.\n"
+        "- Prefer producing a partial but grounded answer over repeated tool use.\n\n"
     ),
     tools=[
         repo_tree,
         repo_read,
         repo_search,
         repo_index_search,
+        semantic_search,
+        theory_search,
         write_file,
         check_python,
     ],
 )
 
+
 def main():
     console.print(Panel.fit(
-        "Physics Repo Builder\n"
+        "DQMC Repo Agent\n"
         "Recommended tests:\n"
-        "  - Summarize the core data flow of this repository\n"
-        "  - Find files related to Green function measurement\n"
-        "  - Create a new postprocess script for density vs temperature and save it under agent_outputs/",
+        "  - What is the likely physical meaning of gt0 in this repository?\n"
+        "  - Distinguish code evidence and interpretation for jj\n"
+        "  - Create a postprocess script for density and double occupancy vs temperature",
         title="Agent Ready"
     ))
 
@@ -125,9 +168,20 @@ def main():
         if user_input.lower() in {"quit", "exit"}:
             break
 
-        result = Runner.run_sync(agent, user_input)
-        console.print("\n[bold cyan]Agent:[/bold cyan]")
-        console.print(result.final_output)
+        try:
+            result = Runner.run_sync(agent, user_input, max_turns=30)
+            console.print("\n[bold cyan]Agent:[/bold cyan]")
+            console.print(result.final_output)
+        except MaxTurnsExceeded:
+            console.print("\n[bold red]Agent:[/bold red]")
+            console.print(
+                "Max turns exceeded. "
+                "The agent likely kept searching instead of converging. "
+                "Raise max_turns further, or tighten the instructions so it stops after a few tool calls."
+            )
+        except Exception as e:
+            console.print("\n[bold red]Agent error:[/bold red]")
+            console.print(str(e))
 
 
 if __name__ == "__main__":
