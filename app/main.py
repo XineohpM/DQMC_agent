@@ -4,6 +4,7 @@ from rich.console import Console
 from rich.panel import Panel
 from agents import Agent, Runner, function_tool
 from agents.exceptions import MaxTurnsExceeded
+from app.io_tools import format_io_hits
 
 from app.repo_tools import (
     get_repo_tree,
@@ -20,6 +21,7 @@ console = Console()
 
 REPO_PATH = os.environ.get("REPO_PATH", "").strip()
 INDEX_PATH = os.environ.get("INDEX_PATH", "data/repo_index.jsonl").strip()
+IO_INDEX_PATH = os.environ.get("IO_INDEX_PATH", "data/io_index.jsonl").strip()
 SEMANTIC_PATH = os.environ.get("SEMANTIC_PATH", "data/semantic_map.jsonl").strip()
 GLOSSARY_PATH = os.environ.get("GLOSSARY_PATH", "data/theory_glossary.jsonl").strip()
 
@@ -56,6 +58,12 @@ def repo_search(query: str) -> str:
 def repo_index_search(query: str) -> str:
     """Search the offline repository index and return the most relevant files first."""
     return format_candidates_for_agent(query, INDEX_PATH, top_k=8)
+
+
+@function_tool
+def io_search(query: str) -> str:
+    """Search the repository I/O index for HDF5 keys, parameter usage, read/write patterns, and file roles."""
+    return format_io_hits(query, IO_INDEX_PATH, top_k=10)
 
 
 @function_tool
@@ -96,17 +104,24 @@ agent = Agent(
         "Required workflow rules:\n"
         "A. For any nontrivial repository question, first call repo_index_search.\n"
         "B. For questions about physical meaning, observables, correlators, or parameters, also call semantic_search.\n"
-        "C. If broader background is helpful, call theory_search.\n"
-        "D. Then inspect the most relevant source files with repo_read.\n"
-        "E. Use repo_search when you need phrase-level confirmation.\n\n"
+        "C. For questions about storage, HDF5 keys, parameter usage, read/write flow, reshaping, file patterns, or data provenance, call io_search.\n"
+        "D. If broader background is helpful, call theory_search.\n"
+        "E. Then inspect the most relevant source files with repo_read.\n"
+        "F. Use repo_search when you need phrase-level confirmation.\n\n"
 
         "When answering a physical-meaning question, structure the answer using these sections:\n"
         "Code evidence:\n"
         "Project semantic interpretation:\n"
         "General theory background or inference:\n\n"
 
+        "When answering a data-flow or storage question, structure the answer using these sections:\n"
+        "Repository I/O evidence:\n"
+        "Likely role in the workflow:\n"
+        "Uncertainty or follow-up checks:\n\n"
+
         "Important epistemic rules:\n"
         "- Code evidence has highest priority.\n"
+        "- The I/O index summarizes usage patterns but is not a substitute for reading the file.\n"
         "- The semantic map gives project-specific interpretation, but it may contain tentative entries.\n"
         "- Theory glossary gives general background only and must not be presented as proof of repository implementation.\n"
         "- If code evidence is incomplete, say so explicitly.\n"
@@ -115,18 +130,20 @@ agent = Agent(
         "When asked to create a new script:\n"
         "1. inspect similar existing files first\n"
         "2. use semantic_search if the target quantity has physical meaning implications\n"
-        "3. infer I/O patterns from repo files\n"
-        "4. write the script under agent_outputs/\n"
-        "5. run check_python\n"
-        "6. report saved path and syntax-check result\n\n"
+        "3. use io_search to infer I/O patterns, HDF5 keys, and parameter usage\n"
+        "4. infer repository conventions from source files\n"
+        "5. write the script under agent_outputs/\n"
+        "6. run check_python\n"
+        "7. report saved path and syntax-check result\n\n"
 
-        "Never modify repository files in REPO_PATH."
+        "Never modify core repository files. Only write under agent_outputs.\n"
 
         "Termination rules:\n"
         "- Do not call the same search tool repeatedly with near-duplicate queries.\n"
         "- After you have enough evidence from 2-4 relevant files, stop searching and answer.\n"
         "- For physical-meaning questions, do at most:\n"
         "  * 1 repo_index_search\n"
+        "  * 1 io_search\n"
         "  * 1 semantic_search\n"
         "  * 1 theory_search\n"
         "  * 2-4 repo_read calls\n"
@@ -138,6 +155,7 @@ agent = Agent(
         repo_read,
         repo_search,
         repo_index_search,
+        io_search,
         semantic_search,
         theory_search,
         write_file,
