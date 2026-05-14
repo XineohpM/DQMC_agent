@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DQMC Agent</title>
+    <link rel="stylesheet" href="./style.css" />
+</head>
+
+<body>
+    <div class="app">
+        <aside class="sidebar">
+            <h2>Event Log</h2>
+            <div id="event-log" class="event-log"></div>
+        </aside>
+
+        <main class="chat-panel">
+            <header class="chat-header">
+                <h1>DQMC Agent</h1>
+            </header>
+
+            <section id="messages" class="messages"></section>
+
+            <form id="chat-form" class="chat-form">
+                <textarea id="message-input" placeholder="Ask something about the repo..." rows="4"></textarea>
+
+                <div class="actions">
+                    <button type="submit" id="send-btn">Send</button>
+                    <button type="button" id="stop-btn">Stop</button>
+                </div>
+            </form>
+        </main>
+    </div>
+
+    <script src="./app.js" type="module"></script>
+</body>
+
+</html>
