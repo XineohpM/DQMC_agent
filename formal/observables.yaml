@@ -117,3 +117,40 @@ derived_observables:
     lean_id: DQMC.Obs.elec_current_current
     input_lean_id: DQMC.Obs.projected_current_current
     definition_theorem: DQMC.Current.JNJN_eq_neg_projected_jj
+
+  - derived_id: Uneqlt.JQJQ
+    lean_id: DQMC.Obs.thermal_current_current
+    input_lean_id: DQMC.Obs.projected_current_current
+    definition_theorem: DQMC.Current.JQJQ_eq_thermal_projected_blocks
+
+observable_relations:
+  - relation_id: EqLt.density_sum_rule
+    output_lean_id: DQMC.Obs.eq_density_total
+    input_lean_ids:
+      - DQMC.Obs.eq_density_up
+      - DQMC.Obs.eq_density_down
+    theorem: DQMC.Density.density_total_eq_density_up_add_density_down
+
+  - relation_id: EqLt.g00_spin_average
+    output_lean_id: DQMC.Obs.eq_green_spin_average
+    input_lean_ids:
+      - DQMC.Obs.eq_green_up
+      - DQMC.Obs.eq_green_down
+    theorem: DQMC.Green.g00_spin_average_expr
+
+  - relation_id: Uneqlt.gt0_spin_average
+    output_lean_id: DQMC.Obs.uneq_green_spin_average
+    input_lean_ids:
+      - DQMC.Obs.uneq_green_up
+      - DQMC.Obs.uneq_green_down
+    theorem: DQMC.Green.gt0_spin_average_expr
+
+measurement_patterns:
+  - pattern_id: meas_accumulated_contribution
+    theorem: DQMC.Measurement.contribution_eq_prefactor_mul_expr
+
+  - pattern_id: meas_normalized_prefactor
+    theorem: DQMC.Measurement.normalized_prefactor_value_eq_normalize_phase_degeneracy
+
+  - pattern_id: meas_normalized_contribution
+    theorem: DQMC.Measurement.normalized_contribution_eq_prefactor_value_mul_expr

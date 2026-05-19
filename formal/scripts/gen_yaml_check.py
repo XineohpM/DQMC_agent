@@ -16,6 +16,10 @@ data = yaml.safe_load(YAML_PATH.read_text())
 
 lines = []
 lines.append("import DQMC.RepoMap")
+lines.append("import DQMC.Density")
+lines.append("import DQMC.Green")
+lines.append("import DQMC.Current")
+lines.append("import DQMC.Measurement")
 lines.append("")
 lines.append("-- This file is generated from observables.yaml.")
 lines.append("-- Do not edit by hand.")
@@ -55,6 +59,54 @@ for item in data.get("repo_variables", []):
     lines.append(f"      {lean_id} := rfl")
     lines.append("")
 
+relation_count = 0
+for item in data.get("observable_relations", []):
+    relation_id = item["relation_id"]
+    theorem = item["theorem"]
+    output_lean_id = item["output_lean_id"]
+    input_lean_ids = item.get("input_lean_ids", [])
+
+    lines.append(f"-- observable relation: {relation_id}")
+    lines.append(f"#check {theorem}")
+    lines.append(f"#check {output_lean_id}")
+    for lean_id in input_lean_ids:
+        lines.append(f"#check {lean_id}")
+    lines.append("")
+    relation_count += 1
+
+derived_count = 0
+for item in data.get("derived_observables", []):
+    derived_id = item["derived_id"]
+    lean_id = item["lean_id"]
+    theorem = item["definition_theorem"]
+
+    lines.append(f"-- derived observable: {derived_id}")
+    lines.append(f"#check {lean_id}")
+    lines.append(f"#check {theorem}")
+
+    if "input_lean_id" in item:
+        lines.append(f"#check {item['input_lean_id']}")
+
+    if "input_repo_id" in item:
+        input_meas_var = infer_lean_meas_var(item["input_repo_id"])
+        lines.append(f"#check {input_meas_var}")
+
+    lines.append("")
+    derived_count += 1
+
+measurement_pattern_count = 0
+for item in data.get("measurement_patterns", []):
+    pattern_id = item["pattern_id"]
+    theorem = item["theorem"]
+
+    lines.append(f"-- measurement pattern: {pattern_id}")
+    lines.append(f"#check {theorem}")
+    lines.append("")
+    measurement_pattern_count += 1
+
 OUT_PATH.write_text("\n".join(lines) + "\n")
 print(f"Wrote {OUT_PATH}")
 print(f"Checked {len(seen_repo)} repo_variables from observables.yaml")
+print(f"Checked {relation_count} observable_relations from observables.yaml")
+print(f"Checked {derived_count} derived_observables from observables.yaml")
+print(f"Checked {measurement_pattern_count} measurement_patterns from observables.yaml")

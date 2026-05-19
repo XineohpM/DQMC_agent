@@ -17,7 +17,9 @@ inductive Obs where
   | uneq_green_down
 
   | raw_current_current
+  | projected_current_current
   | elec_current_current
+  | thermal_current_current
 deriving DecidableEq, Repr
 
 end DQMC
