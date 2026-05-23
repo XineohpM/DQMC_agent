@@ -243,9 +243,26 @@ Owns HDF5 inspection and bounded reading.
 Public functions:
 
 ```python
-def inspect_hdf5(path: str | Path, *, max_preview_items: int = 8) -> dict
-def read_dataset(path: str | Path, dataset_path: str, *, max_items: int = 1024) -> dict
-def read_observable(path: str | Path, observable_name: str, *, max_items: int = 1024) -> dict
+def inspect_hdf5(
+    path: str | Path,
+    *,
+    max_preview_items: int = 8,
+    allowed_roots: list[str | Path] | str | Path | None = None,
+) -> dict
+def read_dataset(
+    path: str | Path,
+    dataset_path: str,
+    *,
+    max_items: int = 1024,
+    allowed_roots: list[str | Path] | str | Path | None = None,
+) -> dict
+def read_observable(
+    path: str | Path,
+    observable_name: str,
+    *,
+    max_items: int = 1024,
+    allowed_roots: list[str | Path] | str | Path | None = None,
+) -> dict
 ```
 
 `inspect_hdf5` output:
@@ -308,8 +325,19 @@ Discovers and summarizes run directories.
 Public functions:
 
 ```python
-def list_runs(root: str | Path, filters: dict | None = None, *, max_runs: int = 200) -> list[dict]
-def summarize_run(path: str | Path, *, max_files: int = 20) -> dict
+def list_runs(
+    root: str | Path,
+    filters: dict | None = None,
+    *,
+    max_runs: int = 200,
+    allowed_roots: list[str | Path] | str | Path | None = None,
+) -> list[dict]
+def summarize_run(
+    path: str | Path,
+    *,
+    max_files: int = 20,
+    allowed_roots: list[str | Path] | str | Path | None = None,
+) -> dict
 ```
 
 `list_runs` should start conservative:
