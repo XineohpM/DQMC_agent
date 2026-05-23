@@ -123,17 +123,17 @@ Exit criteria:
 
 ## Phase 8: MCP Adapter
 
-- `[ ]` Use the official Python MCP SDK via `mcp.server.fastmcp.FastMCP`.
-- `[ ]` Add `dqmc_mcp_server.py`.
-- `[ ]` Register `list_runs`.
-- `[ ]` Register `inspect_hdf5`.
-- `[ ]` Register `resolve_observable`.
-- `[ ]` Register `read_observable`.
-- `[ ]` Register `summarize_run`.
-- `[ ]` Register `query_slurm`.
-- `[ ]` Write tool descriptions following the description standard in `design.md`.
-- `[ ]` Use `app/agent_config.py` only as a writing-quality reference for descriptions; avoid copying workflow rules or repo-agent-specific instructions.
-- `[ ]` Add minimal MCP forwarding tests if supported by the selected SDK.
+- `[x]` Use the official Python MCP SDK via `mcp.server.fastmcp.FastMCP`.
+- `[x]` Add `dqmc_mcp_server.py`.
+- `[x]` Register `list_runs`.
+- `[x]` Register `inspect_hdf5`.
+- `[x]` Register `resolve_observable`.
+- `[x]` Register `read_observable`.
+- `[x]` Register `summarize_run`.
+- `[x]` Register `query_slurm`.
+- `[x]` Write tool descriptions following the description standard in `design.md`.
+- `[x]` Use `app/agent_config.py` only as a writing-quality reference for descriptions; avoid copying workflow rules or repo-agent-specific instructions.
+- `[x]` Add minimal MCP forwarding tests if supported by the selected SDK.
 
 Exit criteria:
 
