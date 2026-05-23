@@ -11,7 +11,7 @@
 - `[x]` Create SDD spec directory.
 - `[x]` Define requirements and out-of-scope boundaries.
 - `[x]` Define package architecture, tool contracts, and MCP adapter boundary.
-- `[ ]` Review spec with Phoenix/user and resolve open questions that affect v1 implementation.
+- `[x]` Review spec with Phoenix/user and resolve open questions that affect v1 implementation.
 
 Exit criteria:
 
@@ -20,14 +20,14 @@ Exit criteria:
 
 ## Phase 1: Python Package Skeleton
 
-- `[ ]` Create `dqmc_tools/` package.
-- `[ ]` Add `dqmc_tools/__init__.py` with a minimal public API surface.
-- `[ ]` Add `dqmc_tools/errors.py` with typed exceptions and JSON-safe error helpers.
-- `[ ]` Port only small generic helpers from existing code where useful, such as bounded text reads, skipped-directory constants, and generated-output safety checks.
-- `[ ]` If JSONL helper code is needed later, copy only generic loading/tokenization ideas from `app/io_tools.py`, `app/retrieval.py`, or `app/semantic_tools.py`; do not port scoring or semantic interpretation behavior.
-- `[ ]` Confirm `dqmc_tools` has no import dependency on `app/`, FastAPI, frontend code, or OpenAI Agents SDK modules.
-- `[ ]` Add initial `tests/` structure.
-- `[ ]` Add `pyproject.toml` with narrow core dependencies and optional `test` and `mcp` extras.
+- `[x]` Create `dqmc_tools/` package.
+- `[x]` Add `dqmc_tools/__init__.py` with a minimal public API surface.
+- `[x]` Add `dqmc_tools/errors.py` with typed exceptions and JSON-safe error helpers.
+- `[x]` Port only small generic helpers from existing code where useful, such as bounded text reads, skipped-directory constants, and generated-output safety checks.
+- `[x]` If JSONL helper code is needed later, copy only generic loading/tokenization ideas from `app/io_tools.py`, `app/retrieval.py`, or `app/semantic_tools.py`; do not port scoring or semantic interpretation behavior.
+- `[x]` Confirm `dqmc_tools` has no import dependency on `app/`, FastAPI, frontend code, or OpenAI Agents SDK modules.
+- `[x]` Add initial `tests/` structure.
+- `[x]` Add `pyproject.toml` with narrow core dependencies and optional `test` and `mcp` extras.
 
 Exit criteria:
 
@@ -36,12 +36,12 @@ Exit criteria:
 
 ## Phase 2: Observable Registry
 
-- `[ ]` Implement `dqmc_tools.observables.load_observable_registry`.
-- `[ ]` Implement `list_observables`.
-- `[ ]` Implement `resolve_observable`.
-- `[ ]` Support exact `repo_id`, exact HDF5 path, and unambiguous tail-name resolution.
-- `[ ]` Add ambiguity errors for duplicated tail paths, using a small test registry fixture if the current `formal/observables.yaml` has no natural ambiguous example.
-- `[ ]` Add tests using `formal/observables.yaml`.
+- `[x]` Implement `dqmc_tools.observables.load_observable_registry`.
+- `[x]` Implement `list_observables`.
+- `[x]` Implement `resolve_observable`.
+- `[x]` Support exact `repo_id`, exact HDF5 path, and unambiguous tail-name resolution.
+- `[x]` Add ambiguity errors for duplicated tail paths, using a small test registry fixture if the current `formal/observables.yaml` has no natural ambiguous example.
+- `[x]` Add tests using `formal/observables.yaml`.
 
 Exit criteria:
 
@@ -51,13 +51,13 @@ Exit criteria:
 
 ## Phase 3: Path Safety
 
-- `[ ]` Implement `dqmc_tools.config` for environment-backed defaults.
-- `[ ]` Implement `resolve_existing_path`.
-- `[ ]` Implement `require_allowed_path`.
-- `[ ]` Implement `require_output_path`.
-- `[ ]` Adapt the restricted-write idea from `app/repo_tools.py`, but make the output root configurable instead of hard-coding `agent_outputs/`.
-- `[ ]` Enforce fail-closed raw-data access when no allowed roots are configured or explicitly passed.
-- `[ ]` Add tests for allowed root, rejected outside path, and output root behavior.
+- `[x]` Implement `dqmc_tools.config` for environment-backed defaults.
+- `[x]` Implement `resolve_existing_path`.
+- `[x]` Implement `require_allowed_path`.
+- `[x]` Implement `require_output_path`.
+- `[x]` Adapt the restricted-write idea from `app/repo_tools.py`, but make the output root configurable instead of hard-coding `agent_outputs/`.
+- `[x]` Enforce fail-closed raw-data access when no allowed roots are configured or explicitly passed.
+- `[x]` Add tests for allowed root, rejected outside path, and output root behavior.
 
 Exit criteria:
 
@@ -66,12 +66,12 @@ Exit criteria:
 
 ## Phase 4: HDF5 Inspection
 
-- `[ ]` Add `h5py` and `numpy` dependency handling.
-- `[ ]` Implement `inspect_hdf5`.
-- `[ ]` Traverse groups and datasets read-only.
-- `[ ]` Include shape, dtype, attrs, and bounded previews.
-- `[ ]` Ensure large arrays are summarized, not fully returned.
-- `[ ]` Add synthetic HDF5 fixture tests.
+- `[x]` Add `h5py` and `numpy` dependency handling.
+- `[x]` Implement `inspect_hdf5`.
+- `[x]` Traverse groups and datasets read-only.
+- `[x]` Include shape, dtype, attrs, and bounded previews.
+- `[x]` Ensure large arrays are summarized, not fully returned.
+- `[x]` Add synthetic HDF5 fixture tests.
 
 Exit criteria:
 
@@ -81,13 +81,13 @@ Exit criteria:
 
 ## Phase 5: Observable Reading
 
-- `[ ]` Implement `read_dataset`.
-- `[ ]` Implement `read_observable`.
-- `[ ]` Extract factual metadata from common `metadata/*`, `params/*`, `meas_eqlt/*`, and `meas_uneqlt/*` paths when present.
-- `[ ]` Use parameter-name and HDF5-family ideas from `app/build_io_index.py` as hints only; always read facts from the actual HDF5 file.
-- `[ ]` Return numeric summaries and bounded previews.
-- `[ ]` Avoid scientific labels or recommendations.
-- `[ ]` Add tests for successful read, missing dataset, and metadata extraction.
+- `[x]` Implement `read_dataset`.
+- `[x]` Implement `read_observable`.
+- `[x]` Extract factual metadata from common `metadata/*`, `params/*`, `meas_eqlt/*`, and `meas_uneqlt/*` paths when present.
+- `[x]` Use parameter-name and HDF5-family ideas from `app/build_io_index.py` as hints only; always read facts from the actual HDF5 file.
+- `[x]` Return numeric summaries and bounded previews.
+- `[x]` Avoid scientific labels or recommendations.
+- `[x]` Add tests for successful read, missing dataset, and metadata extraction.
 
 Exit criteria:
 
@@ -96,12 +96,12 @@ Exit criteria:
 
 ## Phase 6: Run Discovery and Summary
 
-- `[ ]` Implement `list_runs`.
-- `[ ]` Implement conservative run candidate detection.
-- `[ ]` Implement supported filters.
-- `[ ]` Implement `summarize_run`.
-- `[ ]` Report available and missing registered observable paths per HDF5 file.
-- `[ ]` Add tests using temporary directory trees and synthetic HDF5 files.
+- `[x]` Implement `list_runs`.
+- `[x]` Implement conservative run candidate detection.
+- `[x]` Implement supported filters.
+- `[x]` Implement `summarize_run`.
+- `[x]` Report available and missing registered observable paths per HDF5 file.
+- `[x]` Add tests using temporary directory trees and synthetic HDF5 files.
 
 Exit criteria:
 
@@ -110,11 +110,11 @@ Exit criteria:
 
 ## Phase 7: Read-only SLURM Query
 
-- `[ ]` Implement `query_slurm`.
-- `[ ]` Prefer JSON output where available.
-- `[ ]` Add fallback parser for a stable custom `squeue` format.
-- `[ ]` Return unavailable errors when SLURM commands are missing.
-- `[ ]` Add tests that mock subprocess results.
+- `[x]` Implement `query_slurm`.
+- `[x]` Prefer JSON output where available.
+- `[x]` Add fallback parser for a stable custom `squeue` format.
+- `[x]` Return unavailable errors when SLURM commands are missing.
+- `[x]` Add tests that mock subprocess results.
 
 Exit criteria:
 
