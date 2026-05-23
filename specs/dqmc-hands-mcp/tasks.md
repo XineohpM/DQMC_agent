@@ -156,10 +156,16 @@ Exit criteria:
 
 ## Phase 10: Optional Existing App Integration
 
-- `[ ]` Decide whether current `app/agent_config.py` should expose `dqmc_tools` tools directly.
-- `[ ]` If yes, add OpenAI Agents SDK wrappers as a separate integration layer.
-- `[ ]` Keep wrappers thin and avoid duplicating MCP descriptions.
-- `[ ]` Update frontend/demo docs only if the existing app remains a supported demo.
+- `[x]` Decide whether current `app/agent_config.py` should expose `dqmc_tools` tools directly.
+- `[x]` Do not add OpenAI Agents SDK wrappers in v1.
+- `[x]` Keep any future wrappers thin and avoid duplicating MCP descriptions.
+- `[x]` Leave frontend/demo docs unchanged because the existing app is not the v1 integration surface.
+
+Decision:
+
+- Do not expose `dqmc_tools` through the existing OpenAI Agents SDK app in v1.
+- Keep MCP as the primary integration surface.
+- Keep current `app/` and frontend demo unchanged.
 
 Exit criteria:
 
