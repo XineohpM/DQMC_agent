@@ -2,8 +2,10 @@ from pathlib import Path
 
 import h5py
 import numpy as np
+import pytest
 
-from dqmc_tools.hdf5 import inspect_hdf5
+from dqmc_tools.errors import HDF5ReadError
+from dqmc_tools.hdf5 import inspect_hdf5, read_dataset, read_observable
 
 
 def _write_sample_h5(path: Path) -> None:
@@ -50,3 +52,42 @@ def test_inspect_hdf5_does_not_preview_large_dataset(tmp_path: Path):
     assert large["path"] == "/large"
     assert large["preview"] is None
     assert large["preview_truncated"] is True
+
+
+def test_read_dataset_returns_bounded_numeric_summary(tmp_path: Path):
+    h5_path = tmp_path / "sample.h5"
+    _write_sample_h5(h5_path)
+
+    result = read_dataset(h5_path, "meas_eqlt/density", allowed_roots=[tmp_path])
+
+    assert result["dataset_path"] == "/meas_eqlt/density"
+    assert result["dataset"]["summary"]["size"] == 3
+    assert result["dataset"]["summary"]["mean"] == 1.0
+    assert result["dataset"]["summary"]["preview"] == [0.95, 1.0, 1.05]
+
+
+def test_read_observable_uses_registry_and_extracts_metadata(tmp_path: Path):
+    h5_path = tmp_path / "sample.h5"
+    _write_sample_h5(h5_path)
+
+    result = read_observable(h5_path, "EqLt.density", allowed_roots=[tmp_path])
+
+    assert result["observable"]["repo_id"] == "EqLt.density"
+    assert result["dataset_path"] == "/meas_eqlt/density"
+    assert result["metadata"]["beta"] == 4.0
+    assert result["metadata"]["dt"] == 0.1
+    assert result["metadata"]["L"] == 40
+    assert result["metadata"]["U"] == -10.0
+    assert result["metadata"]["sign"] == 0.87
+    assert result["metadata"]["n_sample"] == 10000
+
+
+def test_read_observable_reports_missing_dataset(tmp_path: Path):
+    h5_path = tmp_path / "empty.h5"
+    with h5py.File(h5_path, "w") as handle:
+        handle.create_group("meas_eqlt")
+
+    with pytest.raises(HDF5ReadError) as exc:
+        read_observable(h5_path, "EqLt.density", allowed_roots=[tmp_path])
+
+    assert exc.value.details["dataset_path"] == "/meas_eqlt/density"
