@@ -142,12 +142,12 @@ Exit criteria:
 
 ## Phase 9: Analysis Registry
 
-- `[ ]` Create `dqmc_tools/analyses/registry.py`.
-- `[ ]` Define analysis metadata schema.
-- `[ ]` Reuse the validation style from `formal/scripts/check_formal_registry.py`: required fields, duplicate-id checks, and clear schema errors.
-- `[ ]` Implement `list_analyses`.
-- `[ ]` Implement `run_analysis` for registry entries only.
-- `[ ]` Add the first real analysis only after Phoenix identifies a concrete workflow.
+- `[x]` Create `dqmc_tools/analyses/registry.py`.
+- `[x]` Define analysis metadata schema.
+- `[x]` Reuse the validation style from `formal/scripts/check_formal_registry.py`: required fields, duplicate-id checks, and clear schema errors.
+- `[x]` Implement `list_analyses`.
+- `[x]` Implement `run_analysis` for registry entries only.
+- `[x]` Add the first real analysis only after Phoenix identifies a concrete workflow.
 
 Exit criteria:
 

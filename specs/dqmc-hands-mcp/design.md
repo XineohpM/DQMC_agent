@@ -379,7 +379,14 @@ Public functions:
 
 ```python
 def list_analyses() -> list[dict]
-def run_analysis(name: str, run_path: str | Path, params: dict | None = None) -> dict
+def run_analysis(
+    name: str,
+    run_path: str | Path,
+    params: dict | None = None,
+    *,
+    output_root: str | Path | None = None,
+    allowed_roots: list[str | Path] | str | Path | None = None,
+) -> dict
 ```
 
 Rules:

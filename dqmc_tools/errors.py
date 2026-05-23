@@ -46,6 +46,12 @@ class InvalidFilterError(DQMCError):
     code = "invalid_filter"
 
 
+class AnalysisRegistryError(DQMCError):
+    """Raised when an analysis registry entry is missing or invalid."""
+
+    code = "analysis_registry_error"
+
+
 class ObservableNotFoundError(DQMCError):
     """Raised when an observable id or dataset cannot be found."""
 
