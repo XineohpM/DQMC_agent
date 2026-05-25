@@ -16,9 +16,9 @@ observables:
 
     physics:
       definition: "Average electron occupation per site."
-      formula: 
-        - "n=\frac{1}{N} \sum_{i} \left< n_{i,\uparrow}+n_{i,\downarrow} \right>"
-        - "n=2-\left< c_{i,\uparrow}c_{i,\uparrow}^{\dagger} \right> -\left< c_{i,\downarrow}c_{i,\downarrow}^{\dagger} \right>"
+      formula:
+        - '`n = (1/N) sum_i <n_{i,up} + n_{i,down}>`'
+        - '`n = 2 - <c_{i,up} c^dagger_{i,up}> - <c_{i,down} c^dagger_{i,down}>`'
 
     code:
       measurement:
@@ -62,9 +62,9 @@ observables:
 
     physics:
       definition: "Average spin up electron occupation per site."
-      formula: 
-        - "n_u=\frac{1}{N} \sum_{i} \left< n_{i,\uparrow} \right>"
-        - "n_u=1-\left< c_{i,\uparrow}c_{i,\uparrow}^{\dagger} \right>"
+      formula:
+        - '`n_up = (1/N) sum_i <n_{i,up}>`'
+        - '`n_up = 1 - <c_{i,up} c^dagger_{i,up}>`'
 
     code:
       measurement:
@@ -107,9 +107,9 @@ observables:
 
     physics:
       definition: "Average spin down electron occupation per site."
-      formula: 
-        - "n_d=\frac{1}{N} \sum_{i} \left< n_{i,\downarrow} \right>"
-        - "n_d=1-\left< c_{i,\downarrow}c_{i,\downarrow}^{\dagger} \right>"
+      formula:
+        - '`n_down = (1/N) sum_i <n_{i,down}>`'
+        - '`n_down = 1 - <c_{i,down} c^dagger_{i,down}>`'
 
     code:
       measurement:
@@ -143,7 +143,7 @@ observables:
     aliases: [double occupancy, doublon density, D]
     physics:
       definition: "Equal-time local double occupancy."
-      formula: ["D_i=<n_{i,up} n_{i,down}>", "D_i=(1-G_up(i,i))(1-G_down(i,i))"]
+      formula: ['`D_i=<n_{i,up} n_{i,down}>`', '`D_i=(1-G_up(i,i))(1-G_down(i,i))`']
     code:
       measurement: {file: meas.c, function: measure_eqlt(), variable: m->double_occ}
       generation: {file: gen_1band_unified_hub.py, variable: meas_eqlt/double_occ, flags: [period_eqlt]}
@@ -166,7 +166,7 @@ observables:
     aliases: [equal time Green function, g00, spin averaged Green function]
     physics:
       definition: "Equal-time spin-averaged single-particle Green function."
-      formula: ["g00(i,j)=0.5*(G_up(i,j)+G_down(i,j))", "With Peierls: multiply each spin channel by P_sigma(j,i)."]
+      formula: ['`g00(i,j)=0.5*(G_up(i,j)+G_down(i,j))`', '`With Peierls: multiply each spin channel by P_sigma(j,i).`']
     code:
       measurement: {file: meas.c, function: measure_eqlt(), variable: m->g00}
       generation: {file: gen_1band_unified_hub.py, variable: meas_eqlt/g00, flags: [period_eqlt]}
@@ -181,7 +181,7 @@ observables:
     aliases: [g00_up, spin up equal time Green function]
     physics:
       definition: "Equal-time spin-up single-particle Green function."
-      formula: ["g00_u(i,j)=G_up(i,j)", "With Peierls: g00_u(i,j)=G_up(i,j)P_up(j,i)."]
+      formula: ['`g00_u(i,j)=G_up(i,j)`', '`With Peierls: g00_u(i,j)=G_up(i,j)P_up(j,i).`']
     code:
       measurement: {file: meas.c, function: measure_eqlt(), variable: m->g00_u}
       generation: {file: gen_1band_unified_hub.py, variable: meas_eqlt/g00_u, flags: [period_eqlt]}
@@ -196,7 +196,7 @@ observables:
     aliases: [g00_down, spin down equal time Green function]
     physics:
       definition: "Equal-time spin-down single-particle Green function."
-      formula: ["g00_d(i,j)=G_down(i,j)", "With Peierls: g00_d(i,j)=G_down(i,j)P_down(j,i)."]
+      formula: ['`g00_d(i,j)=G_down(i,j)`', '`With Peierls: g00_d(i,j)=G_down(i,j)P_down(j,i).`']
     code:
       measurement: {file: meas.c, function: measure_eqlt(), variable: m->g00_d}
       generation: {file: gen_1band_unified_hub.py, variable: meas_eqlt/g00_d, flags: [period_eqlt]}
@@ -211,7 +211,7 @@ observables:
     aliases: [nn, equal time density density correlation, charge correlation]
     physics:
       definition: "Equal-time full density-density correlation; disconnected part is not subtracted."
-      formula: ["C_nn(i,j)=<n_i n_j>"]
+      formula: ['`C_nn(i,j)=<n_i n_j>`']
     code:
       measurement: {file: meas.c, function: measure_eqlt(), variable: m->nn}
       generation: {file: gen_1band_unified_hub.py, variable: meas_eqlt/nn, flags: [period_eqlt]}
@@ -226,7 +226,7 @@ observables:
     aliases: [xx, equal time transverse spin correlation, SxSx]
     physics:
       definition: "Equal-time transverse spin correlation block."
-      formula: ["C_xx=1/4*(delta_ij*(G_up(ii)+G_down(ii))-(G_up(ji)G_down(ij)+G_down(ji)G_up(ij)))"]
+      formula: ['`C_xx=1/4*(delta_ij*(G_up(ii)+G_down(ii))-(G_up(ji)G_down(ij)+G_down(ji)G_up(ij)))`']
     code:
       measurement: {file: meas.c, function: measure_eqlt(), variable: m->xx}
       generation: {file: gen_1band_unified_hub.py, variable: meas_eqlt/xx, flags: [period_eqlt]}
@@ -241,7 +241,7 @@ observables:
     aliases: [zz, equal time longitudinal spin correlation, SzSz]
     physics:
       definition: "Equal-time longitudinal spin correlation."
-      formula: ["C_zz=<S^z_i S^z_j>"]
+      formula: ['`C_zz=<S^z_i S^z_j>`']
     code:
       measurement: {file: meas.c, function: measure_eqlt(), variable: m->zz}
       generation: {file: gen_1band_unified_hub.py, variable: meas_eqlt/zz, flags: [period_eqlt]}
@@ -256,7 +256,7 @@ observables:
     aliases: [pair_sw, onsite s wave pair correlation]
     physics:
       definition: "Equal-time onsite s-wave pair correlation."
-      formula: ["Delta_i=c_{i,down}c_{i,up}", "C_pair_sw(i,j)=G_up(i,j)G_down(i,j)"]
+      formula: ['`Delta_i=c_{i,down}c_{i,up}`', '`C_pair_sw(i,j)=G_up(i,j)G_down(i,j)`']
     code:
       measurement: {file: meas.c, function: measure_eqlt(), variable: m->pair_sw}
       generation: {file: gen_1band_unified_hub.py, variable: meas_eqlt/pair_sw, flags: [period_eqlt]}
@@ -269,7 +269,7 @@ observables:
 
   - id: uuuu_eqlt
     aliases: [uuuu, equal time up up generalized susceptibility block]
-    physics: {definition: "Equal-time up-up particle-hole bilinear building block.", formula: ["(delta_i1j2-G_up(j2,i1))*G_up(j1,i2)"]}
+    physics: {definition: "Equal-time up-up particle-hole bilinear building block.", formula: ['`(delta_i1j2-G_up(j2,i1))*G_up(j1,i2)`']}
     code:
       measurement: {file: meas.c, function: measure_eqlt(), variable: m->uuuu}
       generation: {file: gen_1band_unified_hub.py, variable: meas_eqlt/uuuu, flags: [meas_gen_suscept]}
@@ -280,7 +280,7 @@ observables:
 
   - id: dddd_eqlt
     aliases: [dddd, equal time down down generalized susceptibility block]
-    physics: {definition: "Equal-time down-down particle-hole bilinear building block.", formula: ["(delta_i1j2-G_down(j2,i1))*G_down(j1,i2)"]}
+    physics: {definition: "Equal-time down-down particle-hole bilinear building block.", formula: ['`(delta_i1j2-G_down(j2,i1))*G_down(j1,i2)`']}
     code:
       measurement: {file: meas.c, function: measure_eqlt(), variable: m->dddd}
       generation: {file: gen_1band_unified_hub.py, variable: meas_eqlt/dddd, flags: [meas_gen_suscept]}
@@ -291,7 +291,7 @@ observables:
 
   - id: uudd_eqlt
     aliases: [uudd, equal time up down generalized susceptibility block]
-    physics: {definition: "Equal-time up-down particle-hole bilinear building block.", formula: ["(delta_i1j2-G_up(j2,i1))*G_down(j1,i2)"]}
+    physics: {definition: "Equal-time up-down particle-hole bilinear building block.", formula: ['`(delta_i1j2-G_up(j2,i1))*G_down(j1,i2)`']}
     code:
       measurement: {file: meas.c, function: measure_eqlt(), variable: m->uudd}
       generation: {file: gen_1band_unified_hub.py, variable: meas_eqlt/uudd, flags: [meas_gen_suscept]}
@@ -302,7 +302,7 @@ observables:
 
   - id: dduu_eqlt
     aliases: [dduu, equal time down up generalized susceptibility block]
-    physics: {definition: "Equal-time down-up particle-hole bilinear building block.", formula: ["(delta_i1j2-G_down(j2,i1))*G_up(j1,i2)"]}
+    physics: {definition: "Equal-time down-up particle-hole bilinear building block.", formula: ['`(delta_i1j2-G_down(j2,i1))*G_up(j1,i2)`']}
     code:
       measurement: {file: meas.c, function: measure_eqlt(), variable: m->dduu}
       generation: {file: gen_1band_unified_hub.py, variable: meas_eqlt/dduu, flags: [meas_gen_suscept]}
@@ -313,7 +313,7 @@ observables:
 
   - id: chi
     aliases: [scalar spin chirality, plaquette chirality, loop current chirality]
-    physics: {definition: "Equal-time plaquette chirality or loop-current type three-site Wick contraction.", formula: ["Computed from plaqs[0:3,a] using the Wick-expanded expression in measure_eqlt()."]}
+    physics: {definition: "Equal-time plaquette chirality or loop-current type three-site Wick contraction.", formula: ['`Computed from plaqs[0:3,a] using the Wick-expanded expression in measure_eqlt().`']}
     code:
       measurement: {file: meas.c, function: measure_eqlt(), variable: m->chi}
       generation: {file: gen_1band_unified_hub.py, variable: meas_eqlt/chi, flags: [meas_chiral]}
@@ -324,7 +324,7 @@ observables:
 
   - id: kk_eqlt
     aliases: [kk, equal time kinetic kinetic correlation]
-    physics: {definition: "Equal-time 1-bond kinetic to 1-bond kinetic correlation building block.", formula: ["<K_b K_c> Wick contraction."]}
+    physics: {definition: "Equal-time 1-bond kinetic to 1-bond kinetic correlation building block.", formula: ['`<K_b K_c> Wick contraction.`']}
     code:
       measurement: {file: meas.c, function: measure_eqlt(), variable: m->kk}
       generation: {file: gen_1band_unified_hub.py, variable: meas_eqlt/kk, flags: [meas_energy_corr]}
@@ -335,7 +335,7 @@ observables:
 
   - id: kv_eqlt
     aliases: [kv, equal time kinetic interaction correlation]
-    physics: {definition: "Equal-time 1-bond kinetic to onsite interaction/double-occupancy correlation building block.", formula: ["<K_b V_j> Wick contraction."]}
+    physics: {definition: "Equal-time 1-bond kinetic to onsite interaction/double-occupancy correlation building block.", formula: ['`<K_b V_j> Wick contraction.`']}
     code:
       measurement: {file: meas.c, function: measure_eqlt(), variable: m->kv}
       generation: {file: gen_1band_unified_hub.py, variable: meas_eqlt/kv, flags: [meas_energy_corr]}
@@ -346,7 +346,7 @@ observables:
 
   - id: kn_eqlt
     aliases: [kn, equal time kinetic density correlation]
-    physics: {definition: "Equal-time 1-bond kinetic to density correlation building block.", formula: ["<K_b n_j> Wick contraction."]}
+    physics: {definition: "Equal-time 1-bond kinetic to density correlation building block.", formula: ['`<K_b n_j> Wick contraction.`']}
     code:
       measurement: {file: meas.c, function: measure_eqlt(), variable: m->kn}
       generation: {file: gen_1band_unified_hub.py, variable: meas_eqlt/kn, flags: [meas_energy_corr]}
@@ -357,7 +357,7 @@ observables:
 
   - id: vv_eqlt
     aliases: [vv, equal time interaction interaction correlation]
-    physics: {definition: "Equal-time onsite interaction/double-occupancy to onsite interaction/double-occupancy correlation building block.", formula: ["<n_up_i n_down_i n_up_j n_down_j> Wick block."]}
+    physics: {definition: "Equal-time onsite interaction/double-occupancy to onsite interaction/double-occupancy correlation building block.", formula: ['`<n_up_i n_down_i n_up_j n_down_j> Wick block.`']}
     code:
       measurement: {file: meas.c, function: measure_eqlt(), variable: m->vv}
       generation: {file: gen_1band_unified_hub.py, variable: meas_eqlt/vv, flags: [meas_energy_corr]}
@@ -368,7 +368,7 @@ observables:
 
   - id: vn_eqlt
     aliases: [vn, equal time interaction density correlation]
-    physics: {definition: "Equal-time onsite interaction/double-occupancy to density correlation building block.", formula: ["<V_i n_j> Wick block."]}
+    physics: {definition: "Equal-time onsite interaction/double-occupancy to density correlation building block.", formula: ['`<V_i n_j> Wick block.`']}
     code:
       measurement: {file: meas.c, function: measure_eqlt(), variable: m->vn}
       generation: {file: gen_1band_unified_hub.py, variable: meas_eqlt/vn, flags: [meas_energy_corr]}
@@ -379,7 +379,7 @@ observables:
 
   - id: j
     aliases: [local current, bond current]
-    physics: {definition: "Equal-time local 1-bond current building block.", formula: ["Antisymmetric bond bilinear summed over spin with Peierls phases."]}
+    physics: {definition: "Equal-time local 1-bond current building block.", formula: ['`Antisymmetric bond bilinear summed over spin with Peierls phases.`']}
     code:
       measurement: {file: meas.c, function: measure_eqlt(), variable: m->j}
       generation: {file: gen_1band_unified_hub.py, variable: meas_eqlt/j, flags: [meas_local_JQ]}
@@ -390,7 +390,7 @@ observables:
 
   - id: jn
     aliases: [density dressed current, local jn]
-    physics: {definition: "Equal-time density-dressed 1-bond current building block.", formula: ["Wick contraction of a 1-bond current dressed by endpoint densities."]}
+    physics: {definition: "Equal-time density-dressed 1-bond current building block.", formula: ['`Wick contraction of a 1-bond current dressed by endpoint densities.`']}
     code:
       measurement: {file: meas.c, function: measure_eqlt(), variable: m->jn}
       generation: {file: gen_1band_unified_hub.py, variable: meas_eqlt/jn, flags: [meas_local_JQ]}
@@ -401,7 +401,7 @@ observables:
 
   - id: j2
     aliases: [two hop current, local j2]
-    physics: {definition: "Equal-time 2-hop current building block.", formula: ["Antisymmetric 2-hop bilinear using pp_u, pp_d, ppr_u, and ppr_d path phases."]}
+    physics: {definition: "Equal-time 2-hop current building block.", formula: ['`Antisymmetric 2-hop bilinear using pp_u, pp_d, ppr_u, and ppr_d path phases.`']}
     code:
       measurement: {file: meas.c, function: measure_eqlt(), variable: m->j2}
       generation: {file: gen_1band_unified_hub.py, variable: meas_eqlt/j2, flags: [meas_local_JQ]}
@@ -412,7 +412,7 @@ observables:
 
   - id: gt0
     aliases: [unequal time Green function, gt0, spin averaged unequal time Green function]
-    physics: {definition: "Unequal-time spin-averaged single-particle Green function.", formula: ["gt0(i,j,t)=0.5*(G_up(t,0;i,j)+G_down(t,0;i,j))", "With Peierls: multiply each spin channel by P_sigma(j,i)."]}
+    physics: {definition: "Unequal-time spin-averaged single-particle Green function.", formula: ['`gt0(i,j,t)=0.5*(G_up(t,0;i,j)+G_down(t,0;i,j))`', '`With Peierls: multiply each spin channel by P_sigma(j,i).`']}
     code:
       measurement: {file: meas.c, function: measure_uneqlt(), variable: m->gt0}
       generation: {file: gen_1band_unified_hub.py, variable: meas_uneqlt/gt0, flags: [period_uneqlt]}
@@ -423,7 +423,7 @@ observables:
 
   - id: gt0_u
     aliases: [gt0_up, spin up unequal time Green function]
-    physics: {definition: "Unequal-time spin-up single-particle Green function.", formula: ["gt0_u(i,j,t)=G_up(t,0;i,j), with Peierls phase when enabled."]}
+    physics: {definition: "Unequal-time spin-up single-particle Green function.", formula: ['`gt0_u(i,j,t)=G_up(t,0;i,j), with Peierls phase when enabled.`']}
     code:
       measurement: {file: meas.c, function: measure_uneqlt(), variable: m->gt0_u}
       generation: {file: gen_1band_unified_hub.py, variable: meas_uneqlt/gt0_u, flags: [period_uneqlt]}
@@ -434,7 +434,7 @@ observables:
 
   - id: gt0_d
     aliases: [gt0_down, spin down unequal time Green function]
-    physics: {definition: "Unequal-time spin-down single-particle Green function.", formula: ["gt0_d(i,j,t)=G_down(t,0;i,j), with Peierls phase when enabled."]}
+    physics: {definition: "Unequal-time spin-down single-particle Green function.", formula: ['`gt0_d(i,j,t)=G_down(t,0;i,j), with Peierls phase when enabled.`']}
     code:
       measurement: {file: meas.c, function: measure_uneqlt(), variable: m->gt0_d}
       generation: {file: gen_1band_unified_hub.py, variable: meas_uneqlt/gt0_d, flags: [period_uneqlt]}
@@ -445,7 +445,7 @@ observables:
 
   - id: nn_uneqlt
     aliases: [nn_tau, unequal time density density correlation]
-    physics: {definition: "Unequal-time full density-density correlation; disconnected part is not subtracted.", formula: ["C_nn(i,j,t)=<n_i(t)n_j(0)>"]}
+    physics: {definition: "Unequal-time full density-density correlation; disconnected part is not subtracted.", formula: ['`C_nn(i,j,t)=<n_i(t)n_j(0)>`']}
     code:
       measurement: {file: meas.c, function: measure_uneqlt(), variable: m->nn}
       generation: {file: gen_1band_unified_hub.py, variable: meas_uneqlt/nn, flags: [period_uneqlt]}
@@ -456,7 +456,7 @@ observables:
 
   - id: xx_uneqlt
     aliases: [xx_tau, unequal time transverse spin correlation]
-    physics: {definition: "Unequal-time transverse spin correlation block.", formula: ["C_xx(i,j,t)=<S^x_i(t)S^x_j(0)> block from Wick contractions."]}
+    physics: {definition: "Unequal-time transverse spin correlation block.", formula: ['`C_xx(i,j,t)=<S^x_i(t)S^x_j(0)> block from Wick contractions.`']}
     code:
       measurement: {file: meas.c, function: measure_uneqlt(), variable: m->xx}
       generation: {file: gen_1band_unified_hub.py, variable: meas_uneqlt/xx, flags: [period_uneqlt]}
@@ -467,7 +467,7 @@ observables:
 
   - id: zz_uneqlt
     aliases: [zz_tau, unequal time longitudinal spin correlation]
-    physics: {definition: "Unequal-time longitudinal spin correlation.", formula: ["C_zz(i,j,t)=<S^z_i(t)S^z_j(0)>."]}
+    physics: {definition: "Unequal-time longitudinal spin correlation.", formula: ['`C_zz(i,j,t)=<S^z_i(t)S^z_j(0)>.`']}
     code:
       measurement: {file: meas.c, function: measure_uneqlt(), variable: m->zz}
       generation: {file: gen_1band_unified_hub.py, variable: meas_uneqlt/zz, flags: [period_uneqlt]}
@@ -478,7 +478,7 @@ observables:
 
   - id: pair_sw_uneqlt
     aliases: [pair_sw_tau, unequal time onsite s wave pair correlation]
-    physics: {definition: "Unequal-time onsite s-wave pair correlation.", formula: ["C_pair_sw(i,j,t)=G_up(t,0;i,j)G_down(t,0;i,j)."]}
+    physics: {definition: "Unequal-time onsite s-wave pair correlation.", formula: ['`C_pair_sw(i,j,t)=G_up(t,0;i,j)G_down(t,0;i,j).`']}
     code:
       measurement: {file: meas.c, function: measure_uneqlt(), variable: m->pair_sw}
       generation: {file: gen_1band_unified_hub.py, variable: meas_uneqlt/pair_sw, flags: [period_uneqlt]}
@@ -489,7 +489,7 @@ observables:
 
   - id: uuuu_uneqlt
     aliases: [uuuu_tau, unequal time up up generalized susceptibility block]
-    physics: {definition: "Unequal-time up-up particle-hole bilinear building block.", formula: ["(delta_t*delta_i1j2-G_up(0,t;j2,i1))*G_up(t,0;j1,i2)"]}
+    physics: {definition: "Unequal-time up-up particle-hole bilinear building block.", formula: ['`(delta_t*delta_i1j2-G_up(0,t;j2,i1))*G_up(t,0;j1,i2)`']}
     code:
       measurement: {file: meas.c, function: meas_uneqlt_gen_suscept(), variable: m->uuuu}
       generation: {file: gen_1band_unified_hub.py, variable: meas_uneqlt/uuuu, flags: [meas_gen_suscept]}
@@ -500,7 +500,7 @@ observables:
 
   - id: dddd_uneqlt
     aliases: [dddd_tau, unequal time down down generalized susceptibility block]
-    physics: {definition: "Unequal-time down-down particle-hole bilinear building block.", formula: ["(delta_t*delta_i1j2-G_down(0,t;j2,i1))*G_down(t,0;j1,i2)"]}
+    physics: {definition: "Unequal-time down-down particle-hole bilinear building block.", formula: ['`(delta_t*delta_i1j2-G_down(0,t;j2,i1))*G_down(t,0;j1,i2)`']}
     code:
       measurement: {file: meas.c, function: meas_uneqlt_gen_suscept(), variable: m->dddd}
       generation: {file: gen_1band_unified_hub.py, variable: meas_uneqlt/dddd, flags: [meas_gen_suscept]}
@@ -511,7 +511,7 @@ observables:
 
   - id: uudd_uneqlt
     aliases: [uudd_tau, unequal time up down generalized susceptibility block]
-    physics: {definition: "Unequal-time up-down particle-hole bilinear building block.", formula: ["(delta_t*delta_i1j2-G_up(0,t;j2,i1))*G_down(t,0;j1,i2)"]}
+    physics: {definition: "Unequal-time up-down particle-hole bilinear building block.", formula: ['`(delta_t*delta_i1j2-G_up(0,t;j2,i1))*G_down(t,0;j1,i2)`']}
     code:
       measurement: {file: meas.c, function: meas_uneqlt_gen_suscept(), variable: m->uudd}
       generation: {file: gen_1band_unified_hub.py, variable: meas_uneqlt/uudd, flags: [meas_gen_suscept]}
@@ -522,7 +522,7 @@ observables:
 
   - id: dduu_uneqlt
     aliases: [dduu_tau, unequal time down up generalized susceptibility block]
-    physics: {definition: "Unequal-time down-up particle-hole bilinear building block.", formula: ["(delta_t*delta_i1j2-G_down(0,t;j2,i1))*G_up(t,0;j1,i2)"]}
+    physics: {definition: "Unequal-time down-up particle-hole bilinear building block.", formula: ['`(delta_t*delta_i1j2-G_down(0,t;j2,i1))*G_up(t,0;j1,i2)`']}
     code:
       measurement: {file: meas.c, function: meas_uneqlt_gen_suscept(), variable: m->dduu}
       generation: {file: gen_1band_unified_hub.py, variable: meas_uneqlt/dduu, flags: [meas_gen_suscept]}
@@ -533,7 +533,7 @@ observables:
 
   - id: pair_bb
     aliases: [bond pair correlation, bond singlet pair correlation]
-    physics: {definition: "Unequal-time 1-bond singlet pair to 1-bond singlet pair correlation.", formula: ["0.5*(Gu_i0j0*Gd_i1j1+Gu_i1j0*Gd_i0j1+Gu_i0j1*Gd_i1j0+Gu_i1j1*Gd_i0j0)"]}
+    physics: {definition: "Unequal-time 1-bond singlet pair to 1-bond singlet pair correlation.", formula: ['`0.5*(Gu_i0j0*Gd_i1j1+Gu_i1j0*Gd_i0j1+Gu_i0j1*Gd_i1j0+Gu_i1j1*Gd_i0j0)`']}
     code:
       measurement: {file: meas.c, function: measure_uneqlt(), variable: m->pair_bb}
       generation: {file: gen_1band_unified_hub.py, variable: meas_uneqlt/pair_bb, flags: [meas_pair_bb_only, meas_bond_corr]}
@@ -544,7 +544,7 @@ observables:
 
   - id: jj
     aliases: [current current correlation, bond current correlation]
-    physics: {definition: "Unequal-time 1-bond charge current-current correlation building block.", formula: ["<j_b(t) j_c(0)> Wick contraction."]}
+    physics: {definition: "Unequal-time 1-bond charge current-current correlation building block.", formula: ['`<j_b(t) j_c(0)> Wick contraction.`']}
     code:
       measurement: {file: meas.c, function: measure_uneqlt(), variable: m->jj}
       generation: {file: gen_1band_unified_hub.py, variable: meas_uneqlt/jj, flags: [meas_bond_corr]}
@@ -555,7 +555,7 @@ observables:
 
   - id: jsjs
     aliases: [spin current spin current correlation]
-    physics: {definition: "Unequal-time 1-bond spin-current to spin-current correlation building block.", formula: ["<j^s_b(t) j^s_c(0)> Wick contraction."]}
+    physics: {definition: "Unequal-time 1-bond spin-current to spin-current correlation building block.", formula: ['`<j^s_b(t) j^s_c(0)> Wick contraction.`']}
     code:
       measurement: {file: meas.c, function: measure_uneqlt(), variable: m->jsjs}
       generation: {file: gen_1band_unified_hub.py, variable: meas_uneqlt/jsjs, flags: [meas_bond_corr]}
@@ -566,7 +566,7 @@ observables:
 
   - id: kk_uneqlt
     aliases: [unequal time kinetic kinetic correlation]
-    physics: {definition: "Unequal-time 1-bond kinetic to 1-bond kinetic correlation building block.", formula: ["<K_b(t) K_c(0)> Wick contraction."]}
+    physics: {definition: "Unequal-time 1-bond kinetic to 1-bond kinetic correlation building block.", formula: ['`<K_b(t) K_c(0)> Wick contraction.`']}
     code:
       measurement: {file: meas.c, function: measure_uneqlt(), variable: m->kk}
       generation: {file: gen_1band_unified_hub.py, variable: meas_uneqlt/kk, flags: [meas_bond_corr]}
@@ -577,7 +577,7 @@ observables:
 
   - id: ksks
     aliases: [spin kinetic spin kinetic correlation]
-    physics: {definition: "Unequal-time 1-bond spin-kinetic to spin-kinetic correlation building block.", formula: ["<K^s_b(t) K^s_c(0)> Wick contraction."]}
+    physics: {definition: "Unequal-time 1-bond spin-kinetic to spin-kinetic correlation building block.", formula: ['`<K^s_b(t) K^s_c(0)> Wick contraction.`']}
     code:
       measurement: {file: meas.c, function: measure_uneqlt(), variable: m->ksks}
       generation: {file: gen_1band_unified_hub.py, variable: meas_uneqlt/ksks, flags: [meas_bond_corr]}
@@ -588,7 +588,7 @@ observables:
 
   - id: kv_uneqlt
     aliases: [unequal time kinetic interaction correlation]
-    physics: {definition: "Unequal-time 1-bond kinetic to onsite interaction/double-occupancy correlation building block.", formula: ["<K_b(t) V_j(0)> Wick contraction."]}
+    physics: {definition: "Unequal-time 1-bond kinetic to onsite interaction/double-occupancy correlation building block.", formula: ['`<K_b(t) V_j(0)> Wick contraction.`']}
     code:
       measurement: {file: meas.c, function: meas_uneqlt_energy(), variable: m->kv}
       generation: {file: gen_1band_unified_hub.py, variable: meas_uneqlt/kv, flags: [meas_energy_corr]}
@@ -599,7 +599,7 @@ observables:
 
   - id: kn_uneqlt
     aliases: [unequal time kinetic density correlation]
-    physics: {definition: "Unequal-time 1-bond kinetic to density correlation building block.", formula: ["<K_b(t) n_j(0)> Wick contraction."]}
+    physics: {definition: "Unequal-time 1-bond kinetic to density correlation building block.", formula: ['`<K_b(t) n_j(0)> Wick contraction.`']}
     code:
       measurement: {file: meas.c, function: meas_uneqlt_energy(), variable: m->kn}
       generation: {file: gen_1band_unified_hub.py, variable: meas_uneqlt/kn, flags: [meas_energy_corr]}
@@ -610,7 +610,7 @@ observables:
 
   - id: vv_uneqlt
     aliases: [unequal time interaction interaction correlation]
-    physics: {definition: "Unequal-time onsite interaction/double-occupancy to onsite interaction/double-occupancy correlation building block.", formula: ["<V_i(t) V_j(0)> Wick block."]}
+    physics: {definition: "Unequal-time onsite interaction/double-occupancy to onsite interaction/double-occupancy correlation building block.", formula: ['`<V_i(t) V_j(0)> Wick block.`']}
     code:
       measurement: {file: meas.c, function: measure_uneqlt(), variable: m->vv}
       generation: {file: gen_1band_unified_hub.py, variable: meas_uneqlt/vv, flags: [meas_energy_corr]}
@@ -621,7 +621,7 @@ observables:
 
   - id: vn_uneqlt
     aliases: [unequal time interaction density correlation]
-    physics: {definition: "Unequal-time onsite interaction/double-occupancy to density correlation building block.", formula: ["<V_i(t) n_j(0)> Wick block."]}
+    physics: {definition: "Unequal-time onsite interaction/double-occupancy to density correlation building block.", formula: ['`<V_i(t) n_j(0)> Wick block.`']}
     code:
       measurement: {file: meas.c, function: measure_uneqlt(), variable: m->vn}
       generation: {file: gen_1band_unified_hub.py, variable: meas_uneqlt/vn, flags: [meas_energy_corr]}
@@ -632,7 +632,7 @@ observables:
 
   - id: j2jn
     aliases: [two hop current density dressed current correlation]
-    physics: {definition: "Unequal-time 2-hop current to density-dressed 1-bond current correlation building block.", formula: ["<j2_b(t) jn_c(0)> Wick contraction."]}
+    physics: {definition: "Unequal-time 2-hop current to density-dressed 1-bond current correlation building block.", formula: ['`<j2_b(t) jn_c(0)> Wick contraction.`']}
     code:
       measurement: {file: meas.c, function: measure_uneqlt(), variable: m->j2jn}
       generation: {file: gen_1band_unified_hub.py, variable: meas_uneqlt/j2jn, flags: [meas_thermal]}
@@ -643,7 +643,7 @@ observables:
 
   - id: jnj2
     aliases: [density dressed current two hop current correlation]
-    physics: {definition: "Unequal-time density-dressed 1-bond current to 2-hop current correlation building block.", formula: ["<jn_b(t) j2_c(0)> Wick contraction."]}
+    physics: {definition: "Unequal-time density-dressed 1-bond current to 2-hop current correlation building block.", formula: ['`<jn_b(t) j2_c(0)> Wick contraction.`']}
     code:
       measurement: {file: meas.c, function: measure_uneqlt(), variable: m->jnj2}
       generation: {file: gen_1band_unified_hub.py, variable: meas_uneqlt/jnj2, flags: [meas_thermal]}
@@ -654,7 +654,7 @@ observables:
 
   - id: jnjn
     aliases: [density dressed current density dressed current correlation]
-    physics: {definition: "Unequal-time density-dressed 1-bond current to density-dressed 1-bond current correlation building block.", formula: ["<jn_b(t) jn_c(0)> Wick contraction."]}
+    physics: {definition: "Unequal-time density-dressed 1-bond current to density-dressed 1-bond current correlation building block.", formula: ['`<jn_b(t) jn_c(0)> Wick contraction.`']}
     code:
       measurement: {file: meas.c, function: measure_uneqlt(), variable: m->jnjn}
       generation: {file: gen_1band_unified_hub.py, variable: meas_uneqlt/jnjn, flags: [meas_thermal]}
@@ -665,7 +665,7 @@ observables:
 
   - id: jjn
     aliases: [current density dressed current correlation]
-    physics: {definition: "Unequal-time 1-bond current to density-dressed 1-bond current correlation building block.", formula: ["<j_b(t) jn_c(0)> Wick contraction."]}
+    physics: {definition: "Unequal-time 1-bond current to density-dressed 1-bond current correlation building block.", formula: ['`<j_b(t) jn_c(0)> Wick contraction.`']}
     code:
       measurement: {file: meas.c, function: measure_uneqlt(), variable: m->jjn}
       generation: {file: gen_1band_unified_hub.py, variable: meas_uneqlt/jjn, flags: [meas_thermal]}
@@ -676,7 +676,7 @@ observables:
 
   - id: jnj
     aliases: [density dressed current current correlation]
-    physics: {definition: "Unequal-time density-dressed 1-bond current to 1-bond current correlation building block.", formula: ["<jn_b(t) j_c(0)> Wick contraction."]}
+    physics: {definition: "Unequal-time density-dressed 1-bond current to 1-bond current correlation building block.", formula: ['`<jn_b(t) j_c(0)> Wick contraction.`']}
     code:
       measurement: {file: meas.c, function: measure_uneqlt(), variable: m->jnj}
       generation: {file: gen_1band_unified_hub.py, variable: meas_uneqlt/jnj, flags: [meas_thermal]}
@@ -687,7 +687,7 @@ observables:
 
   - id: j2j2
     aliases: [two hop current two hop current correlation]
-    physics: {definition: "Unequal-time 2-hop current-current correlation building block.", formula: ["<j2_b(t) j2_c(0)> Wick contraction."]}
+    physics: {definition: "Unequal-time 2-hop current-current correlation building block.", formula: ['`<j2_b(t) j2_c(0)> Wick contraction.`']}
     code:
       measurement: {file: meas.c, function: measure_uneqlt(), variable: m->j2j2}
       generation: {file: gen_1band_unified_hub.py, variable: meas_uneqlt/j2j2, flags: [meas_2bond_corr]}
@@ -698,7 +698,7 @@ observables:
 
   - id: j2j
     aliases: [two hop current one bond current correlation]
-    physics: {definition: "Unequal-time 2-hop current to 1-bond current correlation building block.", formula: ["<j2_b(t) j_c(0)> Wick contraction."]}
+    physics: {definition: "Unequal-time 2-hop current to 1-bond current correlation building block.", formula: ['`<j2_b(t) j_c(0)> Wick contraction.`']}
     code:
       measurement: {file: meas.c, function: measure_uneqlt(), variable: m->j2j}
       generation: {file: gen_1band_unified_hub.py, variable: meas_uneqlt/j2j, flags: [meas_2bond_corr]}
@@ -709,7 +709,7 @@ observables:
 
   - id: jj2
     aliases: [one bond current two hop current correlation]
-    physics: {definition: "Unequal-time 1-bond current to 2-hop current correlation building block.", formula: ["<j_b(t) j2_c(0)> Wick contraction."]}
+    physics: {definition: "Unequal-time 1-bond current to 2-hop current correlation building block.", formula: ['`<j_b(t) j2_c(0)> Wick contraction.`']}
     code:
       measurement: {file: meas.c, function: measure_uneqlt(), variable: m->jj2}
       generation: {file: gen_1band_unified_hub.py, variable: meas_uneqlt/jj2, flags: [meas_2bond_corr]}
@@ -720,7 +720,7 @@ observables:
 
   - id: pair_b2b2
     aliases: [two bond pair correlation]
-    physics: {definition: "Unequal-time 2-hop bond singlet pair correlation.", formula: ["0.5*(Gu_i0j0*Gd_i2j2+Gu_i2j0*Gd_i0j2+Gu_i0j2*Gd_i2j0+Gu_i2j2*Gd_i0j0)"]}
+    physics: {definition: "Unequal-time 2-hop bond singlet pair correlation.", formula: ['`0.5*(Gu_i0j0*Gd_i2j2+Gu_i2j0*Gd_i0j2+Gu_i0j2*Gd_i2j0+Gu_i2j2*Gd_i0j0)`']}
     code:
       measurement: {file: meas.c, function: measure_uneqlt(), variable: m->pair_b2b2}
       generation: {file: gen_1band_unified_hub.py, variable: meas_uneqlt/pair_b2b2, flags: [meas_2bond_corr]}
@@ -731,7 +731,7 @@ observables:
 
   - id: js2js2
     aliases: [two hop spin current spin current correlation]
-    physics: {definition: "Unequal-time 2-hop spin-current to spin-current correlation building block.", formula: ["<j2^s_b(t) j2^s_c(0)> Wick contraction."]}
+    physics: {definition: "Unequal-time 2-hop spin-current to spin-current correlation building block.", formula: ['`<j2^s_b(t) j2^s_c(0)> Wick contraction.`']}
     code:
       measurement: {file: meas.c, function: measure_uneqlt(), variable: m->js2js2}
       generation: {file: gen_1band_unified_hub.py, variable: meas_uneqlt/js2js2, flags: [meas_2bond_corr]}
@@ -742,7 +742,7 @@ observables:
 
   - id: k2k2
     aliases: [two hop kinetic kinetic correlation]
-    physics: {definition: "Unequal-time 2-hop kinetic to 2-hop kinetic correlation building block.", formula: ["<K2_b(t) K2_c(0)> Wick contraction."]}
+    physics: {definition: "Unequal-time 2-hop kinetic to 2-hop kinetic correlation building block.", formula: ['`<K2_b(t) K2_c(0)> Wick contraction.`']}
     code:
       measurement: {file: meas.c, function: measure_uneqlt(), variable: m->k2k2}
       generation: {file: gen_1band_unified_hub.py, variable: meas_uneqlt/k2k2, flags: [meas_2bond_corr]}
@@ -753,7 +753,7 @@ observables:
 
   - id: ks2ks2
     aliases: [two hop spin kinetic spin kinetic correlation]
-    physics: {definition: "Unequal-time 2-hop spin-kinetic to spin-kinetic correlation building block.", formula: ["<K2^s_b(t) K2^s_c(0)> Wick contraction."]}
+    physics: {definition: "Unequal-time 2-hop spin-kinetic to spin-kinetic correlation building block.", formula: ['`<K2^s_b(t) K2^s_c(0)> Wick contraction.`']}
     code:
       measurement: {file: meas.c, function: measure_uneqlt(), variable: m->ks2ks2}
       generation: {file: gen_1band_unified_hub.py, variable: meas_uneqlt/ks2ks2, flags: [meas_2bond_corr]}
@@ -764,7 +764,7 @@ observables:
 
   - id: nem_nnnn
     aliases: [charge nematic correlation, bond density nematic correlation]
-    physics: {definition: "Unequal-time bond-density nematic four-fermion correlation.", formula: ["Sum of all 16 spin Wick contractions corresponding to bond-density channels."]}
+    physics: {definition: "Unequal-time bond-density nematic four-fermion correlation.", formula: ['`Sum of all 16 spin Wick contractions corresponding to bond-density channels.`']}
     code:
       measurement: {file: meas.c, function: meas_uneqlt_nematic(), variable: m->nem_nnnn}
       generation: {file: gen_1band_unified_hub.py, variable: meas_uneqlt/nem_nnnn, flags: [meas_nematic_corr]}
@@ -775,7 +775,7 @@ observables:
 
   - id: nem_ssss
     aliases: [spin nematic correlation, bond spin nematic correlation]
-    physics: {definition: "Unequal-time bond-spin nematic four-fermion correlation.", formula: ["Signed combination of the 16 spin Wick contractions corresponding to spin-density channels."]}
+    physics: {definition: "Unequal-time bond-spin nematic four-fermion correlation.", formula: ['`Signed combination of the 16 spin Wick contractions corresponding to spin-density channels.`']}
     code:
       measurement: {file: meas.c, function: meas_uneqlt_nematic(), variable: m->nem_ssss}
       generation: {file: gen_1band_unified_hub.py, variable: meas_uneqlt/nem_ssss, flags: [meas_nematic_corr]}
@@ -793,7 +793,7 @@ parameters:
 
     physics:
       definition: "Controls electron filling through the chemical-potential term in the Hamiltonian."
-      formula: "H_mu = - μ sum_i n_i"
+      formula: '`H_mu = - μ sum_i n_i`'
 
     code:
       generation:
@@ -817,7 +817,7 @@ parameters:
 
     physics:
       definition: "Selects the lattice geometry used to construct hopping matrices, orbital count, plaquettes, bonds, and measurement maps."
-      formula: "geometry ∈ {square, triangular, honeycomb, kagome}"
+      formula: '`geometry ∈ {square, triangular, honeycomb, kagome}`'
 
     code:
       generation:
@@ -842,7 +842,7 @@ parameters:
 
     physics:
       definition: "Number of unit cells along the x direction."
-      formula: "N_cell = Nx * Ny"
+      formula: '`N_cell = Nx * Ny`'
 
     code:
       generation:
@@ -867,7 +867,7 @@ parameters:
 
     physics:
       definition: "Number of unit cells along the y direction."
-      formula: "N_cell = Nx * Ny"
+      formula: '`N_cell = Nx * Ny`'
 
     code:
       generation:
@@ -891,7 +891,7 @@ parameters:
 
     physics:
       definition: "Nearest-neighbor hopping amplitude used as the energy unit in this generator."
-      formula: "H_t = -t sum_<ij>,sigma (c^dagger_{i,sigma} c_{j,sigma} + h.c.), with t fixed to 1"
+      formula: '`H_t = -t sum_<ij>,sigma (c^dagger_{i,sigma} c_{j,sigma} + h.c.), with t fixed to 1`'
 
     code:
       generation:
@@ -916,7 +916,7 @@ parameters:
 
     physics:
       definition: "Next-nearest-neighbor hopping amplitude relative to nearest-neighbor hopping t."
-      formula: "H_t' = -t' sum_<<ij>>,sigma (c^dagger_{i,sigma} c_{j,sigma} + h.c.)"
+      formula: '`H_t'' = -t'' sum_<<ij>>,sigma (c^dagger_{i,sigma} c_{j,sigma} + h.c.)`'
 
     code:
       generation:
@@ -941,7 +941,7 @@ parameters:
 
     physics:
       definition: "Third-nearest-neighbor hopping amplitude relative to nearest-neighbor hopping t."
-      formula: "H_t'' = -t'' sum_<<<ij>>>,sigma (c^dagger_{i,sigma} c_{j,sigma} + h.c.)"
+      formula: '`H_t'''' = -t'''' sum_<<<ij>>>,sigma (c^dagger_{i,sigma} c_{j,sigma} + h.c.)`'
 
     code:
       generation:
@@ -966,7 +966,7 @@ parameters:
 
     physics:
       definition: "On-site Hubbard interaction strength."
-      formula: "H_U = U sum_i n_{i,up} n_{i,down}"
+      formula: '`H_U = U sum_i n_{i,up} n_{i,down}`'
 
     code:
       generation:
@@ -991,7 +991,7 @@ parameters:
 
     physics:
       definition: "Chooses the Hubbard-Stratonovich decoupling channel used to generate the auxiliary-field weights."
-      formula: "spin: couples to n_up - n_down; density: couples to n_up + n_down - 1; auto: spin for U>=0 and density for U<0"
+      formula: '`spin: couples to n_up - n_down; density: couples to n_up + n_down - 1; auto: spin for U>=0 and density for U<0`'
 
     code:
       generation:
@@ -1015,7 +1015,7 @@ parameters:
 
     physics:
       definition: "Boundary condition used when constructing the hopping matrix."
-      formula: "bc=1 periodic; bc=2 open"
+      formula: '`bc=1 periodic; bc=2 open`'
 
     code:
       generation:
@@ -1040,7 +1040,7 @@ parameters:
 
     physics:
       definition: "Imaginary-time Trotter discretization interval."
-      formula: "beta = L * dt"
+      formula: '`beta = L * dt`'
 
     code:
       generation:
@@ -1065,7 +1065,7 @@ parameters:
 
     physics:
       definition: "Number of discrete imaginary-time slices."
-      formula: "beta = L * dt"
+      formula: '`beta = L * dt`'
 
     code:
       generation:
@@ -1090,7 +1090,7 @@ parameters:
 
     physics:
       definition: "Zeeman field that shifts the effective chemical potentials of up and down spins oppositely."
-      formula: "K_up(ii) includes -(mu-h); K_down(ii) includes -(mu+h)"
+      formula: '`K_up(ii) includes -(mu-h); K_down(ii) includes -(mu+h)`'
 
     code:
       generation:
@@ -1115,7 +1115,7 @@ parameters:
 
     physics:
       definition: "Number of magnetic flux quanta threaded through the cluster when constructing Peierls phases."
-      formula: "Peierls phases are generated by tight_binding.H_periodic_* with nflux"
+      formula: '`Peierls phases are generated by tight_binding.H_periodic_* with nflux`'
 
     code:
       generation:
@@ -1140,7 +1140,7 @@ parameters:
 
     physics:
       definition: "Twist phase per bond along the x direction."
-      formula: "total x-boundary twist = Nx * twistx"
+      formula: '`total x-boundary twist = Nx * twistx`'
 
     code:
       generation:
@@ -1165,7 +1165,7 @@ parameters:
 
     physics:
       definition: "Twist phase per bond along the y direction."
-      formula: "total y-boundary twist = Ny * twisty"
+      formula: '`total y-boundary twist = Ny * twisty`'
 
     code:
       generation:
