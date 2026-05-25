@@ -1,4 +1,7 @@
-app/__pycache__/
+__pycache__/
+.pytest_cache/
+pytest-cache-files-*/
+*.egg-info/
 .env
 formal/.lake/
 .DS_Store

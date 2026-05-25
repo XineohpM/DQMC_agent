@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dqmc-tools"
+version = "0.1.0"
+description = "Reusable DQMC data and cluster tools with a thin MCP adapter."
+readme = "specs/dqmc-hands-mcp/requirements.md"
+requires-python = ">=3.10"
+dependencies = [
+    "h5py",
+    "numpy",
+    "PyYAML",
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest",
+]
+mcp = [
+    "mcp",
+]
+
+[tool.setuptools.packages.find]
+include = ["dqmc_tools*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q -p no:cacheprovider"
