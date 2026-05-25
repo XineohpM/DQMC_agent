@@ -1,0 +1,1182 @@
+#schema_version: 0.1
+#codebase: 1band_unified_hub
+
+# Observables measured in DQMC
+observables:
+  # Density
+  - id: density
+    aliases:
+      - n
+      - den
+      - filling
+      - particle density
+      - electron density
+      - fermion density
+      - doping
+
+    physics:
+      definition: "Average electron occupation per site."
+      formula: 
+        - "n=\frac{1}{N} \sum_{i} \left< n_{i,\uparrow}+n_{i,\downarrow} \right>"
+        - "n=2-\left< c_{i,\uparrow}c_{i,\uparrow}^{\dagger} \right> -\left< c_{i,\downarrow}c_{i,\downarrow}^{\dagger} \right>"
+
+    code:
+      measurement:
+        file: meas.c
+        function: measure_eqlt()
+        variable: m->density
+      generation:
+        file: gen_1band_unified_hub.py
+        variable: meas_eqlt/density
+        flags:
+          - meas_eqlt
+
+    requirements:
+      required_flags: ["period_eqlt > 0"]
+      limitations: []
+
+    normalization:
+      is_sign_weighted: true
+      is_per_site: true
+      spin_type: sum
+
+    units: dimensionless
+
+    data_layout:
+      type: float_or_complex
+      shape: [num_i]
+      index_convention: "r=map_i[i]. If trans_sym=1, r labels orbital channel; otherwise r labels site i."
+
+  # Density up
+  - id: density_up
+    aliases:
+      - n_up
+      - den_up
+      - n_u
+      - den_u
+      - density_u
+      - spin up filling
+      - spin up density
+      - spin up electron density
+      - spin up fermion density
+
+    physics:
+      definition: "Average spin up electron occupation per site."
+      formula: 
+        - "n_u=\frac{1}{N} \sum_{i} \left< n_{i,\uparrow} \right>"
+        - "n_u=1-\left< c_{i,\uparrow}c_{i,\uparrow}^{\dagger} \right>"
+
+    code:
+      measurement:
+        file: meas.c
+        function: measure_eqlt()
+        variable: m->density_u
+      generation:
+        file: gen_1band_unified_hub.py
+        variable: meas_eqlt/density_u
+        flags:
+          - meas_eqlt
+
+    requirements:
+      required_flags: ["period_eqlt > 0"]
+      limitations: []
+
+    normalization:
+      is_sign_weighted: true
+      is_per_site: true
+      spin_type: up
+
+    units: dimensionless
+
+    data_layout:
+      type: float_or_complex
+      shape: [num_i]
+      index_convention: "r=map_i[i]. If trans_sym=1, r labels orbital channel; otherwise r labels site i."
+
+  # Density down
+  - id: density_down
+    aliases:
+      - n_down
+      - den_down
+      - n_d
+      - den_d
+      - density_d
+      - spin down density
+      - spin down electron density
+      - spin down fermion density
+
+    physics:
+      definition: "Average spin down electron occupation per site."
+      formula: 
+        - "n_d=\frac{1}{N} \sum_{i} \left< n_{i,\downarrow} \right>"
+        - "n_d=1-\left< c_{i,\downarrow}c_{i,\downarrow}^{\dagger} \right>"
+
+    code:
+      measurement:
+        file: meas.c
+        function: measure_eqlt()
+        variable: m->density_d
+      generation:
+        file: gen_1band_unified_hub.py
+        variable: meas_eqlt/density_d
+        flags:
+          - meas_eqlt
+
+    requirements:
+      required_flags: ["period_eqlt > 0"]
+      limitations: []
+
+    normalization:
+      is_sign_weighted: true
+      is_per_site: true
+      spin_type: down
+
+    units: dimensionless
+
+    data_layout:
+      type: float_or_complex
+      shape: [num_i]
+      index_convention: "r=map_i[i]. If trans_sym=1, r labels orbital channel; otherwise r labels site i."
+
+  # Double occupancy
+  - id: double_occ
+    aliases: [double occupancy, doublon density, D]
+    physics:
+      definition: "Equal-time local double occupancy."
+      formula: ["D_i=<n_{i,up} n_{i,down}>", "D_i=(1-G_up(i,i))(1-G_down(i,i))"]
+    code:
+      measurement: {file: meas.c, function: measure_eqlt(), variable: m->double_occ}
+      generation: {file: gen_1band_unified_hub.py, variable: meas_eqlt/double_occ, flags: [period_eqlt]}
+    requirements:
+      required_flags: ["period_eqlt > 0"]
+      limitations: []
+    normalization:
+      is_sign_weighted: true
+      hdf5_accumulator: "sum phase*D_i/degen_i"
+      final_average: "double_occ/sign"
+      spatial_average: "map_i with degen_i"
+      spin_type: up_down_product
+    units: dimensionless
+    data_layout:
+      type: float_or_complex
+      shape: [num_i]
+      index_convention: "r=map_i[i]. If trans_sym=1, r labels orbital channel; otherwise r labels site i."
+
+  - id: g00
+    aliases: [equal time Green function, g00, spin averaged Green function]
+    physics:
+      definition: "Equal-time spin-averaged single-particle Green function."
+      formula: ["g00(i,j)=0.5*(G_up(i,j)+G_down(i,j))", "With Peierls: multiply each spin channel by P_sigma(j,i)."]
+    code:
+      measurement: {file: meas.c, function: measure_eqlt(), variable: m->g00}
+      generation: {file: gen_1band_unified_hub.py, variable: meas_eqlt/g00, flags: [period_eqlt]}
+    requirements:
+      required_flags: ["period_eqlt > 0"]
+      limitations: []
+    normalization: {is_sign_weighted: true, hdf5_accumulator: "sum phase*g00/degen_ij", final_average: "g00/sign", spatial_average: "map_ij with degen_ij", spin_type: average}
+    units: dimensionless
+    data_layout: {type: float_or_complex, shape: [num_ij], index_convention: "r=map_ij[i+N*j]."}
+
+  - id: g00_u
+    aliases: [g00_up, spin up equal time Green function]
+    physics:
+      definition: "Equal-time spin-up single-particle Green function."
+      formula: ["g00_u(i,j)=G_up(i,j)", "With Peierls: g00_u(i,j)=G_up(i,j)P_up(j,i)."]
+    code:
+      measurement: {file: meas.c, function: measure_eqlt(), variable: m->g00_u}
+      generation: {file: gen_1band_unified_hub.py, variable: meas_eqlt/g00_u, flags: [period_eqlt]}
+    requirements:
+      required_flags: ["period_eqlt > 0"]
+      limitations: []
+    normalization: {is_sign_weighted: true, hdf5_accumulator: "sum phase*g00_u/degen_ij", final_average: "g00_u/sign", spatial_average: "map_ij with degen_ij", spin_type: up}
+    units: dimensionless
+    data_layout: {type: float_or_complex, shape: [num_ij], index_convention: "r=map_ij[i+N*j]."}
+
+  - id: g00_d
+    aliases: [g00_down, spin down equal time Green function]
+    physics:
+      definition: "Equal-time spin-down single-particle Green function."
+      formula: ["g00_d(i,j)=G_down(i,j)", "With Peierls: g00_d(i,j)=G_down(i,j)P_down(j,i)."]
+    code:
+      measurement: {file: meas.c, function: measure_eqlt(), variable: m->g00_d}
+      generation: {file: gen_1band_unified_hub.py, variable: meas_eqlt/g00_d, flags: [period_eqlt]}
+    requirements:
+      required_flags: ["period_eqlt > 0"]
+      limitations: []
+    normalization: {is_sign_weighted: true, hdf5_accumulator: "sum phase*g00_d/degen_ij", final_average: "g00_d/sign", spatial_average: "map_ij with degen_ij", spin_type: down}
+    units: dimensionless
+    data_layout: {type: float_or_complex, shape: [num_ij], index_convention: "r=map_ij[i+N*j]."}
+
+  - id: nn_eqlt
+    aliases: [nn, equal time density density correlation, charge correlation]
+    physics:
+      definition: "Equal-time full density-density correlation; disconnected part is not subtracted."
+      formula: ["C_nn(i,j)=<n_i n_j>"]
+    code:
+      measurement: {file: meas.c, function: measure_eqlt(), variable: m->nn}
+      generation: {file: gen_1band_unified_hub.py, variable: meas_eqlt/nn, flags: [period_eqlt]}
+    requirements:
+      required_flags: ["period_eqlt > 0"]
+      limitations: []
+    normalization: {is_sign_weighted: true, hdf5_accumulator: "sum phase*C_nn/degen_ij", final_average: "nn/sign", spatial_average: "map_ij with degen_ij", spin_type: sum}
+    units: dimensionless
+    data_layout: {type: float_or_complex, shape: [num_ij], index_convention: "r=map_ij[i+N*j]."}
+
+  - id: xx_eqlt
+    aliases: [xx, equal time transverse spin correlation, SxSx]
+    physics:
+      definition: "Equal-time transverse spin correlation block."
+      formula: ["C_xx=1/4*(delta_ij*(G_up(ii)+G_down(ii))-(G_up(ji)G_down(ij)+G_down(ji)G_up(ij)))"]
+    code:
+      measurement: {file: meas.c, function: measure_eqlt(), variable: m->xx}
+      generation: {file: gen_1band_unified_hub.py, variable: meas_eqlt/xx, flags: [period_eqlt]}
+    requirements:
+      required_flags: ["period_eqlt > 0"]
+      limitations: []
+    normalization: {is_sign_weighted: true, hdf5_accumulator: "sum phase*C_xx/degen_ij", final_average: "xx/sign", spatial_average: "map_ij with degen_ij", spin_type: transverse}
+    units: dimensionless
+    data_layout: {type: float_or_complex, shape: [num_ij], index_convention: "r=map_ij[i+N*j]."}
+
+  - id: zz_eqlt
+    aliases: [zz, equal time longitudinal spin correlation, SzSz]
+    physics:
+      definition: "Equal-time longitudinal spin correlation."
+      formula: ["C_zz=<S^z_i S^z_j>"]
+    code:
+      measurement: {file: meas.c, function: measure_eqlt(), variable: m->zz}
+      generation: {file: gen_1band_unified_hub.py, variable: meas_eqlt/zz, flags: [period_eqlt]}
+    requirements:
+      required_flags: ["period_eqlt > 0"]
+      limitations: []
+    normalization: {is_sign_weighted: true, hdf5_accumulator: "sum phase*C_zz/degen_ij", final_average: "zz/sign", spatial_average: "map_ij with degen_ij", spin_type: longitudinal}
+    units: dimensionless
+    data_layout: {type: float_or_complex, shape: [num_ij], index_convention: "r=map_ij[i+N*j]."}
+
+  - id: pair_sw_eqlt
+    aliases: [pair_sw, onsite s wave pair correlation]
+    physics:
+      definition: "Equal-time onsite s-wave pair correlation."
+      formula: ["Delta_i=c_{i,down}c_{i,up}", "C_pair_sw(i,j)=G_up(i,j)G_down(i,j)"]
+    code:
+      measurement: {file: meas.c, function: measure_eqlt(), variable: m->pair_sw}
+      generation: {file: gen_1band_unified_hub.py, variable: meas_eqlt/pair_sw, flags: [period_eqlt]}
+    requirements:
+      required_flags: ["period_eqlt > 0"]
+      limitations: []
+    normalization: {is_sign_weighted: true, hdf5_accumulator: "sum phase*C_pair_sw/degen_ij", final_average: "pair_sw/sign", spatial_average: "map_ij with degen_ij", spin_type: singlet_pair}
+    units: dimensionless
+    data_layout: {type: float_or_complex, shape: [num_ij], index_convention: "r=map_ij[i+N*j]."}
+
+  - id: uuuu_eqlt
+    aliases: [uuuu, equal time up up generalized susceptibility block]
+    physics: {definition: "Equal-time up-up particle-hole bilinear building block.", formula: ["(delta_i1j2-G_up(j2,i1))*G_up(j1,i2)"]}
+    code:
+      measurement: {file: meas.c, function: measure_eqlt(), variable: m->uuuu}
+      generation: {file: gen_1band_unified_hub.py, variable: meas_eqlt/uuuu, flags: [meas_gen_suscept]}
+    requirements: {required_flags: ["period_eqlt > 0", "meas_gen_suscept = 1", "trans_sym = 1"], limitations: ["Generator raises ValueError if meas_gen_suscept is enabled without trans_sym."]}
+    normalization: {is_sign_weighted: true, hdf5_accumulator: "sum phase*block/(Nx*Ny*Nx*Ny)", final_average: "uuuu/sign", spatial_average: "two map_ij channels", spin_type: up_up}
+    units: dimensionless
+    data_layout: {type: float_or_complex, shape: [num_ij_times_num_ij], index_convention: "r=k1+num_ij*k2, k1=map_ij[i1+N*j2], k2=map_ij[i2+N*j1]."}
+
+  - id: dddd_eqlt
+    aliases: [dddd, equal time down down generalized susceptibility block]
+    physics: {definition: "Equal-time down-down particle-hole bilinear building block.", formula: ["(delta_i1j2-G_down(j2,i1))*G_down(j1,i2)"]}
+    code:
+      measurement: {file: meas.c, function: measure_eqlt(), variable: m->dddd}
+      generation: {file: gen_1band_unified_hub.py, variable: meas_eqlt/dddd, flags: [meas_gen_suscept]}
+    requirements: {required_flags: ["period_eqlt > 0", "meas_gen_suscept = 1", "trans_sym = 1"], limitations: ["Generator raises ValueError if meas_gen_suscept is enabled without trans_sym."]}
+    normalization: {is_sign_weighted: true, hdf5_accumulator: "sum phase*block/(Nx*Ny*Nx*Ny)", final_average: "dddd/sign", spatial_average: "two map_ij channels", spin_type: down_down}
+    units: dimensionless
+    data_layout: {type: float_or_complex, shape: [num_ij_times_num_ij], index_convention: "r=k1+num_ij*k2, k1=map_ij[i1+N*j2], k2=map_ij[i2+N*j1]."}
+
+  - id: uudd_eqlt
+    aliases: [uudd, equal time up down generalized susceptibility block]
+    physics: {definition: "Equal-time up-down particle-hole bilinear building block.", formula: ["(delta_i1j2-G_up(j2,i1))*G_down(j1,i2)"]}
+    code:
+      measurement: {file: meas.c, function: measure_eqlt(), variable: m->uudd}
+      generation: {file: gen_1band_unified_hub.py, variable: meas_eqlt/uudd, flags: [meas_gen_suscept]}
+    requirements: {required_flags: ["period_eqlt > 0", "meas_gen_suscept = 1", "trans_sym = 1"], limitations: ["Generator raises ValueError if meas_gen_suscept is enabled without trans_sym."]}
+    normalization: {is_sign_weighted: true, hdf5_accumulator: "sum phase*block/(Nx*Ny*Nx*Ny)", final_average: "uudd/sign", spatial_average: "two map_ij channels", spin_type: up_down}
+    units: dimensionless
+    data_layout: {type: float_or_complex, shape: [num_ij_times_num_ij], index_convention: "r=k1+num_ij*k2, k1=map_ij[i1+N*j2], k2=map_ij[i2+N*j1]."}
+
+  - id: dduu_eqlt
+    aliases: [dduu, equal time down up generalized susceptibility block]
+    physics: {definition: "Equal-time down-up particle-hole bilinear building block.", formula: ["(delta_i1j2-G_down(j2,i1))*G_up(j1,i2)"]}
+    code:
+      measurement: {file: meas.c, function: measure_eqlt(), variable: m->dduu}
+      generation: {file: gen_1band_unified_hub.py, variable: meas_eqlt/dduu, flags: [meas_gen_suscept]}
+    requirements: {required_flags: ["period_eqlt > 0", "meas_gen_suscept = 1", "trans_sym = 1"], limitations: ["Generator raises ValueError if meas_gen_suscept is enabled without trans_sym."]}
+    normalization: {is_sign_weighted: true, hdf5_accumulator: "sum phase*block/(Nx*Ny*Nx*Ny)", final_average: "dduu/sign", spatial_average: "two map_ij channels", spin_type: down_up}
+    units: dimensionless
+    data_layout: {type: float_or_complex, shape: [num_ij_times_num_ij], index_convention: "r=k1+num_ij*k2, k1=map_ij[i1+N*j2], k2=map_ij[i2+N*j1]."}
+
+  - id: chi
+    aliases: [scalar spin chirality, plaquette chirality, loop current chirality]
+    physics: {definition: "Equal-time plaquette chirality or loop-current type three-site Wick contraction.", formula: ["Computed from plaqs[0:3,a] using the Wick-expanded expression in measure_eqlt()."]}
+    code:
+      measurement: {file: meas.c, function: measure_eqlt(), variable: m->chi}
+      generation: {file: gen_1band_unified_hub.py, variable: meas_eqlt/chi, flags: [meas_chiral]}
+    requirements: {required_flags: ["period_eqlt > 0", "meas_chiral = 1"], limitations: []}
+    normalization: {is_sign_weighted: true, hdf5_accumulator: "sum phase*chi_a/degen_plaq", final_average: "chi/sign", spatial_average: "map_plaq with degen_plaq", spin_type: mixed}
+    units: dimensionless
+    data_layout: {type: float_or_complex, shape: [num_plaq_accum], index_convention: "r=map_plaq[a]; plaquette sites are plaqs[0,a], plaqs[1,a], plaqs[2,a]."}
+
+  - id: kk_eqlt
+    aliases: [kk, equal time kinetic kinetic correlation]
+    physics: {definition: "Equal-time 1-bond kinetic to 1-bond kinetic correlation building block.", formula: ["<K_b K_c> Wick contraction."]}
+    code:
+      measurement: {file: meas.c, function: measure_eqlt(), variable: m->kk}
+      generation: {file: gen_1band_unified_hub.py, variable: meas_eqlt/kk, flags: [meas_energy_corr]}
+    requirements: {required_flags: ["period_eqlt > 0", "meas_energy_corr = 1"], limitations: []}
+    normalization: {is_sign_weighted: true, hdf5_accumulator: "sum phase*kk/degen_bb", final_average: "kk/sign", spatial_average: "map_bb with degen_bb", spin_type: sum}
+    units: dimensionless_operator_block
+    data_layout: {type: float_or_complex, shape: [num_bb], index_convention: "r=map_bb[b+num_b*c]."}
+
+  - id: kv_eqlt
+    aliases: [kv, equal time kinetic interaction correlation]
+    physics: {definition: "Equal-time 1-bond kinetic to onsite interaction/double-occupancy correlation building block.", formula: ["<K_b V_j> Wick contraction."]}
+    code:
+      measurement: {file: meas.c, function: measure_eqlt(), variable: m->kv}
+      generation: {file: gen_1band_unified_hub.py, variable: meas_eqlt/kv, flags: [meas_energy_corr]}
+    requirements: {required_flags: ["period_eqlt > 0", "meas_energy_corr = 1"], limitations: []}
+    normalization: {is_sign_weighted: true, hdf5_accumulator: "sum phase*kv/degen_bs", final_average: "kv/sign", spatial_average: "map_bs with degen_bs", spin_type: sum}
+    units: dimensionless_operator_block
+    data_layout: {type: float_or_complex, shape: [num_bs], index_convention: "r=map_bs[b+num_b*j]."}
+
+  - id: kn_eqlt
+    aliases: [kn, equal time kinetic density correlation]
+    physics: {definition: "Equal-time 1-bond kinetic to density correlation building block.", formula: ["<K_b n_j> Wick contraction."]}
+    code:
+      measurement: {file: meas.c, function: measure_eqlt(), variable: m->kn}
+      generation: {file: gen_1band_unified_hub.py, variable: meas_eqlt/kn, flags: [meas_energy_corr]}
+    requirements: {required_flags: ["period_eqlt > 0", "meas_energy_corr = 1"], limitations: []}
+    normalization: {is_sign_weighted: true, hdf5_accumulator: "sum phase*kn/degen_bs", final_average: "kn/sign", spatial_average: "map_bs with degen_bs", spin_type: sum}
+    units: dimensionless_operator_block
+    data_layout: {type: float_or_complex, shape: [num_bs], index_convention: "r=map_bs[b+num_b*j]."}
+
+  - id: vv_eqlt
+    aliases: [vv, equal time interaction interaction correlation]
+    physics: {definition: "Equal-time onsite interaction/double-occupancy to onsite interaction/double-occupancy correlation building block.", formula: ["<n_up_i n_down_i n_up_j n_down_j> Wick block."]}
+    code:
+      measurement: {file: meas.c, function: measure_eqlt(), variable: m->vv}
+      generation: {file: gen_1band_unified_hub.py, variable: meas_eqlt/vv, flags: [meas_energy_corr]}
+    requirements: {required_flags: ["period_eqlt > 0", "meas_energy_corr = 1"], limitations: []}
+    normalization: {is_sign_weighted: true, hdf5_accumulator: "sum phase*vv/degen_ij", final_average: "vv/sign", spatial_average: "map_ij with degen_ij", spin_type: up_down_product}
+    units: dimensionless_operator_block
+    data_layout: {type: float_or_complex, shape: [num_ij], index_convention: "r=map_ij[i+N*j]."}
+
+  - id: vn_eqlt
+    aliases: [vn, equal time interaction density correlation]
+    physics: {definition: "Equal-time onsite interaction/double-occupancy to density correlation building block.", formula: ["<V_i n_j> Wick block."]}
+    code:
+      measurement: {file: meas.c, function: measure_eqlt(), variable: m->vn}
+      generation: {file: gen_1band_unified_hub.py, variable: meas_eqlt/vn, flags: [meas_energy_corr]}
+    requirements: {required_flags: ["period_eqlt > 0", "meas_energy_corr = 1"], limitations: []}
+    normalization: {is_sign_weighted: true, hdf5_accumulator: "sum phase*vn/degen_ij", final_average: "vn/sign", spatial_average: "map_ij with degen_ij", spin_type: sum}
+    units: dimensionless_operator_block
+    data_layout: {type: float_or_complex, shape: [num_ij], index_convention: "r=map_ij[i+N*j]."}
+
+  - id: j
+    aliases: [local current, bond current]
+    physics: {definition: "Equal-time local 1-bond current building block.", formula: ["Antisymmetric bond bilinear summed over spin with Peierls phases."]}
+    code:
+      measurement: {file: meas.c, function: measure_eqlt(), variable: m->j}
+      generation: {file: gen_1band_unified_hub.py, variable: meas_eqlt/j, flags: [meas_local_JQ]}
+    requirements: {required_flags: ["period_eqlt > 0", "meas_local_JQ = 1", "trans_sym = 0"], limitations: ["Generator asserts trans_sym == 0."]}
+    normalization: {is_sign_weighted: true, hdf5_accumulator: "sum phase*j/degen_b", final_average: "j/sign", spatial_average: "map_b with degen_b", spin_type: sum}
+    units: dimensionless_current_block
+    data_layout: {type: float_or_complex, shape: [num_b], index_convention: "r=map_b[c], endpoints bonds[0,c] and bonds[1,c]."}
+
+  - id: jn
+    aliases: [density dressed current, local jn]
+    physics: {definition: "Equal-time density-dressed 1-bond current building block.", formula: ["Wick contraction of a 1-bond current dressed by endpoint densities."]}
+    code:
+      measurement: {file: meas.c, function: measure_eqlt(), variable: m->jn}
+      generation: {file: gen_1band_unified_hub.py, variable: meas_eqlt/jn, flags: [meas_local_JQ]}
+    requirements: {required_flags: ["period_eqlt > 0", "meas_local_JQ = 1", "trans_sym = 0"], limitations: ["Generator asserts trans_sym == 0."]}
+    normalization: {is_sign_weighted: true, hdf5_accumulator: "sum phase*jn/degen_b", final_average: "jn/sign", spatial_average: "map_b with degen_b", spin_type: mixed}
+    units: dimensionless_current_block
+    data_layout: {type: float_or_complex, shape: [num_b], index_convention: "r=map_b[c], endpoints bonds[0,c] and bonds[1,c]."}
+
+  - id: j2
+    aliases: [two hop current, local j2]
+    physics: {definition: "Equal-time 2-hop current building block.", formula: ["Antisymmetric 2-hop bilinear using pp_u, pp_d, ppr_u, and ppr_d path phases."]}
+    code:
+      measurement: {file: meas.c, function: measure_eqlt(), variable: m->j2}
+      generation: {file: gen_1band_unified_hub.py, variable: meas_eqlt/j2, flags: [meas_local_JQ]}
+    requirements: {required_flags: ["period_eqlt > 0", "meas_local_JQ = 1", "trans_sym = 0"], limitations: ["Generator asserts trans_sym == 0."]}
+    normalization: {is_sign_weighted: true, hdf5_accumulator: "sum phase*j2/degen_b2", final_average: "j2/sign", spatial_average: "map_b2 with degen_b2", spin_type: sum}
+    units: dimensionless_current_block
+    data_layout: {type: float_or_complex, shape: [num_b2], index_convention: "r=map_b2[c], endpoints bond2s[0,c] and bond2s[1,c]."}
+
+  - id: gt0
+    aliases: [unequal time Green function, gt0, spin averaged unequal time Green function]
+    physics: {definition: "Unequal-time spin-averaged single-particle Green function.", formula: ["gt0(i,j,t)=0.5*(G_up(t,0;i,j)+G_down(t,0;i,j))", "With Peierls: multiply each spin channel by P_sigma(j,i)."]}
+    code:
+      measurement: {file: meas.c, function: measure_uneqlt(), variable: m->gt0}
+      generation: {file: gen_1band_unified_hub.py, variable: meas_uneqlt/gt0, flags: [period_uneqlt]}
+    requirements: {required_flags: ["period_uneqlt > 0"], limitations: []}
+    normalization: {is_sign_weighted: true, hdf5_accumulator: "sum phase*gt0/degen_ij", final_average: "gt0/sign", spatial_average: "map_ij with degen_ij", spin_type: average}
+    units: dimensionless
+    data_layout: {type: float_or_complex, shape: [num_ij_times_L], index_convention: "r=map_ij[i+N*j]; flat index r+num_ij*t, t=0..L-1."}
+
+  - id: gt0_u
+    aliases: [gt0_up, spin up unequal time Green function]
+    physics: {definition: "Unequal-time spin-up single-particle Green function.", formula: ["gt0_u(i,j,t)=G_up(t,0;i,j), with Peierls phase when enabled."]}
+    code:
+      measurement: {file: meas.c, function: measure_uneqlt(), variable: m->gt0_u}
+      generation: {file: gen_1band_unified_hub.py, variable: meas_uneqlt/gt0_u, flags: [period_uneqlt]}
+    requirements: {required_flags: ["period_uneqlt > 0"], limitations: []}
+    normalization: {is_sign_weighted: true, hdf5_accumulator: "sum phase*gt0_u/degen_ij", final_average: "gt0_u/sign", spatial_average: "map_ij with degen_ij", spin_type: up}
+    units: dimensionless
+    data_layout: {type: float_or_complex, shape: [num_ij_times_L], index_convention: "r=map_ij[i+N*j]; flat index r+num_ij*t."}
+
+  - id: gt0_d
+    aliases: [gt0_down, spin down unequal time Green function]
+    physics: {definition: "Unequal-time spin-down single-particle Green function.", formula: ["gt0_d(i,j,t)=G_down(t,0;i,j), with Peierls phase when enabled."]}
+    code:
+      measurement: {file: meas.c, function: measure_uneqlt(), variable: m->gt0_d}
+      generation: {file: gen_1band_unified_hub.py, variable: meas_uneqlt/gt0_d, flags: [period_uneqlt]}
+    requirements: {required_flags: ["period_uneqlt > 0"], limitations: []}
+    normalization: {is_sign_weighted: true, hdf5_accumulator: "sum phase*gt0_d/degen_ij", final_average: "gt0_d/sign", spatial_average: "map_ij with degen_ij", spin_type: down}
+    units: dimensionless
+    data_layout: {type: float_or_complex, shape: [num_ij_times_L], index_convention: "r=map_ij[i+N*j]; flat index r+num_ij*t."}
+
+  - id: nn_uneqlt
+    aliases: [nn_tau, unequal time density density correlation]
+    physics: {definition: "Unequal-time full density-density correlation; disconnected part is not subtracted.", formula: ["C_nn(i,j,t)=<n_i(t)n_j(0)>"]}
+    code:
+      measurement: {file: meas.c, function: measure_uneqlt(), variable: m->nn}
+      generation: {file: gen_1band_unified_hub.py, variable: meas_uneqlt/nn, flags: [period_uneqlt]}
+    requirements: {required_flags: ["period_uneqlt > 0"], limitations: []}
+    normalization: {is_sign_weighted: true, hdf5_accumulator: "sum phase*C_nn/degen_ij", final_average: "nn/sign", spatial_average: "map_ij with degen_ij", spin_type: sum}
+    units: dimensionless
+    data_layout: {type: float_or_complex, shape: [num_ij_times_L], index_convention: "r=map_ij[i+N*j]; flat index r+num_ij*t."}
+
+  - id: xx_uneqlt
+    aliases: [xx_tau, unequal time transverse spin correlation]
+    physics: {definition: "Unequal-time transverse spin correlation block.", formula: ["C_xx(i,j,t)=<S^x_i(t)S^x_j(0)> block from Wick contractions."]}
+    code:
+      measurement: {file: meas.c, function: measure_uneqlt(), variable: m->xx}
+      generation: {file: gen_1band_unified_hub.py, variable: meas_uneqlt/xx, flags: [period_uneqlt]}
+    requirements: {required_flags: ["period_uneqlt > 0"], limitations: []}
+    normalization: {is_sign_weighted: true, hdf5_accumulator: "sum phase*C_xx/degen_ij", final_average: "xx/sign", spatial_average: "map_ij with degen_ij", spin_type: transverse}
+    units: dimensionless
+    data_layout: {type: float_or_complex, shape: [num_ij_times_L], index_convention: "r=map_ij[i+N*j]; flat index r+num_ij*t."}
+
+  - id: zz_uneqlt
+    aliases: [zz_tau, unequal time longitudinal spin correlation]
+    physics: {definition: "Unequal-time longitudinal spin correlation.", formula: ["C_zz(i,j,t)=<S^z_i(t)S^z_j(0)>."]}
+    code:
+      measurement: {file: meas.c, function: measure_uneqlt(), variable: m->zz}
+      generation: {file: gen_1band_unified_hub.py, variable: meas_uneqlt/zz, flags: [period_uneqlt]}
+    requirements: {required_flags: ["period_uneqlt > 0"], limitations: []}
+    normalization: {is_sign_weighted: true, hdf5_accumulator: "sum phase*C_zz/degen_ij", final_average: "zz/sign", spatial_average: "map_ij with degen_ij", spin_type: longitudinal}
+    units: dimensionless
+    data_layout: {type: float_or_complex, shape: [num_ij_times_L], index_convention: "r=map_ij[i+N*j]; flat index r+num_ij*t."}
+
+  - id: pair_sw_uneqlt
+    aliases: [pair_sw_tau, unequal time onsite s wave pair correlation]
+    physics: {definition: "Unequal-time onsite s-wave pair correlation.", formula: ["C_pair_sw(i,j,t)=G_up(t,0;i,j)G_down(t,0;i,j)."]}
+    code:
+      measurement: {file: meas.c, function: measure_uneqlt(), variable: m->pair_sw}
+      generation: {file: gen_1band_unified_hub.py, variable: meas_uneqlt/pair_sw, flags: [period_uneqlt]}
+    requirements: {required_flags: ["period_uneqlt > 0"], limitations: []}
+    normalization: {is_sign_weighted: true, hdf5_accumulator: "sum phase*C_pair_sw/degen_ij", final_average: "pair_sw/sign", spatial_average: "map_ij with degen_ij", spin_type: singlet_pair}
+    units: dimensionless
+    data_layout: {type: float_or_complex, shape: [num_ij_times_L], index_convention: "r=map_ij[i+N*j]; flat index r+num_ij*t."}
+
+  - id: uuuu_uneqlt
+    aliases: [uuuu_tau, unequal time up up generalized susceptibility block]
+    physics: {definition: "Unequal-time up-up particle-hole bilinear building block.", formula: ["(delta_t*delta_i1j2-G_up(0,t;j2,i1))*G_up(t,0;j1,i2)"]}
+    code:
+      measurement: {file: meas.c, function: meas_uneqlt_gen_suscept(), variable: m->uuuu}
+      generation: {file: gen_1band_unified_hub.py, variable: meas_uneqlt/uuuu, flags: [meas_gen_suscept]}
+    requirements: {required_flags: ["period_uneqlt > 0", "meas_gen_suscept = 1", "trans_sym = 1"], limitations: ["Generator raises ValueError if meas_gen_suscept is enabled without trans_sym."]}
+    normalization: {is_sign_weighted: true, hdf5_accumulator: "sum phase*block/(Nx*Ny*Nx*Ny)", final_average: "uuuu/sign", spatial_average: "two map_ij channels", spin_type: up_up}
+    units: dimensionless
+    data_layout: {type: float_or_complex, shape: [num_ij_times_num_ij_times_L], index_convention: "r=k1+num_ij*k2; flat index r+num_ij*num_ij*t."}
+
+  - id: dddd_uneqlt
+    aliases: [dddd_tau, unequal time down down generalized susceptibility block]
+    physics: {definition: "Unequal-time down-down particle-hole bilinear building block.", formula: ["(delta_t*delta_i1j2-G_down(0,t;j2,i1))*G_down(t,0;j1,i2)"]}
+    code:
+      measurement: {file: meas.c, function: meas_uneqlt_gen_suscept(), variable: m->dddd}
+      generation: {file: gen_1band_unified_hub.py, variable: meas_uneqlt/dddd, flags: [meas_gen_suscept]}
+    requirements: {required_flags: ["period_uneqlt > 0", "meas_gen_suscept = 1", "trans_sym = 1"], limitations: ["Generator raises ValueError if meas_gen_suscept is enabled without trans_sym."]}
+    normalization: {is_sign_weighted: true, hdf5_accumulator: "sum phase*block/(Nx*Ny*Nx*Ny)", final_average: "dddd/sign", spatial_average: "two map_ij channels", spin_type: down_down}
+    units: dimensionless
+    data_layout: {type: float_or_complex, shape: [num_ij_times_num_ij_times_L], index_convention: "r=k1+num_ij*k2; flat index r+num_ij*num_ij*t."}
+
+  - id: uudd_uneqlt
+    aliases: [uudd_tau, unequal time up down generalized susceptibility block]
+    physics: {definition: "Unequal-time up-down particle-hole bilinear building block.", formula: ["(delta_t*delta_i1j2-G_up(0,t;j2,i1))*G_down(t,0;j1,i2)"]}
+    code:
+      measurement: {file: meas.c, function: meas_uneqlt_gen_suscept(), variable: m->uudd}
+      generation: {file: gen_1band_unified_hub.py, variable: meas_uneqlt/uudd, flags: [meas_gen_suscept]}
+    requirements: {required_flags: ["period_uneqlt > 0", "meas_gen_suscept = 1", "trans_sym = 1"], limitations: ["Generator raises ValueError if meas_gen_suscept is enabled without trans_sym."]}
+    normalization: {is_sign_weighted: true, hdf5_accumulator: "sum phase*block/(Nx*Ny*Nx*Ny)", final_average: "uudd/sign", spatial_average: "two map_ij channels", spin_type: up_down}
+    units: dimensionless
+    data_layout: {type: float_or_complex, shape: [num_ij_times_num_ij_times_L], index_convention: "r=k1+num_ij*k2; flat index r+num_ij*num_ij*t."}
+
+  - id: dduu_uneqlt
+    aliases: [dduu_tau, unequal time down up generalized susceptibility block]
+    physics: {definition: "Unequal-time down-up particle-hole bilinear building block.", formula: ["(delta_t*delta_i1j2-G_down(0,t;j2,i1))*G_up(t,0;j1,i2)"]}
+    code:
+      measurement: {file: meas.c, function: meas_uneqlt_gen_suscept(), variable: m->dduu}
+      generation: {file: gen_1band_unified_hub.py, variable: meas_uneqlt/dduu, flags: [meas_gen_suscept]}
+    requirements: {required_flags: ["period_uneqlt > 0", "meas_gen_suscept = 1", "trans_sym = 1"], limitations: ["Generator raises ValueError if meas_gen_suscept is enabled without trans_sym."]}
+    normalization: {is_sign_weighted: true, hdf5_accumulator: "sum phase*block/(Nx*Ny*Nx*Ny)", final_average: "dduu/sign", spatial_average: "two map_ij channels", spin_type: down_up}
+    units: dimensionless
+    data_layout: {type: float_or_complex, shape: [num_ij_times_num_ij_times_L], index_convention: "r=k1+num_ij*k2; flat index r+num_ij*num_ij*t."}
+
+  - id: pair_bb
+    aliases: [bond pair correlation, bond singlet pair correlation]
+    physics: {definition: "Unequal-time 1-bond singlet pair to 1-bond singlet pair correlation.", formula: ["0.5*(Gu_i0j0*Gd_i1j1+Gu_i1j0*Gd_i0j1+Gu_i0j1*Gd_i1j0+Gu_i1j1*Gd_i0j0)"]}
+    code:
+      measurement: {file: meas.c, function: measure_uneqlt(), variable: m->pair_bb}
+      generation: {file: gen_1band_unified_hub.py, variable: meas_uneqlt/pair_bb, flags: [meas_pair_bb_only, meas_bond_corr]}
+    requirements: {required_flags: ["period_uneqlt > 0", "meas_pair_bb_only = 1 or meas_bond_corr = 1"], limitations: ["meas_pair_bb_only asserts trans_sym == 0 and cannot be combined with other expensive unequal-time flags."]}
+    normalization: {is_sign_weighted: true, hdf5_accumulator: "sum phase*pair_bb/degen_bb", final_average: "pair_bb/sign", spatial_average: "map_bb with degen_bb", spin_type: singlet_pair}
+    units: dimensionless
+    data_layout: {type: float_or_complex, shape: [num_bb_times_L], index_convention: "r=map_bb[b+num_b*c]; flat index r+num_bb*t."}
+
+  - id: jj
+    aliases: [current current correlation, bond current correlation]
+    physics: {definition: "Unequal-time 1-bond charge current-current correlation building block.", formula: ["<j_b(t) j_c(0)> Wick contraction."]}
+    code:
+      measurement: {file: meas.c, function: measure_uneqlt(), variable: m->jj}
+      generation: {file: gen_1band_unified_hub.py, variable: meas_uneqlt/jj, flags: [meas_bond_corr]}
+    requirements: {required_flags: ["period_uneqlt > 0", "meas_bond_corr = 1"], limitations: []}
+    normalization: {is_sign_weighted: true, hdf5_accumulator: "sum phase*jj/degen_bb", final_average: "jj/sign", spatial_average: "map_bb with degen_bb", spin_type: charge_current}
+    units: dimensionless_current_block
+    data_layout: {type: float_or_complex, shape: [num_bb_times_L], index_convention: "r=map_bb[b+num_b*c]; flat index r+num_bb*t."}
+
+  - id: jsjs
+    aliases: [spin current spin current correlation]
+    physics: {definition: "Unequal-time 1-bond spin-current to spin-current correlation building block.", formula: ["<j^s_b(t) j^s_c(0)> Wick contraction."]}
+    code:
+      measurement: {file: meas.c, function: measure_uneqlt(), variable: m->jsjs}
+      generation: {file: gen_1band_unified_hub.py, variable: meas_uneqlt/jsjs, flags: [meas_bond_corr]}
+    requirements: {required_flags: ["period_uneqlt > 0", "meas_bond_corr = 1"], limitations: []}
+    normalization: {is_sign_weighted: true, hdf5_accumulator: "sum phase*jsjs/degen_bb", final_average: "jsjs/sign", spatial_average: "map_bb with degen_bb", spin_type: spin_current}
+    units: dimensionless_current_block
+    data_layout: {type: float_or_complex, shape: [num_bb_times_L], index_convention: "r=map_bb[b+num_b*c]; flat index r+num_bb*t."}
+
+  - id: kk_uneqlt
+    aliases: [unequal time kinetic kinetic correlation]
+    physics: {definition: "Unequal-time 1-bond kinetic to 1-bond kinetic correlation building block.", formula: ["<K_b(t) K_c(0)> Wick contraction."]}
+    code:
+      measurement: {file: meas.c, function: measure_uneqlt(), variable: m->kk}
+      generation: {file: gen_1band_unified_hub.py, variable: meas_uneqlt/kk, flags: [meas_bond_corr]}
+    requirements: {required_flags: ["period_uneqlt > 0", "meas_bond_corr = 1"], limitations: ["meas_energy_corr does not create meas_uneqlt/kk."]}
+    normalization: {is_sign_weighted: true, hdf5_accumulator: "sum phase*kk/degen_bb", final_average: "kk/sign", spatial_average: "map_bb with degen_bb", spin_type: sum}
+    units: dimensionless_operator_block
+    data_layout: {type: float_or_complex, shape: [num_bb_times_L], index_convention: "r=map_bb[b+num_b*c]; flat index r+num_bb*t."}
+
+  - id: ksks
+    aliases: [spin kinetic spin kinetic correlation]
+    physics: {definition: "Unequal-time 1-bond spin-kinetic to spin-kinetic correlation building block.", formula: ["<K^s_b(t) K^s_c(0)> Wick contraction."]}
+    code:
+      measurement: {file: meas.c, function: measure_uneqlt(), variable: m->ksks}
+      generation: {file: gen_1band_unified_hub.py, variable: meas_uneqlt/ksks, flags: [meas_bond_corr]}
+    requirements: {required_flags: ["period_uneqlt > 0", "meas_bond_corr = 1"], limitations: []}
+    normalization: {is_sign_weighted: true, hdf5_accumulator: "sum phase*ksks/degen_bb", final_average: "ksks/sign", spatial_average: "map_bb with degen_bb", spin_type: spin_kinetic}
+    units: dimensionless_operator_block
+    data_layout: {type: float_or_complex, shape: [num_bb_times_L], index_convention: "r=map_bb[b+num_b*c]; flat index r+num_bb*t."}
+
+  - id: kv_uneqlt
+    aliases: [unequal time kinetic interaction correlation]
+    physics: {definition: "Unequal-time 1-bond kinetic to onsite interaction/double-occupancy correlation building block.", formula: ["<K_b(t) V_j(0)> Wick contraction."]}
+    code:
+      measurement: {file: meas.c, function: meas_uneqlt_energy(), variable: m->kv}
+      generation: {file: gen_1band_unified_hub.py, variable: meas_uneqlt/kv, flags: [meas_energy_corr]}
+    requirements: {required_flags: ["period_uneqlt > 0", "meas_energy_corr = 1"], limitations: []}
+    normalization: {is_sign_weighted: true, hdf5_accumulator: "sum phase*kv/degen_bs", final_average: "kv/sign", spatial_average: "map_bs with degen_bs", spin_type: sum}
+    units: dimensionless_operator_block
+    data_layout: {type: float_or_complex, shape: [num_bs_times_L], index_convention: "r=map_bs[b+num_b*j]; flat index r+num_bs*t."}
+
+  - id: kn_uneqlt
+    aliases: [unequal time kinetic density correlation]
+    physics: {definition: "Unequal-time 1-bond kinetic to density correlation building block.", formula: ["<K_b(t) n_j(0)> Wick contraction."]}
+    code:
+      measurement: {file: meas.c, function: meas_uneqlt_energy(), variable: m->kn}
+      generation: {file: gen_1band_unified_hub.py, variable: meas_uneqlt/kn, flags: [meas_energy_corr]}
+    requirements: {required_flags: ["period_uneqlt > 0", "meas_energy_corr = 1"], limitations: []}
+    normalization: {is_sign_weighted: true, hdf5_accumulator: "sum phase*kn/degen_bs", final_average: "kn/sign", spatial_average: "map_bs with degen_bs", spin_type: sum}
+    units: dimensionless_operator_block
+    data_layout: {type: float_or_complex, shape: [num_bs_times_L], index_convention: "r=map_bs[b+num_b*j]; flat index r+num_bs*t."}
+
+  - id: vv_uneqlt
+    aliases: [unequal time interaction interaction correlation]
+    physics: {definition: "Unequal-time onsite interaction/double-occupancy to onsite interaction/double-occupancy correlation building block.", formula: ["<V_i(t) V_j(0)> Wick block."]}
+    code:
+      measurement: {file: meas.c, function: measure_uneqlt(), variable: m->vv}
+      generation: {file: gen_1band_unified_hub.py, variable: meas_uneqlt/vv, flags: [meas_energy_corr]}
+    requirements: {required_flags: ["period_uneqlt > 0", "meas_energy_corr = 1"], limitations: []}
+    normalization: {is_sign_weighted: true, hdf5_accumulator: "sum phase*vv/degen_ij", final_average: "vv/sign", spatial_average: "map_ij with degen_ij", spin_type: up_down_product}
+    units: dimensionless_operator_block
+    data_layout: {type: float_or_complex, shape: [num_ij_times_L], index_convention: "r=map_ij[i+N*j]; flat index r+num_ij*t."}
+
+  - id: vn_uneqlt
+    aliases: [unequal time interaction density correlation]
+    physics: {definition: "Unequal-time onsite interaction/double-occupancy to density correlation building block.", formula: ["<V_i(t) n_j(0)> Wick block."]}
+    code:
+      measurement: {file: meas.c, function: measure_uneqlt(), variable: m->vn}
+      generation: {file: gen_1band_unified_hub.py, variable: meas_uneqlt/vn, flags: [meas_energy_corr]}
+    requirements: {required_flags: ["period_uneqlt > 0", "meas_energy_corr = 1"], limitations: []}
+    normalization: {is_sign_weighted: true, hdf5_accumulator: "sum phase*vn/degen_ij", final_average: "vn/sign", spatial_average: "map_ij with degen_ij", spin_type: sum}
+    units: dimensionless_operator_block
+    data_layout: {type: float_or_complex, shape: [num_ij_times_L], index_convention: "r=map_ij[i+N*j]; flat index r+num_ij*t."}
+
+  - id: j2jn
+    aliases: [two hop current density dressed current correlation]
+    physics: {definition: "Unequal-time 2-hop current to density-dressed 1-bond current correlation building block.", formula: ["<j2_b(t) jn_c(0)> Wick contraction."]}
+    code:
+      measurement: {file: meas.c, function: measure_uneqlt(), variable: m->j2jn}
+      generation: {file: gen_1band_unified_hub.py, variable: meas_uneqlt/j2jn, flags: [meas_thermal]}
+    requirements: {required_flags: ["period_uneqlt > 0", "meas_thermal = 1"], limitations: ["Generator allocates num_b2b*L; C writes with map_bb2 and num_bb2 stride, normally same size for square mappings."]}
+    normalization: {is_sign_weighted: true, hdf5_accumulator: "sum phase*j2jn/degen_bb2", final_average: "j2jn/sign", spatial_average: "map_bb2 in C code", spin_type: mixed}
+    units: dimensionless_current_block
+    data_layout: {type: float_or_complex, shape: [num_b2b_times_L], index_convention: "Generator shape num_b2b*L; C flat index map_bb2[b2+num_b2*c]+num_bb2*t."}
+
+  - id: jnj2
+    aliases: [density dressed current two hop current correlation]
+    physics: {definition: "Unequal-time density-dressed 1-bond current to 2-hop current correlation building block.", formula: ["<jn_b(t) j2_c(0)> Wick contraction."]}
+    code:
+      measurement: {file: meas.c, function: measure_uneqlt(), variable: m->jnj2}
+      generation: {file: gen_1band_unified_hub.py, variable: meas_uneqlt/jnj2, flags: [meas_thermal]}
+    requirements: {required_flags: ["period_uneqlt > 0", "meas_thermal = 1"], limitations: ["Generator allocates num_bb2*L; C writes with map_b2b and num_b2b stride, normally same size for square mappings."]}
+    normalization: {is_sign_weighted: true, hdf5_accumulator: "sum phase*jnj2/degen_b2b", final_average: "jnj2/sign", spatial_average: "map_b2b in C code", spin_type: mixed}
+    units: dimensionless_current_block
+    data_layout: {type: float_or_complex, shape: [num_bb2_times_L], index_convention: "Generator shape num_bb2*L; C flat index map_b2b[b+num_b*c2]+num_b2b*t."}
+
+  - id: jnjn
+    aliases: [density dressed current density dressed current correlation]
+    physics: {definition: "Unequal-time density-dressed 1-bond current to density-dressed 1-bond current correlation building block.", formula: ["<jn_b(t) jn_c(0)> Wick contraction."]}
+    code:
+      measurement: {file: meas.c, function: measure_uneqlt(), variable: m->jnjn}
+      generation: {file: gen_1band_unified_hub.py, variable: meas_uneqlt/jnjn, flags: [meas_thermal]}
+    requirements: {required_flags: ["period_uneqlt > 0", "meas_thermal = 1"], limitations: []}
+    normalization: {is_sign_weighted: true, hdf5_accumulator: "sum phase*jnjn/degen_bb", final_average: "jnjn/sign", spatial_average: "map_bb with degen_bb", spin_type: mixed}
+    units: dimensionless_current_block
+    data_layout: {type: float_or_complex, shape: [num_bb_times_L], index_convention: "r=map_bb[b+num_b*c]; flat index r+num_bb*t."}
+
+  - id: jjn
+    aliases: [current density dressed current correlation]
+    physics: {definition: "Unequal-time 1-bond current to density-dressed 1-bond current correlation building block.", formula: ["<j_b(t) jn_c(0)> Wick contraction."]}
+    code:
+      measurement: {file: meas.c, function: measure_uneqlt(), variable: m->jjn}
+      generation: {file: gen_1band_unified_hub.py, variable: meas_uneqlt/jjn, flags: [meas_thermal]}
+    requirements: {required_flags: ["period_uneqlt > 0", "meas_thermal = 1"], limitations: []}
+    normalization: {is_sign_weighted: true, hdf5_accumulator: "sum phase*jjn/degen_bb", final_average: "jjn/sign", spatial_average: "map_bb with degen_bb", spin_type: mixed}
+    units: dimensionless_current_block
+    data_layout: {type: float_or_complex, shape: [num_bb_times_L], index_convention: "r=map_bb[b+num_b*c]; flat index r+num_bb*t."}
+
+  - id: jnj
+    aliases: [density dressed current current correlation]
+    physics: {definition: "Unequal-time density-dressed 1-bond current to 1-bond current correlation building block.", formula: ["<jn_b(t) j_c(0)> Wick contraction."]}
+    code:
+      measurement: {file: meas.c, function: measure_uneqlt(), variable: m->jnj}
+      generation: {file: gen_1band_unified_hub.py, variable: meas_uneqlt/jnj, flags: [meas_thermal]}
+    requirements: {required_flags: ["period_uneqlt > 0", "meas_thermal = 1"], limitations: []}
+    normalization: {is_sign_weighted: true, hdf5_accumulator: "sum phase*jnj/degen_bb", final_average: "jnj/sign", spatial_average: "map_bb with degen_bb", spin_type: mixed}
+    units: dimensionless_current_block
+    data_layout: {type: float_or_complex, shape: [num_bb_times_L], index_convention: "r=map_bb[b+num_b*c]; flat index r+num_bb*t."}
+
+  - id: j2j2
+    aliases: [two hop current two hop current correlation]
+    physics: {definition: "Unequal-time 2-hop current-current correlation building block.", formula: ["<j2_b(t) j2_c(0)> Wick contraction."]}
+    code:
+      measurement: {file: meas.c, function: measure_uneqlt(), variable: m->j2j2}
+      generation: {file: gen_1band_unified_hub.py, variable: meas_uneqlt/j2j2, flags: [meas_2bond_corr]}
+    requirements: {required_flags: ["period_uneqlt > 0", "meas_2bond_corr = 1"], limitations: []}
+    normalization: {is_sign_weighted: true, hdf5_accumulator: "sum phase*j2j2/degen_b2b2", final_average: "j2j2/sign", spatial_average: "map_b2b2 with degen_b2b2", spin_type: charge_current}
+    units: dimensionless_current_block
+    data_layout: {type: float_or_complex, shape: [num_b2b2_times_L], index_convention: "r=map_b2b2[b+num_b2*c]; flat index r+num_b2b2*t."}
+
+  - id: j2j
+    aliases: [two hop current one bond current correlation]
+    physics: {definition: "Unequal-time 2-hop current to 1-bond current correlation building block.", formula: ["<j2_b(t) j_c(0)> Wick contraction."]}
+    code:
+      measurement: {file: meas.c, function: measure_uneqlt(), variable: m->j2j}
+      generation: {file: gen_1band_unified_hub.py, variable: meas_uneqlt/j2j, flags: [meas_2bond_corr]}
+    requirements: {required_flags: ["period_uneqlt > 0", "meas_2bond_corr = 1"], limitations: ["Generator allocates num_b2b*L; C writes with map_bb2 and num_bb2 stride, normally same size for square mappings."]}
+    normalization: {is_sign_weighted: true, hdf5_accumulator: "sum phase*j2j/degen_bb2", final_average: "j2j/sign", spatial_average: "map_bb2 in C code", spin_type: charge_current}
+    units: dimensionless_current_block
+    data_layout: {type: float_or_complex, shape: [num_b2b_times_L], index_convention: "Generator shape num_b2b*L; C flat index map_bb2[b2+num_b2*c]+num_bb2*t."}
+
+  - id: jj2
+    aliases: [one bond current two hop current correlation]
+    physics: {definition: "Unequal-time 1-bond current to 2-hop current correlation building block.", formula: ["<j_b(t) j2_c(0)> Wick contraction."]}
+    code:
+      measurement: {file: meas.c, function: measure_uneqlt(), variable: m->jj2}
+      generation: {file: gen_1band_unified_hub.py, variable: meas_uneqlt/jj2, flags: [meas_2bond_corr]}
+    requirements: {required_flags: ["period_uneqlt > 0", "meas_2bond_corr = 1"], limitations: ["Generator allocates num_bb2*L; C writes with map_b2b and num_b2b stride, normally same size for square mappings."]}
+    normalization: {is_sign_weighted: true, hdf5_accumulator: "sum phase*jj2/degen_b2b", final_average: "jj2/sign", spatial_average: "map_b2b in C code", spin_type: charge_current}
+    units: dimensionless_current_block
+    data_layout: {type: float_or_complex, shape: [num_bb2_times_L], index_convention: "Generator shape num_bb2*L; C flat index map_b2b[b+num_b*c2]+num_b2b*t."}
+
+  - id: pair_b2b2
+    aliases: [two bond pair correlation]
+    physics: {definition: "Unequal-time 2-hop bond singlet pair correlation.", formula: ["0.5*(Gu_i0j0*Gd_i2j2+Gu_i2j0*Gd_i0j2+Gu_i0j2*Gd_i2j0+Gu_i2j2*Gd_i0j0)"]}
+    code:
+      measurement: {file: meas.c, function: measure_uneqlt(), variable: m->pair_b2b2}
+      generation: {file: gen_1band_unified_hub.py, variable: meas_uneqlt/pair_b2b2, flags: [meas_2bond_corr]}
+    requirements: {required_flags: ["period_uneqlt > 0", "meas_2bond_corr = 1"], limitations: ["Generator comment notes this measurement is not implemented with phases currently."]}
+    normalization: {is_sign_weighted: true, hdf5_accumulator: "sum phase*pair_b2b2/degen_b2b2", final_average: "pair_b2b2/sign", spatial_average: "map_b2b2 with degen_b2b2", spin_type: singlet_pair}
+    units: dimensionless
+    data_layout: {type: float_or_complex, shape: [num_b2b2_times_L], index_convention: "r=map_b2b2[b+num_b2*c]; flat index r+num_b2b2*t."}
+
+  - id: js2js2
+    aliases: [two hop spin current spin current correlation]
+    physics: {definition: "Unequal-time 2-hop spin-current to spin-current correlation building block.", formula: ["<j2^s_b(t) j2^s_c(0)> Wick contraction."]}
+    code:
+      measurement: {file: meas.c, function: measure_uneqlt(), variable: m->js2js2}
+      generation: {file: gen_1band_unified_hub.py, variable: meas_uneqlt/js2js2, flags: [meas_2bond_corr]}
+    requirements: {required_flags: ["period_uneqlt > 0", "meas_2bond_corr = 1"], limitations: ["Generator comment notes this measurement is not implemented with phases currently."]}
+    normalization: {is_sign_weighted: true, hdf5_accumulator: "sum phase*js2js2/degen_b2b2", final_average: "js2js2/sign", spatial_average: "map_b2b2 with degen_b2b2", spin_type: spin_current}
+    units: dimensionless_current_block
+    data_layout: {type: float_or_complex, shape: [num_b2b2_times_L], index_convention: "r=map_b2b2[b+num_b2*c]; flat index r+num_b2b2*t."}
+
+  - id: k2k2
+    aliases: [two hop kinetic kinetic correlation]
+    physics: {definition: "Unequal-time 2-hop kinetic to 2-hop kinetic correlation building block.", formula: ["<K2_b(t) K2_c(0)> Wick contraction."]}
+    code:
+      measurement: {file: meas.c, function: measure_uneqlt(), variable: m->k2k2}
+      generation: {file: gen_1band_unified_hub.py, variable: meas_uneqlt/k2k2, flags: [meas_2bond_corr]}
+    requirements: {required_flags: ["period_uneqlt > 0", "meas_2bond_corr = 1"], limitations: ["Generator comment notes this measurement is not implemented with phases currently."]}
+    normalization: {is_sign_weighted: true, hdf5_accumulator: "sum phase*k2k2/degen_b2b2", final_average: "k2k2/sign", spatial_average: "map_b2b2 with degen_b2b2", spin_type: sum}
+    units: dimensionless_operator_block
+    data_layout: {type: float_or_complex, shape: [num_b2b2_times_L], index_convention: "r=map_b2b2[b+num_b2*c]; flat index r+num_b2b2*t."}
+
+  - id: ks2ks2
+    aliases: [two hop spin kinetic spin kinetic correlation]
+    physics: {definition: "Unequal-time 2-hop spin-kinetic to spin-kinetic correlation building block.", formula: ["<K2^s_b(t) K2^s_c(0)> Wick contraction."]}
+    code:
+      measurement: {file: meas.c, function: measure_uneqlt(), variable: m->ks2ks2}
+      generation: {file: gen_1band_unified_hub.py, variable: meas_uneqlt/ks2ks2, flags: [meas_2bond_corr]}
+    requirements: {required_flags: ["period_uneqlt > 0", "meas_2bond_corr = 1"], limitations: ["Generator comment notes this measurement is not implemented with phases currently."]}
+    normalization: {is_sign_weighted: true, hdf5_accumulator: "sum phase*ks2ks2/degen_b2b2", final_average: "ks2ks2/sign", spatial_average: "map_b2b2 with degen_b2b2", spin_type: spin_kinetic}
+    units: dimensionless_operator_block
+    data_layout: {type: float_or_complex, shape: [num_b2b2_times_L], index_convention: "r=map_b2b2[b+num_b2*c]; flat index r+num_b2b2*t."}
+
+  - id: nem_nnnn
+    aliases: [charge nematic correlation, bond density nematic correlation]
+    physics: {definition: "Unequal-time bond-density nematic four-fermion correlation.", formula: ["Sum of all 16 spin Wick contractions corresponding to bond-density channels."]}
+    code:
+      measurement: {file: meas.c, function: meas_uneqlt_nematic(), variable: m->nem_nnnn}
+      generation: {file: gen_1band_unified_hub.py, variable: meas_uneqlt/nem_nnnn, flags: [meas_nematic_corr]}
+    requirements: {required_flags: ["period_uneqlt > 0", "meas_nematic_corr = 1"], limitations: ["Only first NEM_BONDS=2 bond types are accumulated; remaining num_bb slots stay zero.", "USE_PEIERLS exits because Peierls phases are not implemented for nematic measurements."]}
+    normalization: {is_sign_weighted: true, hdf5_accumulator: "sum phase*nem_nnnn/degen_bb", final_average: "nem_nnnn/sign", spatial_average: "map_bb with degen_bb for measured bond sectors", spin_type: charge}
+    units: dimensionless
+    data_layout: {type: float_or_complex, shape: [num_bb_times_L], index_convention: "r=map_bb[b+num_b*c]+num_bb*t, but only b,c<NEM_BONDS*N are filled."}
+
+  - id: nem_ssss
+    aliases: [spin nematic correlation, bond spin nematic correlation]
+    physics: {definition: "Unequal-time bond-spin nematic four-fermion correlation.", formula: ["Signed combination of the 16 spin Wick contractions corresponding to spin-density channels."]}
+    code:
+      measurement: {file: meas.c, function: meas_uneqlt_nematic(), variable: m->nem_ssss}
+      generation: {file: gen_1band_unified_hub.py, variable: meas_uneqlt/nem_ssss, flags: [meas_nematic_corr]}
+    requirements: {required_flags: ["period_uneqlt > 0", "meas_nematic_corr = 1"], limitations: ["Only first NEM_BONDS=2 bond types are accumulated; remaining num_bb slots stay zero.", "USE_PEIERLS exits because Peierls phases are not implemented for nematic measurements."]}
+    normalization: {is_sign_weighted: true, hdf5_accumulator: "sum phase*nem_ssss/degen_bb", final_average: "nem_ssss/sign", spatial_average: "map_bb with degen_bb for measured bond sectors", spin_type: spin}
+    units: dimensionless
+    data_layout: {type: float_or_complex, shape: [num_bb_times_L], index_convention: "r=map_bb[b+num_b*c]+num_bb*t, but only b,c<NEM_BONDS*N are filled."}
+
+parameters:
+  - id: chemical_potential
+    aliases:
+      - mu
+      - μ
+      - chemical potential
+
+    physics:
+      definition: "Controls electron filling through the chemical-potential term in the Hamiltonian."
+      formula: "H_mu = - μ sum_i n_i"
+
+    code:
+      generation:
+        file: gen_1band_unified_hub.py
+        variable: mu
+
+    type: float
+    required: true
+    default: null
+
+    units: energy
+    normalization:
+      unit: hopping t
+      per_site: false
+
+  - id: lattice_geometry
+    aliases:
+      - geometry
+      - lattice
+      - lattice geometry
+
+    physics:
+      definition: "Selects the lattice geometry used to construct hopping matrices, orbital count, plaquettes, bonds, and measurement maps."
+      formula: "geometry ∈ {square, triangular, honeycomb, kagome}"
+
+    code:
+      generation:
+        file: gen_1band_unified_hub.py
+        variable: geometry
+
+    type: string
+    required: true
+    default: square
+
+    units: dimensionless
+    normalization:
+      unit: none
+      per_site: false
+
+  - id: lattice_size_x
+    aliases:
+      - Nx
+      - Lx
+      - x size
+      - number of sites along x
+
+    physics:
+      definition: "Number of unit cells along the x direction."
+      formula: "N_cell = Nx * Ny"
+
+    code:
+      generation:
+        file: gen_1band_unified_hub.py
+        variable: Nx
+
+    type: int
+    required: true
+    default: 4
+
+    units: lattice cells
+    normalization:
+      unit: unit cell
+      per_site: false
+
+  - id: lattice_size_y
+    aliases:
+      - Ny
+      - Ly
+      - y size
+      - number of sites along y
+
+    physics:
+      definition: "Number of unit cells along the y direction."
+      formula: "N_cell = Nx * Ny"
+
+    code:
+      generation:
+        file: gen_1band_unified_hub.py
+        variable: Ny
+
+    type: int
+    required: true
+    default: 4
+
+    units: lattice cells
+    normalization:
+      unit: unit cell
+      per_site: false
+
+  - id: nearest_neighbor_hopping
+    aliases:
+      - t
+      - nearest hopping
+      - nearest-neighbor hopping
+
+    physics:
+      definition: "Nearest-neighbor hopping amplitude used as the energy unit in this generator."
+      formula: "H_t = -t sum_<ij>,sigma (c^dagger_{i,sigma} c_{j,sigma} + h.c.), with t fixed to 1"
+
+    code:
+      generation:
+        file: gen_1band_unified_hub.py
+        variable: "implicit t=1"
+
+    type: float
+    required: false
+    default: 1.0
+
+    units: energy
+    normalization:
+      unit: hopping t
+      per_site: false
+
+  - id: next_nearest_hopping
+    aliases:
+      - tp
+      - t'
+      - next nearest hopping
+      - next-nearest-neighbor hopping
+
+    physics:
+      definition: "Next-nearest-neighbor hopping amplitude relative to nearest-neighbor hopping t."
+      formula: "H_t' = -t' sum_<<ij>>,sigma (c^dagger_{i,sigma} c_{j,sigma} + h.c.)"
+
+    code:
+      generation:
+        file: gen_1band_unified_hub.py
+        variable: tp
+
+    type: float
+    required: true
+    default: 0.0
+
+    units: energy
+    normalization:
+      unit: hopping t
+      per_site: false
+
+  - id: third_nearest_hopping
+    aliases:
+      - tpp
+      - t''
+      - third nearest hopping
+      - third-nearest-neighbor hopping
+
+    physics:
+      definition: "Third-nearest-neighbor hopping amplitude relative to nearest-neighbor hopping t."
+      formula: "H_t'' = -t'' sum_<<<ij>>>,sigma (c^dagger_{i,sigma} c_{j,sigma} + h.c.)"
+
+    code:
+      generation:
+        file: gen_1band_unified_hub.py
+        variable: tpp
+
+    type: float
+    required: true
+    default: 0.0
+
+    units: energy
+    normalization:
+      unit: hopping t
+      per_site: false
+
+  - id: hubbard_interaction
+    aliases:
+      - U
+      - onsite interaction
+      - Hubbard U
+      - interaction strength
+
+    physics:
+      definition: "On-site Hubbard interaction strength."
+      formula: "H_U = U sum_i n_{i,up} n_{i,down}"
+
+    code:
+      generation:
+        file: gen_1band_unified_hub.py
+        variable: U
+
+    type: float
+    required: true
+    default: 6.0
+
+    units: energy
+    normalization:
+      unit: hopping t
+      per_site: false
+
+  - id: hubbard_stratonovich_channel
+    aliases:
+      - hs_channel
+      - HS channel
+      - Hubbard-Stratonovich channel
+      - decoupling channel
+
+    physics:
+      definition: "Chooses the Hubbard-Stratonovich decoupling channel used to generate the auxiliary-field weights."
+      formula: "spin: couples to n_up - n_down; density: couples to n_up + n_down - 1; auto: spin for U>=0 and density for U<0"
+
+    code:
+      generation:
+        file: gen_1band_unified_hub.py
+        variable: hs_channel
+
+    type: string
+    required: true
+    default: auto
+
+    units: dimensionless
+    normalization:
+      unit: none
+      per_site: false
+
+  - id: boundary_condition
+    aliases:
+      - bc
+      - boundary condition
+      - boundaries
+
+    physics:
+      definition: "Boundary condition used when constructing the hopping matrix."
+      formula: "bc=1 periodic; bc=2 open"
+
+    code:
+      generation:
+        file: gen_1band_unified_hub.py
+        variable: bc
+
+    type: int
+    required: true
+    default: 1
+
+    units: dimensionless
+    normalization:
+      unit: none
+      per_site: false
+
+  - id: imaginary_time_step
+    aliases:
+      - dt
+      - delta tau
+      - Δτ
+      - time step
+
+    physics:
+      definition: "Imaginary-time Trotter discretization interval."
+      formula: "beta = L * dt"
+
+    code:
+      generation:
+        file: gen_1band_unified_hub.py
+        variable: dt
+
+    type: float
+    required: true
+    default: 0.1
+
+    units: inverse energy
+    normalization:
+      unit: 1/t
+      per_site: false
+
+  - id: imaginary_time_slices
+    aliases:
+      - L
+      - Ltau
+      - time slices
+      - imaginary time steps
+
+    physics:
+      definition: "Number of discrete imaginary-time slices."
+      formula: "beta = L * dt"
+
+    code:
+      generation:
+        file: gen_1band_unified_hub.py
+        variable: L
+
+    type: int
+    required: true
+    default: 40
+
+    units: dimensionless
+    normalization:
+      unit: time slice
+      per_site: false
+
+  - id: zeeman_field
+    aliases:
+      - h
+      - magnetic field
+      - Zeeman field
+      - spin field
+
+    physics:
+      definition: "Zeeman field that shifts the effective chemical potentials of up and down spins oppositely."
+      formula: "K_up(ii) includes -(mu-h); K_down(ii) includes -(mu+h)"
+
+    code:
+      generation:
+        file: gen_1band_unified_hub.py
+        variable: h
+
+    type: float
+    required: true
+    default: 0.0
+
+    units: energy
+    normalization:
+      unit: hopping t
+      per_site: false
+
+  - id: magnetic_flux_quanta
+    aliases:
+      - nflux
+      - flux
+      - magnetic flux
+      - number of flux quanta
+
+    physics:
+      definition: "Number of magnetic flux quanta threaded through the cluster when constructing Peierls phases."
+      formula: "Peierls phases are generated by tight_binding.H_periodic_* with nflux"
+
+    code:
+      generation:
+        file: gen_1band_unified_hub.py
+        variable: nflux
+
+    type: int
+    required: true
+    default: 0
+
+    units: flux quanta
+    normalization:
+      unit: flux quantum
+      per_site: false
+
+  - id: twist_phase_x
+    aliases:
+      - twistx
+      - x twist
+      - twist phase x
+      - boundary twist x
+
+    physics:
+      definition: "Twist phase per bond along the x direction."
+      formula: "total x-boundary twist = Nx * twistx"
+
+    code:
+      generation:
+        file: gen_1band_unified_hub.py
+        variable: twistx
+
+    type: float
+    required: true
+    default: 0.0
+
+    units: angle
+    normalization:
+      unit: radians per bond
+      per_site: false
+
+  - id: twist_phase_y
+    aliases:
+      - twisty
+      - y twist
+      - twist phase y
+      - boundary twist y
+
+    physics:
+      definition: "Twist phase per bond along the y direction."
+      formula: "total y-boundary twist = Ny * twisty"
+
+    code:
+      generation:
+        file: gen_1band_unified_hub.py
+        variable: twisty
+
+    type: float
+    required: true
+    default: 0.0
+
+    units: angle
+    normalization:
+      unit: radians per bond
+      per_site: false
