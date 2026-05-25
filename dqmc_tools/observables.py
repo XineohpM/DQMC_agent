@@ -17,7 +17,7 @@ DEFAULT_REGISTRY_PATH = Path(__file__).resolve().parents[1] / "formal" / "observ
 def load_observable_registry(path: str | Path | None = None) -> dict[str, Any]:
     """Load the DQMC observable registry YAML.
 
-    The default registry is `formal/observables.yaml` in this repository.
+    The default registry is `observables.yaml` in the project root.
     """
 
     registry_path = Path(path) if path is not None else DEFAULT_REGISTRY_PATH
