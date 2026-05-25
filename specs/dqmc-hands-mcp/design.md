@@ -304,6 +304,21 @@ def read_observable(
       "preview": [...]
     }
   },
+  "error": {
+    "available": true,
+    "method": "jackknife_or_binning",
+    "dataset_path": "/meas_eqlt/density_err",
+    "dataset": {
+      "shape": [16],
+      "dtype": "float64",
+      "summary": {
+        "size": 16,
+        "preview": [...]
+      }
+    },
+    "candidates_checked": ["/meas_eqlt/density_err"]
+  },
+  "uncertainty": "... same object shape as error ...",
   "metadata": {
     "beta": 4.0,
     "dt": 0.1,

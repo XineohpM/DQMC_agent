@@ -18,6 +18,7 @@ def _write_sample_h5(path: Path) -> None:
         params.create_dataset("dt", data=0.1)
         eqlt = handle.create_group("meas_eqlt")
         eqlt.create_dataset("density", data=np.array([0.95, 1.0, 1.05]))
+        eqlt.create_dataset("density_err", data=np.array([0.02, 0.03, 0.02]))
         eqlt.create_dataset("sign", data=0.87)
         eqlt.create_dataset("n_sample", data=10000)
         uneqlt = handle.create_group("meas_uneqlt")
@@ -80,6 +81,25 @@ def test_read_observable_uses_registry_and_extracts_metadata(tmp_path: Path):
     assert result["metadata"]["U"] == -10.0
     assert result["metadata"]["sign"] == 0.87
     assert result["metadata"]["n_sample"] == 10000
+    assert result["error"]["available"] is True
+    assert result["error"]["method"] == "jackknife_or_binning"
+    assert result["error"]["dataset_path"] == "/meas_eqlt/density_err"
+    assert result["error"]["dataset"]["summary"]["preview"] == [0.02, 0.03, 0.02]
+    assert result["uncertainty"] == result["error"]
+
+
+def test_read_observable_reports_missing_error_dataset_as_fact(tmp_path: Path):
+    h5_path = tmp_path / "sample.h5"
+    with h5py.File(h5_path, "w") as handle:
+        eqlt = handle.create_group("meas_eqlt")
+        eqlt.create_dataset("density", data=np.array([0.95, 1.0, 1.05]))
+
+    result = read_observable(h5_path, "EqLt.density", allowed_roots=[tmp_path])
+
+    assert result["error"]["available"] is False
+    assert result["error"]["method"] == "jackknife_or_binning"
+    assert result["error"]["reason"] == "no_error_dataset_found"
+    assert "/meas_eqlt/density_err" in result["error"]["candidates_checked"]
 
 
 def test_read_observable_reports_missing_dataset(tmp_path: Path):

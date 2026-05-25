@@ -9,11 +9,19 @@ import h5py
 import numpy as np
 
 from dqmc_tools.errors import HDF5ReadError
-from dqmc_tools.observables import resolve_observable
+from dqmc_tools.observables import load_observable_registry, resolve_observable
 from dqmc_tools.paths import require_allowed_path
 
 
 METADATA_KEYS = ("beta", "dt", "L", "Nx", "Ny", "U", "mu", "sign", "n_sample")
+DEFAULT_ERROR_DATASET_SUFFIXES = (
+    "_err",
+    "_error",
+    "_stderr",
+    "_std_error",
+    "_jackknife_err",
+    "_jk_err",
+)
 
 
 def inspect_hdf5(
@@ -139,6 +147,13 @@ def read_observable(
     try:
         with h5py.File(resolved, "r") as handle:
             metadata = _extract_metadata(handle, dataset_path, max_items=max_items)
+            error = _extract_error(
+                handle,
+                observable,
+                dataset_path,
+                registry_path=registry_path,
+                max_items=max_items,
+            )
     except OSError as exc:
         raise HDF5ReadError(
             "HDF5 file could not be opened read-only.",
@@ -151,6 +166,8 @@ def read_observable(
         "observable": observable,
         "dataset_path": dataset_result["dataset_path"],
         "dataset": dataset_result["dataset"],
+        "error": error,
+        "uncertainty": error,
         "metadata": metadata,
     }
 
@@ -222,6 +239,113 @@ def _extract_metadata(
                 break
 
     return metadata
+
+
+def _extract_error(
+    handle: h5py.File,
+    observable: dict[str, Any],
+    dataset_path: str,
+    *,
+    registry_path: str | Path | None,
+    max_items: int,
+) -> dict[str, Any]:
+    method = _error_method(observable, registry_path)
+    candidates = _error_candidates(observable, dataset_path, registry_path)
+    checked: list[str] = []
+
+    for candidate in candidates:
+        normalized = _normalize_h5_path(candidate)
+        checked.append(normalized)
+        if normalized in handle and isinstance(handle[normalized], h5py.Dataset):
+            dataset = handle[normalized]
+            return {
+                "available": True,
+                "method": method,
+                "dataset_path": normalized,
+                "dataset": _dataset_summary(dataset, max_items=max_items),
+                "candidates_checked": checked,
+            }
+
+    return {
+        "available": False,
+        "method": method,
+        "dataset_path": None,
+        "dataset": None,
+        "candidates_checked": checked,
+        "reason": "no_error_dataset_found",
+    }
+
+
+def _error_method(
+    observable: dict[str, Any],
+    registry_path: str | Path | None,
+) -> str:
+    nested = observable.get("uncertainty")
+    if isinstance(nested, dict) and nested.get("method"):
+        return str(nested["method"])
+    if observable.get("error_method"):
+        return str(observable["error_method"])
+
+    conventions = _uncertainty_conventions(registry_path)
+    return str(conventions.get("default_error_method", "unknown"))
+
+
+def _error_candidates(
+    observable: dict[str, Any],
+    dataset_path: str,
+    registry_path: str | Path | None,
+) -> list[str]:
+    candidates: list[str] = []
+    for key in (
+        "error_h5_path",
+        "error_dataset",
+    ):
+        value = observable.get(key)
+        if value:
+            candidates.append(str(value))
+
+    for key in (
+        "error_h5_paths",
+        "error_h5_path_candidates",
+        "error_dataset_candidates",
+    ):
+        candidates.extend(_as_str_list(observable.get(key)))
+
+    nested = observable.get("uncertainty")
+    if isinstance(nested, dict):
+        for key in ("h5_path", "error_dataset"):
+            if nested.get(key):
+                candidates.append(str(nested[key]))
+        for key in ("h5_paths", "h5_path_candidates", "error_dataset_candidates"):
+            candidates.extend(_as_str_list(nested.get(key)))
+
+    base = _normalize_h5_path(dataset_path)
+    conventions = _uncertainty_conventions(registry_path)
+    suffixes = _as_str_list(conventions.get("default_error_dataset_suffixes"))
+    if not suffixes:
+        suffixes = list(DEFAULT_ERROR_DATASET_SUFFIXES)
+    candidates.extend(f"{base}{suffix}" for suffix in suffixes)
+
+    return list(dict.fromkeys(_normalize_h5_path(item) for item in candidates if item))
+
+
+def _uncertainty_conventions(registry_path: str | Path | None) -> dict[str, Any]:
+    try:
+        registry = load_observable_registry(registry_path)
+    except Exception:
+        return {}
+    conventions = registry.get("uncertainty_conventions", {})
+    return conventions if isinstance(conventions, dict) else {}
+
+
+def _as_str_list(value: Any) -> list[str]:
+    if value is None:
+        return []
+    if isinstance(value, str):
+        return [value]
+    if isinstance(value, (list, tuple)):
+        return [str(item) for item in value if str(item).strip()]
+    return [str(value)]
 
 
 def _metadata_candidates(key: str, measurement_group: str | None) -> list[str]:

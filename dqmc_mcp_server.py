@@ -130,9 +130,11 @@ def build_server() -> FastMCP:
             "max_items bounds returned values; allowed_roots is optional and "
             "otherwise comes from DQMC_ALLOWED_ROOTS; registry_path optionally "
             "overrides formal/observables.yaml. Returns registry metadata, "
-            "dataset shape/dtype, numeric summaries, bounded previews, and factual "
-            "metadata such as beta, dt, L, U, mu, sign, and n_sample when present. "
-            "It does not label sign quality or scientific reliability."
+            "dataset shape/dtype, numeric summaries, bounded previews, explicit "
+            "error/uncertainty facts from registered or conventional error "
+            "datasets, and metadata such as beta, dt, L, U, mu, sign, and "
+            "n_sample when present. It does not label sign quality, error-bar "
+            "overlap, or scientific reliability."
         ),
     )
     def read_observable(

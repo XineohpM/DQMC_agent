@@ -87,8 +87,9 @@ As a researcher, I want to read a registered observable from a DQMC HDF5 file so
 Acceptance criteria:
 
 - `read_observable(h5_path, observable_name, options=None)` uses the observable registry to locate the dataset.
-- The output includes `observable`, `dataset_path`, `shape`, `dtype`, and a bounded value summary.
+- The output includes `observable`, `dataset_path`, `shape`, `dtype`, a bounded value summary, and an explicit `error`/`uncertainty` field.
 - The output includes related factual metadata when available, such as `sign`, `n_sample`, `beta`, `dt`, `L`, `Nx`, `Ny`, `U`, and `mu`.
+- The `error`/`uncertainty` field reports either the matched error dataset and bounded summary, or a structured unavailable fact with checked candidates.
 - The function does not apply scientific quality labels such as "bad sign" or "large Trotter error".
 - The function does not mutate the HDF5 file.
 

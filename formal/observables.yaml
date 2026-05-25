@@ -2,6 +2,7 @@ repo_variables:
   - repo_id: EqLt.density
     c_field: m->density
     h5_path: /meas_eqlt/density
+    error_method: jackknife_or_binning
     lean_id: DQMC.Obs.eq_density_total
     time_kind: equal_time
     spin: summed
@@ -13,6 +14,7 @@ repo_variables:
   - repo_id: EqLt.density_u
     c_field: m->density_u
     h5_path: /meas_eqlt/density_u
+    error_method: jackknife_or_binning
     lean_id: DQMC.Obs.eq_density_up
     time_kind: equal_time
     spin: up
@@ -22,6 +24,7 @@ repo_variables:
   - repo_id: EqLt.density_d
     c_field: m->density_d
     h5_path: /meas_eqlt/density_d
+    error_method: jackknife_or_binning
     lean_id: DQMC.Obs.eq_density_down
     time_kind: equal_time
     spin: down
@@ -31,6 +34,7 @@ repo_variables:
   - repo_id: EqLt.double_occ
     c_field: m->double_occ
     h5_path: /meas_eqlt/double_occ
+    error_method: jackknife_or_binning
     lean_id: DQMC.Obs.eq_double_occupancy
     time_kind: equal_time
     spin: mixed
@@ -40,6 +44,7 @@ repo_variables:
   - repo_id: EqLt.g00
     c_field: m->g00
     h5_path: /meas_eqlt/g00
+    error_method: jackknife_or_binning
     lean_id: DQMC.Obs.eq_green_spin_average
     time_kind: equal_time
     spin: average_ud
@@ -51,6 +56,7 @@ repo_variables:
   - repo_id: EqLt.g00_u
     c_field: m->g00_u
     h5_path: /meas_eqlt/g00_u
+    error_method: jackknife_or_binning
     lean_id: DQMC.Obs.eq_green_up
     time_kind: equal_time
     spin: up
@@ -60,6 +66,7 @@ repo_variables:
   - repo_id: EqLt.g00_d
     c_field: m->g00_d
     h5_path: /meas_eqlt/g00_d
+    error_method: jackknife_or_binning
     lean_id: DQMC.Obs.eq_green_down
     time_kind: equal_time
     spin: down
@@ -69,6 +76,7 @@ repo_variables:
   - repo_id: Uneqlt.gt0
     c_field: m->gt0
     h5_path: /meas_uneqlt/gt0
+    error_method: jackknife_or_binning
     lean_id: DQMC.Obs.uneq_green_spin_average
     time_kind: unequal_time
     spin: average_ud
@@ -81,6 +89,7 @@ repo_variables:
   - repo_id: Uneqlt.gt0_u
     c_field: m->gt0_u
     h5_path: /meas_uneqlt/gt0_u
+    error_method: jackknife_or_binning
     lean_id: DQMC.Obs.uneq_green_up
     time_kind: unequal_time
     spin: up
@@ -91,6 +100,7 @@ repo_variables:
   - repo_id: Uneqlt.gt0_d
     c_field: m->gt0_d
     h5_path: /meas_uneqlt/gt0_d
+    error_method: jackknife_or_binning
     lean_id: DQMC.Obs.uneq_green_down
     time_kind: unequal_time
     spin: down
@@ -101,6 +111,7 @@ repo_variables:
   - repo_id: Uneqlt.jj
     c_field: m->jj
     h5_path: /meas_uneqlt/jj
+    error_method: jackknife_or_binning
     lean_id: DQMC.Obs.raw_current_current
     time_kind: unequal_time
     kind: raw_current_current
@@ -154,3 +165,13 @@ measurement_patterns:
 
   - pattern_id: meas_normalized_contribution
     theorem: DQMC.Measurement.normalized_contribution_eq_prefactor_value_mul_expr
+
+uncertainty_conventions:
+  default_error_method: jackknife_or_binning
+  default_error_dataset_suffixes:
+    - _err
+    - _error
+    - _stderr
+    - _std_error
+    - _jackknife_err
+    - _jk_err

@@ -35,6 +35,7 @@ def test_resolve_observable_by_repo_id_h5_path_and_tail():
     by_tail = resolve_observable("density")
 
     assert by_repo_id["h5_path"] == "/meas_eqlt/density"
+    assert by_repo_id["error_method"] == "jackknife_or_binning"
     assert by_abs_h5["repo_id"] == "EqLt.density"
     assert by_rel_h5["repo_id"] == "EqLt.density"
     assert by_tail["repo_id"] == "EqLt.density"
