@@ -140,12 +140,27 @@ def default_argv_builder(definition: ScriptDefinition, params: Mapping[str, Any]
     """Build argv from a simple mapping of param names to CLI flags."""
 
     path = str(definition.path)
-    command = [sys.executable, path] if definition.path.suffix == ".py" else [path]
+    if definition.path.suffix == ".py":
+        command = [sys.executable, path]
+    elif definition.path.suffix == ".sh":
+        command = ["bash", path]
+    else:
+        command = [path]
     properties = definition.args_schema.get("properties", {})
+    positional = []
     for name, value in params.items():
         if value is None:
             continue
         spec = properties.get(name, {})
+        if spec.get("raw_args"):
+            if isinstance(value, (list, tuple)):
+                command.extend(str(item) for item in value)
+            else:
+                command.append(str(value))
+            continue
+        if spec.get("positional"):
+            positional.append((int(spec.get("position", 0)), value))
+            continue
         flag = spec.get("flag", f"--{name.replace('_', '-')}")
         if isinstance(value, bool):
             if value:
@@ -156,13 +171,23 @@ def default_argv_builder(definition: ScriptDefinition, params: Mapping[str, Any]
             command.extend(str(item) for item in value)
             continue
         command.extend([flag, str(value)])
+    for _position, value in sorted(positional, key=lambda item: item[0]):
+        if isinstance(value, (list, tuple)):
+            command.extend(str(item) for item in value)
+        else:
+            command.append(str(value))
     return command
 
 
 def _registry_map(
     registry: Iterable[ScriptDefinition] | None,
 ) -> dict[str, ScriptDefinition]:
-    entries = DEFAULT_REGISTRY if registry is None else tuple(registry)
+    if registry is None:
+        from dqmc_tools.scripts.builtin_catalog import DEFAULT_SCRIPT_CATALOG
+
+        entries = DEFAULT_SCRIPT_CATALOG
+    else:
+        entries = tuple(registry)
     out: dict[str, ScriptDefinition] = {}
     for item in entries:
         _validate_definition(item)
@@ -276,7 +301,16 @@ def _check_input(
     cwd: Path,
     allowed_roots: Iterable[str | Path] | str | Path | None,
 ) -> dict[str, Any]:
-    raw = requirement.path_template.format(**params)
+    try:
+        raw = requirement.path_template.format(**params)
+    except KeyError as exc:
+        return {
+            "ok": not requirement.required,
+            "name": requirement.name,
+            "kind": requirement.kind,
+            "path_template": requirement.path_template,
+            "reason": f"missing_param:{exc.args[0]}",
+        }
     candidate = Path(raw).expanduser()
     if not candidate.is_absolute():
         candidate = cwd / candidate
