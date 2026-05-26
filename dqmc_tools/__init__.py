@@ -35,6 +35,13 @@ from dqmc_tools.paths import (
     require_workflow_path,
     resolve_existing_path,
 )
+from dqmc_tools.registry import (
+    list_observables,
+    list_registry_entries,
+    load_registry,
+    resolve_observable,
+    resolve_registry_entry,
+)
 
 __version__ = "0.1.0"
 
@@ -52,6 +59,11 @@ __all__ = [
     "require_allowed_path",
     "require_output_path",
     "require_workflow_path",
+    "load_registry",
+    "list_registry_entries",
+    "resolve_registry_entry",
+    "list_observables",
+    "resolve_observable",
     "DQMCError",
     "HDF5ReadError",
     "InvalidArgumentError",
