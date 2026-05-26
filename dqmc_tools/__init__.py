@@ -49,6 +49,13 @@ from dqmc_tools.registry import (
     resolve_registry_entry,
 )
 from dqmc_tools.runs import summarize_run
+from dqmc_tools.scripts import (
+    InputRequirement,
+    ScriptDefinition,
+    describe_script_adapter,
+    list_script_adapters,
+    run_script_adapter,
+)
 
 __version__ = "0.1.0"
 
@@ -76,6 +83,11 @@ __all__ = [
     "read_dataset",
     "read_registered_quantity",
     "estimate_registered_observable",
+    "InputRequirement",
+    "ScriptDefinition",
+    "list_script_adapters",
+    "describe_script_adapter",
+    "run_script_adapter",
     "DQMCError",
     "HDF5ReadError",
     "InvalidArgumentError",
