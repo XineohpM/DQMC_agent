@@ -274,8 +274,9 @@ def build_server() -> FastMCP:
         name="query_slurm",
         description=(
             "Query read-only SLURM job status with local squeue. This never "
-            "submits, cancels, or mutates jobs. Parameters: optional filters with "
-            "user, job_id, state, or partition."
+            "submits, cancels, or mutates jobs. Returns raw job rows plus a "
+            "grouped summary by job name and array job id. Parameters: optional "
+            "filters with me, user, job_id, state, or partition."
         ),
     )
     def query_slurm(filters: dict[str, Any] | None = None) -> dict[str, Any]:

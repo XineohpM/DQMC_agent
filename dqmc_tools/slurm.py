@@ -5,12 +5,13 @@ from __future__ import annotations
 import json
 import shutil
 import subprocess
+from collections import Counter, defaultdict
 from typing import Any
 
 from dqmc_tools.errors import InvalidArgumentError, ToolUnavailableError
 
 
-SUPPORTED_FILTERS = {"user", "job_id", "state", "partition"}
+SUPPORTED_FILTERS = {"me", "user", "job_id", "state", "partition"}
 FALLBACK_COLUMNS = (
     "job_id",
     "name",
@@ -43,12 +44,14 @@ def query_slurm(filters: dict[str, Any] | None = None) -> dict[str, Any]:
         except json.JSONDecodeError:
             payload = None
         if isinstance(payload, dict):
+            jobs = payload.get("jobs") or []
             return {
                 "ok": True,
                 "source": "squeue_json",
                 "command": json_command,
                 "commands_attempted": attempted,
-                "jobs": payload.get("jobs", []),
+                "jobs": jobs,
+                **_grouped_job_summary(jobs),
                 "raw": payload,
             }
 
@@ -65,37 +68,45 @@ def query_slurm(filters: dict[str, Any] | None = None) -> dict[str, Any]:
             },
         )
 
+    fallback_jobs = _parse_fallback_rows(fallback_result.stdout)
     return {
         "ok": True,
         "source": "squeue_fallback",
         "command": fallback_command,
         "commands_attempted": attempted,
-        "jobs": _parse_fallback_rows(fallback_result.stdout),
+        "jobs": fallback_jobs,
+        **_grouped_job_summary(fallback_jobs),
     }
 
 
-def _validate_filters(filters: dict[str, Any]) -> dict[str, str]:
+def _validate_filters(filters: dict[str, Any]) -> dict[str, Any]:
     unknown = sorted(set(filters) - SUPPORTED_FILTERS)
     if unknown:
         raise InvalidArgumentError(
             "Unsupported SLURM filters were provided.",
             details={"unsupported_filters": unknown, "supported_filters": sorted(SUPPORTED_FILTERS)},
         )
-    parsed: dict[str, str] = {}
+    parsed: dict[str, Any] = {}
     for key, value in filters.items():
         if value is None or str(value).strip() == "":
+            continue
+        if key == "me":
+            if _truthy_filter(value):
+                parsed[key] = True
             continue
         parsed[key] = str(value).strip()
     return parsed
 
 
-def _build_squeue_command(squeue_path: str, filters: dict[str, str], *, json_output: bool) -> list[str]:
+def _build_squeue_command(squeue_path: str, filters: dict[str, Any], *, json_output: bool) -> list[str]:
     args = [squeue_path]
     if json_output:
         args.append("--json")
     else:
         args.extend(["--noheader", "--format=%i|%j|%u|%T|%M|%l|%P|%R"])
 
+    if filters.get("me"):
+        args.append("--me")
     if "user" in filters:
         args.extend(["--user", filters["user"]])
     if "job_id" in filters:
@@ -131,3 +142,171 @@ def _parse_fallback_rows(stdout: str) -> list[dict[str, str]]:
         parts = parts + [""] * (len(FALLBACK_COLUMNS) - len(parts))
         rows.append(dict(zip(FALLBACK_COLUMNS, [part.strip() for part in parts])))
     return rows
+
+
+def _truthy_filter(value: Any) -> bool:
+    if isinstance(value, bool):
+        return value
+    normalized = str(value).strip().lower()
+    if normalized in {"1", "true", "yes", "y", "on"}:
+        return True
+    if normalized in {"0", "false", "no", "n", "off"}:
+        return False
+    raise InvalidArgumentError(
+        "SLURM `me` filter must be a boolean value.",
+        details={"me": value},
+    )
+
+
+def _grouped_job_summary(jobs: list[dict[str, Any]]) -> dict[str, Any]:
+    facts = [_job_facts(job) for job in jobs]
+    state_counts = _counts(fact["state"] for fact in facts)
+    category_counts = _counts(fact["category"] for fact in facts)
+    by_job_name: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for fact in facts:
+        by_job_name[fact["job_name"]].append(fact)
+
+    groups = []
+    array_job_total = 0
+    for job_name in sorted(by_job_name):
+        group_facts = sorted(by_job_name[job_name], key=_job_sort_key)
+        by_array: dict[str, list[dict[str, Any]]] = defaultdict(list)
+        for fact in group_facts:
+            by_array[fact["array_job_id"]].append(fact)
+
+        array_groups = []
+        for array_job_id in sorted(by_array, key=_natural_sort_key):
+            array_facts = sorted(by_array[array_job_id], key=_job_sort_key)
+            array_groups.append({
+                "array_job_id": array_job_id,
+                "total_jobs": len(array_facts),
+                "state_counts": _counts(fact["state"] for fact in array_facts),
+                "category_counts": _counts(fact["category"] for fact in array_facts),
+                "array_task_ids": sorted(
+                    {fact["array_task_id"] for fact in array_facts if fact["array_task_id"] is not None},
+                    key=_natural_sort_key,
+                ),
+                "jobs": [fact["raw"] for fact in array_facts],
+            })
+
+        array_job_total += len(array_groups)
+        groups.append({
+            "job_name": job_name,
+            "total_jobs": len(group_facts),
+            "state_counts": _counts(fact["state"] for fact in group_facts),
+            "category_counts": _counts(fact["category"] for fact in group_facts),
+            "array_job_count": len(array_groups),
+            "array_jobs": array_groups,
+        })
+
+    return {
+        "summary": {
+            "total_jobs": len(jobs),
+            "state_counts": state_counts,
+            "category_counts": category_counts,
+            "job_name_count": len(groups),
+            "array_job_count": array_job_total,
+        },
+        "groups": {"by_job_name": groups},
+    }
+
+
+def _job_facts(job: dict[str, Any]) -> dict[str, Any]:
+    job_id = str(job.get("job_id") or job.get("id") or "")
+    state = _job_state(job)
+    return {
+        "raw": job,
+        "job_id": job_id,
+        "job_name": str(job.get("name") or job.get("job_name") or "(unnamed)"),
+        "state": state,
+        "category": _state_category(state, _job_reason(job)),
+        "array_job_id": _array_job_id(job, job_id),
+        "array_task_id": _array_task_id(job, job_id),
+    }
+
+
+def _job_state(job: dict[str, Any]) -> str:
+    value = job.get("job_state") or job.get("state") or job.get("state_description") or "UNKNOWN"
+    return str(value).strip().upper() or "UNKNOWN"
+
+
+def _job_reason(job: dict[str, Any]) -> str:
+    value = job.get("state_reason") or job.get("reason") or job.get("nodes") or ""
+    return str(value).strip()
+
+
+def _array_job_id(job: dict[str, Any], job_id: str) -> str:
+    value = job.get("array_job_id")
+    if value not in {None, "", "N/A"}:
+        return str(value)
+    if "_" in job_id:
+        return job_id.split("_", maxsplit=1)[0]
+    return job_id or "unknown"
+
+
+def _array_task_id(job: dict[str, Any], job_id: str) -> str | None:
+    value = job.get("array_task_id")
+    if value not in {None, "", "N/A"}:
+        return str(value)
+    if "_" in job_id:
+        return job_id.split("_", maxsplit=1)[1]
+    return None
+
+
+def _state_category(state: str, reason: str) -> str:
+    normalized_state = state.strip().upper()
+    normalized_reason = reason.strip().upper().replace(" ", "")
+    if normalized_state in {"RUNNING", "R", "COMPLETING", "CG", "CONFIGURING", "CF", "RESIZING", "RS"}:
+        return "running"
+    if normalized_state in {"PENDING", "PD"}:
+        if normalized_reason in {
+            "DEPENDENCY",
+            "DEPENDENCYNEVER",
+            "JOBHELDADMIN",
+            "JOBHELDUSER",
+            "PARTITIONDOWN",
+            "REQNODENOTAVAIL",
+        }:
+            return "held_blocked"
+        return "pending"
+    if normalized_state in {
+        "BOOT_FAIL",
+        "BF",
+        "FAILED",
+        "F",
+        "NODE_FAIL",
+        "NF",
+        "OUT_OF_MEMORY",
+        "OOM",
+        "PREEMPTED",
+        "PR",
+        "SPECIAL_EXIT",
+        "SE",
+        "STOPPED",
+        "ST",
+        "SUSPENDED",
+        "S",
+        "TIMEOUT",
+        "TO",
+    }:
+        return "held_blocked"
+    return "other"
+
+
+def _counts(values) -> dict[str, int]:
+    return dict(sorted(Counter(values).items()))
+
+
+def _job_sort_key(fact: dict[str, Any]) -> tuple[Any, ...]:
+    return (
+        _natural_sort_key(fact["array_job_id"]),
+        _natural_sort_key(fact["array_task_id"] or ""),
+        _natural_sort_key(fact["job_id"]),
+    )
+
+
+def _natural_sort_key(value: Any) -> tuple[int, Any]:
+    text = str(value)
+    if text.isdigit():
+        return (0, int(text))
+    return (1, text)

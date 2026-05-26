@@ -40,6 +40,74 @@ def test_query_slurm_uses_json_output(monkeypatch):
     assert "--user" in result["command"]
 
 
+def test_query_slurm_supports_me_filter_and_groups_json_jobs(monkeypatch):
+    monkeypatch.setattr("dqmc_tools.slurm.shutil.which", lambda _name: "squeue")
+
+    def fake_run(args, **_kwargs):
+        return subprocess.CompletedProcess(
+            args=args,
+            returncode=0,
+            stdout=json_jobs([
+                {
+                    "job_id": "100_0",
+                    "name": "scan_T",
+                    "job_state": "RUNNING",
+                    "array_job_id": 100,
+                    "array_task_id": 0,
+                    "reason": "None",
+                },
+                {
+                    "job_id": "100_1",
+                    "name": "scan_T",
+                    "job_state": "PENDING",
+                    "array_job_id": 100,
+                    "array_task_id": 1,
+                    "state_reason": "Priority",
+                },
+                {
+                    "job_id": "101_0",
+                    "name": "scan_T",
+                    "job_state": "RUNNING",
+                    "array_job_id": 101,
+                    "array_task_id": 0,
+                    "reason": "None",
+                },
+                {
+                    "job_id": "200",
+                    "name": "postprocess",
+                    "job_state": "RUNNING",
+                    "reason": "None",
+                },
+            ]),
+            stderr="",
+        )
+
+    monkeypatch.setattr("dqmc_tools.slurm.subprocess.run", fake_run)
+
+    result = query_slurm({"me": True})
+
+    assert "--me" in result["command"]
+    assert result["summary"] == {
+        "total_jobs": 4,
+        "state_counts": {"PENDING": 1, "RUNNING": 3},
+        "category_counts": {"pending": 1, "running": 3},
+        "job_name_count": 2,
+        "array_job_count": 3,
+    }
+
+    scan_group = _group_by_name(result, "scan_T")
+    assert scan_group["total_jobs"] == 3
+    assert scan_group["state_counts"] == {"PENDING": 1, "RUNNING": 2}
+    assert scan_group["category_counts"] == {"pending": 1, "running": 2}
+
+    array_100 = _array_group(scan_group, "100")
+    assert array_100["total_jobs"] == 2
+    assert array_100["state_counts"] == {"PENDING": 1, "RUNNING": 1}
+    assert array_100["category_counts"] == {"pending": 1, "running": 1}
+    assert array_100["array_task_ids"] == ["0", "1"]
+    assert [job["job_id"] for job in array_100["jobs"]] == ["100_0", "100_1"]
+
+
 def test_query_slurm_falls_back_to_delimited_output(monkeypatch):
     monkeypatch.setattr("dqmc_tools.slurm.shutil.which", lambda _name: "squeue")
 
@@ -68,3 +136,49 @@ def test_query_slurm_falls_back_to_delimited_output(monkeypatch):
         "partition": "normal",
         "nodes": "node001",
     }]
+
+
+def test_query_slurm_groups_fallback_array_rows(monkeypatch):
+    monkeypatch.setattr("dqmc_tools.slurm.shutil.which", lambda _name: "squeue")
+
+    def fake_run(args, **_kwargs):
+        if "--json" in args:
+            return subprocess.CompletedProcess(args=args, returncode=1, stdout="", stderr="no json")
+        return subprocess.CompletedProcess(
+            args=args,
+            returncode=0,
+            stdout=(
+                "300_0|scan_mu|phoenix|RUNNING|1:00|2:00|normal|node001\n"
+                "300_1|scan_mu|phoenix|PENDING|0:00|2:00|normal|Priority\n"
+                "301|analysis|phoenix|RUNNING|0:30|1:00|normal|node002\n"
+            ),
+            stderr="",
+        )
+
+    monkeypatch.setattr("dqmc_tools.slurm.subprocess.run", fake_run)
+
+    result = query_slurm({"me": True, "partition": "normal"})
+
+    assert "--me" in result["command"]
+    assert "--partition" in result["command"]
+    assert result["summary"]["total_jobs"] == 3
+    assert result["summary"]["state_counts"] == {"PENDING": 1, "RUNNING": 2}
+    assert result["summary"]["category_counts"] == {"pending": 1, "running": 2}
+
+    scan_group = _group_by_name(result, "scan_mu")
+    assert scan_group["array_job_count"] == 1
+    assert _array_group(scan_group, "300")["array_task_ids"] == ["0", "1"]
+
+
+def json_jobs(jobs):
+    import json
+
+    return json.dumps({"jobs": jobs})
+
+
+def _group_by_name(result, name):
+    return next(item for item in result["groups"]["by_job_name"] if item["job_name"] == name)
+
+
+def _array_group(job_name_group, array_job_id):
+    return next(item for item in job_name_group["array_jobs"] if item["array_job_id"] == array_job_id)

@@ -51,6 +51,7 @@ def test_mcp_descriptions_match_current_registry_and_run_rules():
     assert "does not estimate observable errors" in descriptions["read_registered_quantity"]
     assert "jackknife" in descriptions["estimate_registered_observable"]
     assert "explicit user_confirmation" in descriptions["run_script_adapter"]
+    assert "grouped summary by job name and array job id" in descriptions["query_slurm"]
 
 
 def test_resolve_registry_entry_uses_real_registry_shape():

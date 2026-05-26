@@ -5,7 +5,7 @@
 ## 当前基线
 
 - [x] “手”层已经有第一版 MCP tools：`summarize_run`、`inspect_hdf5`、`read_dataset`、`resolve_registry_entry`、`read_registered_quantity`、`estimate_registered_observable`、`list_script_adapters`、`describe_script_adapter`、`run_script_adapter`、`query_slurm`。
-- [x] 当前测试可通过：`61 passed`。
+- [x] 当前测试可通过：`70 passed`。
 - [x] `registry.yaml` 是当前“手”层唯一被运行时代码真正读取的三份“眼睛”文件之一。
 - [x] `code_map.md` 和 `diagnostics_playbook.md` 目前没有被 `dqmc_tools/` 或 `dqmc_mcp_server.py` 运行时读取。
 - [x] `diagnostics_playbook.md` 当前只作为设计输入和人工知识来源；“手”层不自动执行 sign、Trotter、warmup、mu tuning、MaxEnt binning 等诊断判断。
@@ -16,10 +16,14 @@
 ## P0：先补质量和边界
 
 - [ ] 提高测试质量。
-  - 现状：测试能过；`test_runs.py` 和 HDF5 读取类测试已改用真实 `data/T_0.1` fixture，仍保留少量 synthetic 测试用于缺失 dataset、精确 jackknife、runner subprocess、输出 parser 和 argv builder。
+  - 现状：测试能过；已新增 MCP 层 contract tests，`test_runs.py` 和 HDF5 读取类测试已改用真实 `data/T_0.1` fixture，仍保留少量 synthetic 测试用于缺失 dataset、精确 jackknife、runner subprocess、输出 parser 和 argv builder。
   - 目标：把测试从“接口能跑”提升到“真实工作流不容易坏”。
   - 建议拆分：
-    - [ ] Contract tests：固定 MCP tools 输入输出 schema，避免 agent/Slack 层依赖字段漂移。
+    - [x] Contract tests：固定核心 MCP tools 输入输出 schema，避免 agent/Slack 层依赖字段漂移。
+      - 覆盖文件：`tests/test_mcp_contracts.py`。
+      - 成功路径：`summarize_run`、`read_dataset`、`inspect_hdf5`、`read_registered_quantity`、`estimate_registered_observable`、`list_script_adapters`、`describe_script_adapter`、`run_script_adapter(dry_run=true)`、`query_slurm`。
+      - 错误路径：`path_not_allowed`、`user_approval_required`、`tool_unavailable` 的 MCP 层 JSON-safe error contract。
+      - 记录 MCP 层细节：顶层 list 返回在 `FastMCP.call_tool` structured content 中表现为 `{"result": [...]}`。
     - [x] Adapter contract tests：固定真实 catalog 中 `run_maxent_anneal` argparse schema、shell raw args、approval 字段等关键契约。
     - [x] Golden fixture tests：用 `data/T_0.1` 覆盖 `summarize_run`、`estimate_registered_observable`、log parsing、completion facts。
     - [x] 将 `tests/test_runs.py` 从临时 synthetic run/HDF5/log 替换为真实 `data/T_0.1` run summary。
@@ -76,11 +80,17 @@
 
 ## P1：SLURM 只读能力增强
 
-- [ ] 增强 `query_slurm` 的分类视图。
-  - [ ] 分类显示当前已提交任务：running、pending、held/blocked、other。
-  - [ ] 保留当前 filters：user、job_id、state、partition。
-  - [ ] 输出 job summary：数量、partition、state、reason、runtime、limit、nodes。
-  - [ ] 保持只读：不接入 `sbatch`、`scancel`、`scontrol update`。
+- [x] 增强 `query_slurm` 的分类视图。
+  - [x] 支持 `filters={"me": true}`，底层命令生成 `squeue --me`。
+  - [x] 分类显示当前队列任务：`running`、`pending`、`held_blocked`、`other`。
+  - [x] 保留当前 filters：user、job_id、state、partition；新增 `me`。
+  - [x] 返回按 job name、array job id 分组的 `groups.by_job_name`。
+  - [x] 返回全局 `summary`：total jobs、state counts、category counts、job name count、array job count。
+  - [x] 保留原始 structured rows，供 agent/Slack 层展示 partition、reason/runtime/limit/nodes 等细节。
+  - [x] 覆盖 `squeue --json` 和 fallback delimited output 两种路径。
+  - [x] 保持只读：不接入 `sbatch`、`scancel`、`scontrol update`。
+  - [ ] 在 Sherlock login node 上做真实 `squeue --me` 集成验证。
+  - [ ] 周期性查询暂不做阻塞式 MCP watcher；agent 层后续按用户指定 interval 重复调用 `query_slurm(filters={"me": true})` 并逐次返回 snapshot。
 
 - [ ] Sherlock 当前运行状态入口。
   - [ ] agent 层提供“当前我的 Sherlock 任务状态”工作流。

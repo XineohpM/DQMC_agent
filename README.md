@@ -52,6 +52,9 @@ MCP 暴露 10 个工具：
 
 不暴露 `list_runs`。run 目录、T 目录、脚本输入目录都必须由用户显式给出。
 
+`query_slurm` 是只读队列查询：支持 `filters={"me": true}` 生成 `squeue --me`，
+返回原始 job rows，并按 job name 和 array job id 生成 grouped summary。
+
 ## Registry 和 HDF5
 
 registry 解析只使用真实字段：`id`、`aliases`、`code.generation.variable`。返回结果会附加运行期辅助字段 `entry_type` 和 `dataset_key`，但不会引入额外标识体系。
