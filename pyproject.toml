@@ -6,7 +6,6 @@ build-backend = "setuptools.build_meta"
 name = "dqmc-tools"
 version = "0.1.0"
 description = "Reusable DQMC data and cluster tools with a thin MCP adapter."
-readme = "specs/dqmc-hands-mcp/requirements.md"
 requires-python = ">=3.10"
 dependencies = [
     "h5py",
