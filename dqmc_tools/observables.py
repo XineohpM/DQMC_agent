@@ -11,13 +11,13 @@ import yaml
 from dqmc_tools.errors import ObservableAmbiguousError, ObservableNotFoundError
 
 
-DEFAULT_REGISTRY_PATH = Path(__file__).resolve().parents[1] / "formal" / "observables.yaml"
+DEFAULT_REGISTRY_PATH = Path(__file__).resolve().parents[1] / "registry.yaml"
 
 
 def load_observable_registry(path: str | Path | None = None) -> dict[str, Any]:
     """Load the DQMC observable registry YAML.
 
-    The default registry is `observables.yaml` in the project root.
+    The default registry is `registry.yaml` in the project root.
     """
 
     registry_path = Path(path) if path is not None else DEFAULT_REGISTRY_PATH
@@ -40,19 +40,63 @@ def load_observable_registry(path: str | Path | None = None) -> dict[str, Any]:
 
 
 def list_observables(path: str | Path | None = None) -> list[dict[str, Any]]:
-    """Return registered repo-variable observables from the registry."""
+    """Return registered observables from the registry, normalized to
+    a uniform format compatible with :func:`resolve_observable`."""
 
     registry = load_observable_registry(path)
-    repo_variables = registry.get("repo_variables", [])
-    if repo_variables is None:
+    entries = registry.get("observables", [])
+    if entries is None:
         return []
-    if not isinstance(repo_variables, list):
+    if not isinstance(entries, list):
         raise ObservableNotFoundError(
-            "`repo_variables` in observable registry must be a list.",
+            "`observables` in registry must be a list.",
             details={"path": path or DEFAULT_REGISTRY_PATH},
         )
 
-    return [deepcopy(item) for item in repo_variables if isinstance(item, dict)]
+    return [deepcopy(_normalize_entry(item)) for item in entries if isinstance(item, dict)]
+
+
+def _normalize_entry(entry: dict[str, Any]) -> dict[str, Any]:
+    """Derive code-facing fields (repo_id, h5_path, ...) from a registry entry."""
+
+    if "repo_id" in entry and "h5_path" in entry:
+        entry.setdefault("error_method", "jackknife_or_binning")
+        return entry
+
+    obs_id = str(entry.get("id", ""))
+    code = entry.get("code", {}) or {}
+    measurement = code.get("measurement", {}) or {}
+    generation = code.get("generation", {}) or {}
+    normalization = entry.get("normalization", {}) or {}
+
+    func = str(measurement.get("function", ""))
+    h5_var = str(generation.get("variable", ""))
+    c_var = str(measurement.get("variable", ""))
+    spin = str(normalization.get("spin_type", ""))
+    is_sign_weighted = bool(normalization.get("is_sign_weighted", False))
+
+    if "uneqlt" in func.lower():
+        prefix = "Uneqlt"
+        time_kind = "unequal_time"
+    else:
+        prefix = "EqLt"
+        time_kind = "equal_time"
+
+    repo_id = f"{prefix}.{obs_id}" if obs_id else ""
+    h5_path = f"/{h5_var}" if h5_var else ""
+    measured_as = "sign_weighted_accumulator" if is_sign_weighted else "unknown"
+
+    return {
+        **entry,
+        "repo_id": repo_id,
+        "h5_path": h5_path,
+        "c_field": c_var,
+        "time_kind": time_kind,
+        "spin": spin,
+        "measured_as": measured_as,
+        "kind": obs_id,
+        "error_method": "jackknife_or_binning",
+    }
 
 
 def resolve_observable(

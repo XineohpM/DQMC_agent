@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Validate the DQMC formal observable registry.
 
-This script checks the internal graph consistency of `observables.yaml`.
+This script checks the internal graph consistency of `registry.yaml`.
 
 - `gen_yaml_check.py` generates Lean code and checks that Lean names/theorems exist.
 - `check_formal_registry.py` checks that the YAML registry is self-consistent:
@@ -23,7 +23,7 @@ except ImportError as exc:
 
 
 DEFAULT_ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_YAML = DEFAULT_ROOT / "observables.yaml"
+DEFAULT_YAML = DEFAULT_ROOT / "registry.yaml"
 
 
 class RegistryError(Exception):
@@ -253,13 +253,13 @@ def validate_registry(data: dict[str, Any]) -> dict[str, int]:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Validate observables.yaml graph consistency for the DQMC formal registry."
+        description="Validate registry.yaml graph consistency for the DQMC formal registry."
     )
     parser.add_argument(
         "--yaml",
         type=Path,
         default=DEFAULT_YAML,
-        help=f"Path to observables.yaml. Default: {DEFAULT_YAML}",
+        help=f"Path to registry.yaml. Default: {DEFAULT_YAML}",
     )
     parser.add_argument(
         "--quiet",

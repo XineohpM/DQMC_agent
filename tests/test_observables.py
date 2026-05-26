@@ -15,8 +15,8 @@ def test_load_default_registry():
     registry = load_observable_registry()
 
     assert DEFAULT_REGISTRY_PATH.exists()
-    assert "repo_variables" in registry
-    assert any(item["repo_id"] == "EqLt.density" for item in registry["repo_variables"])
+    assert "observables" in registry
+    assert any(item.get("id") == "density" for item in registry["observables"])
 
 
 def test_list_observables_returns_copies():
@@ -52,13 +52,19 @@ def test_resolve_observable_ambiguous_tail(tmp_path: Path):
     registry_path = tmp_path / "observables.yaml"
     registry_path.write_text(
         """
-repo_variables:
-  - repo_id: EqLt.foo
-    h5_path: /meas_eqlt/shared
-    kind: first
-  - repo_id: Uneqlt.foo
-    h5_path: /meas_uneqlt/shared
-    kind: second
+observables:
+  - id: foo
+    code:
+      measurement:
+        function: measure_eqlt()
+      generation:
+        variable: meas_eqlt/shared
+  - id: foo
+    code:
+      measurement:
+        function: measure_uneqlt()
+      generation:
+        variable: meas_uneqlt/shared
 """.strip(),
         encoding="utf-8",
     )
