@@ -56,6 +56,7 @@ from dqmc_tools.scripts import (
     list_script_adapters,
     run_script_adapter,
 )
+from dqmc_tools.slurm import query_slurm
 
 __version__ = "0.1.0"
 
@@ -88,6 +89,7 @@ __all__ = [
     "list_script_adapters",
     "describe_script_adapter",
     "run_script_adapter",
+    "query_slurm",
     "DQMCError",
     "HDF5ReadError",
     "InvalidArgumentError",
