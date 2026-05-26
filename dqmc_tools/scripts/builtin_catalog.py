@@ -116,6 +116,7 @@ DEFAULT_SCRIPT_CATALOG: tuple[ScriptDefinition, ...] = (
             },
         },
         required_inputs=(InputRequirement("root", "directory", "{root}"),),
+        parser_id="tsv",
         output_patterns=("{root}/h5_completion_report.tsv", "{root}/{push_stack}"),
     ),
     ScriptDefinition(
@@ -139,6 +140,7 @@ DEFAULT_SCRIPT_CATALOG: tuple[ScriptDefinition, ...] = (
             },
         },
         required_inputs=(InputRequirement("root", "directory", "{root}"),),
+        parser_id="tsv",
         output_patterns=("{output_dir}/warmup_summary.tsv", "{output_dir}/**/*.png"),
     ),
     ScriptDefinition(
@@ -189,6 +191,7 @@ DEFAULT_SCRIPT_CATALOG: tuple[ScriptDefinition, ...] = (
         _script("scripts/make_bootstrap.py"),
         args_schema=_props("dir", "file", "nboot", "block", "auto_block", "tau_idx", "block_mult", "min_M", "seed", "outprefix"),
         required_inputs=(InputRequirement("perbin_file", "npy", "{dir}/{file}", shape_hint=(None, None)),),
+        parser_id="npy_manifest",
         output_patterns=("{dir}/{outprefix}_*.npy",),
     ),
     ScriptDefinition(
@@ -199,6 +202,7 @@ DEFAULT_SCRIPT_CATALOG: tuple[ScriptDefinition, ...] = (
         _script("scripts/save_boot_stats.py"),
         args_schema=_props("boot", "outdir", "reg"),
         required_inputs=(InputRequirement("boot", "npy", "{boot}", shape_hint=(None, None)),),
+        parser_id="npy_manifest",
         output_patterns=("{outdir}/G_*.npy",),
     ),
     ScriptDefinition("run_maxent", "Run standard MaxEnt workflow.", "maxent", "writes_output", _script("scripts/run_maxent.py"), args_schema={"properties": {"args": {"raw_args": True}}}),

@@ -21,6 +21,7 @@ from dqmc_tools.errors import (
 )
 from dqmc_tools.paths import require_allowed_path, require_output_path
 from dqmc_tools.scripts.definitions import InputRequirement, ScriptDefinition
+from dqmc_tools.scripts.parsers import parse_outputs
 
 
 DEFAULT_REGISTRY: tuple[ScriptDefinition, ...] = ()
@@ -122,6 +123,18 @@ def run_script_adapter(
         ) from exc
     ended = time.time()
 
+    output_files, manifest_warnings = _output_manifest(
+        definition,
+        parsed_params,
+        cwd=resolved_cwd,
+        output_root=resolved_output_root,
+    )
+    parsed_outputs, parse_warnings = parse_outputs(
+        definition.parser_id,
+        output_files,
+        stdout=completed.stdout,
+    )
+
     return {
         **base_result,
         "started_at": started,
@@ -130,9 +143,9 @@ def run_script_adapter(
         "returncode": completed.returncode,
         "stdout_tail": _tail(completed.stdout),
         "stderr_tail": _tail(completed.stderr),
-        "output_files": _output_manifest(definition, parsed_params, cwd=resolved_cwd, output_root=resolved_output_root),
-        "parsed_outputs": {},
-        "warnings": [],
+        "output_files": output_files,
+        "parsed_outputs": parsed_outputs,
+        "warnings": manifest_warnings + parse_warnings,
     }
 
 
@@ -399,10 +412,15 @@ def _output_manifest(
     *,
     cwd: Path,
     output_root: Path,
-) -> list[dict[str, Any]]:
+) -> tuple[list[dict[str, Any]], list[str]]:
     files: list[dict[str, Any]] = []
+    warnings: list[str] = []
     for pattern in definition.output_patterns:
-        rendered = pattern.format(output_root=output_root, cwd=cwd, **params)
+        try:
+            rendered = pattern.format(output_root=output_root, cwd=cwd, **params)
+        except KeyError as exc:
+            warnings.append(f"output_pattern_missing_param:{pattern}:{exc.args[0]}")
+            continue
         glob_path = Path(rendered).expanduser()
         if not glob_path.is_absolute():
             glob_path = cwd / glob_path
@@ -414,7 +432,7 @@ def _output_manifest(
                     "size_bytes": path.stat().st_size,
                     "mtime": path.stat().st_mtime,
                 })
-    return files
+    return files, warnings
 
 
 def _definition_summary(definition: ScriptDefinition, *, include_schema: bool = False) -> dict[str, Any]:
