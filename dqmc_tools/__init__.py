@@ -33,6 +33,7 @@ from dqmc_tools.hdf5 import (
     estimate_registered_observable,
     inspect_hdf5,
     read_dataset,
+    read_observable,
     read_registered_quantity,
 )
 from dqmc_tools.paths import (
@@ -82,6 +83,7 @@ __all__ = [
     "summarize_run",
     "inspect_hdf5",
     "read_dataset",
+    "read_observable",
     "read_registered_quantity",
     "estimate_registered_observable",
     "InputRequirement",

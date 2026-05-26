@@ -127,6 +127,32 @@ def read_registered_quantity(
     )
 
 
+def read_observable(
+    path: str | Path,
+    observable_name: str,
+    *,
+    mode: ReadMode = "file",
+    max_items: int = 1024,
+    allowed_roots: Iterable[str | Path] | str | Path | None = None,
+    registry_path: str | Path | None = None,
+) -> dict[str, Any]:
+    """Compatibility wrapper for reading one registered observable directly."""
+
+    entry = resolve_registry_entry(
+        observable_name,
+        entry_type="observable",
+        registry_path=registry_path,
+    )
+    return read_registered_quantity(
+        path,
+        str(entry["id"]),
+        mode=mode,
+        max_items=max_items,
+        allowed_roots=allowed_roots,
+        registry_path=registry_path,
+    )
+
+
 def estimate_registered_observable(
     directory: str | Path,
     observable_name: str,

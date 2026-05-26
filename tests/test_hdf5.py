@@ -9,6 +9,7 @@ from dqmc_tools.hdf5 import (
     estimate_registered_observable,
     inspect_hdf5,
     read_dataset,
+    read_observable,
     read_registered_quantity,
 )
 
@@ -68,6 +69,16 @@ def test_read_registered_quantity_uses_registry_generation_variable(tmp_path: Pa
     assert mu["registry_entry"]["id"] == "chemical_potential"
     assert mu["dataset_key"] == "metadata/mu"
     assert mu["dataset"]["value"] == 0.25
+
+
+def test_read_observable_compatibility_wrapper_is_observable_only(tmp_path: Path):
+    h5_path = tmp_path / "sample.h5"
+    _write_h5(h5_path, [1.0, 1.2])
+
+    density = read_observable(h5_path, "density", allowed_roots=[tmp_path])
+
+    assert density["registry_entry"]["entry_type"] == "observable"
+    assert density["dataset_key"] == "meas_eqlt/density"
 
 
 def test_read_registered_quantity_reports_missing_dataset(tmp_path: Path):
