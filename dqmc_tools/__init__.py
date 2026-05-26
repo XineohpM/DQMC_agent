@@ -48,6 +48,7 @@ from dqmc_tools.registry import (
     resolve_observable,
     resolve_registry_entry,
 )
+from dqmc_tools.runs import summarize_run
 
 __version__ = "0.1.0"
 
@@ -70,6 +71,7 @@ __all__ = [
     "resolve_registry_entry",
     "list_observables",
     "resolve_observable",
+    "summarize_run",
     "inspect_hdf5",
     "read_dataset",
     "read_registered_quantity",
