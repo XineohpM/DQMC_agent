@@ -29,6 +29,12 @@ from dqmc_tools.errors import (
     ToolUnavailableError,
     error_dict,
 )
+from dqmc_tools.hdf5 import (
+    estimate_registered_observable,
+    inspect_hdf5,
+    read_dataset,
+    read_registered_quantity,
+)
 from dqmc_tools.paths import (
     require_allowed_path,
     require_output_path,
@@ -64,6 +70,10 @@ __all__ = [
     "resolve_registry_entry",
     "list_observables",
     "resolve_observable",
+    "inspect_hdf5",
+    "read_dataset",
+    "read_registered_quantity",
+    "estimate_registered_observable",
     "DQMCError",
     "HDF5ReadError",
     "InvalidArgumentError",
