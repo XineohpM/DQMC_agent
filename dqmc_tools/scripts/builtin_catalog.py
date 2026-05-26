@@ -161,7 +161,7 @@ DEFAULT_SCRIPT_CATALOG: tuple[ScriptDefinition, ...] = (
         _script("scripts/extract_local_moment.py"),
         args_schema=_props("root", "U", "h5_glob", "out_prefix", "skip_missing", "tol_density", "tol_spin", "strict_checks"),
         required_inputs=(InputRequirement("root", "directory", "{root}"),),
-        output_patterns=("{root}/**/*local_moment*"),
+        output_patterns=("{root}/**/*local_moment*",),
     ),
     ScriptDefinition(
         "extract_1_particle_local_g",
@@ -209,9 +209,9 @@ DEFAULT_SCRIPT_CATALOG: tuple[ScriptDefinition, ...] = (
     ScriptDefinition("run_maxent_anneal", "Run MaxEnt annealing workflow.", "maxent", "writes_output", _script("scripts/run_maxent_anneal.py"), args_schema={"properties": {"args": {"raw_args": True}}}),
     ScriptDefinition("run_maxent_phoenix", "Run Phoenix MaxEnt workflow.", "maxent", "writes_output", _script("scripts/run_maxent_phoenix.py"), args_schema={"properties": {"args": {"raw_args": True}}}),
     ScriptDefinition("plot_dos", "Plot density of states from MaxEnt outputs.", "maxent", "writes_output", _script("scripts/plot_dos.py"), args_schema=_props("base", "items", "out", "output_name", "xmin", "xmax", "ymin", "ymax", "no_band"), required_inputs=(InputRequirement("base", "directory", "{base}"),), output_patterns=("{out}",)),
-    ScriptDefinition("plot_double_occ", "Plot double occupancy.", "plot", "writes_output", _script("scripts/plot_double_occ.py"), args_schema=_props("path", "glob", "output_path", "out_prefix"), required_inputs=(InputRequirement("path", "directory", "{path}"),), output_patterns=("{output_path}/*double_occ*")),
-    ScriptDefinition("plot_charge_order", "Plot charge order observables.", "plot", "writes_output", _script("scripts/plot_charge_order.py"), args_schema=_props("path", "output_path", "out_prefix"), required_inputs=(InputRequirement("path", "directory", "{path}"),), output_patterns=("{output_path}/*charge*")),
-    ScriptDefinition("s_wave_pairing", "Compute and plot onsite s-wave pairing estimates.", "analysis", "writes_output", _script("scripts/s_wave_pairing.py"), args_schema=_props("path", "output_path", "out_prefix", "relpath_list"), required_inputs=(InputRequirement("path", "directory", "{path}"),), output_patterns=("{output_path}/*s_wave*")),
+    ScriptDefinition("plot_double_occ", "Plot double occupancy.", "plot", "writes_output", _script("scripts/plot_double_occ.py"), args_schema=_props("path", "glob", "output_path", "out_prefix"), required_inputs=(InputRequirement("path", "directory", "{path}"),), output_patterns=("{output_path}/*double_occ*",)),
+    ScriptDefinition("plot_charge_order", "Plot charge order observables.", "plot", "writes_output", _script("scripts/plot_charge_order.py"), args_schema=_props("path", "output_path", "out_prefix"), required_inputs=(InputRequirement("path", "directory", "{path}"),), output_patterns=("{output_path}/*charge*",)),
+    ScriptDefinition("s_wave_pairing", "Compute and plot onsite s-wave pairing estimates.", "analysis", "writes_output", _script("scripts/s_wave_pairing.py"), args_schema=_props("path", "output_path", "out_prefix", "relpath_list"), required_inputs=(InputRequirement("path", "directory", "{path}"),), output_patterns=("{output_path}/*s_wave*",)),
     ScriptDefinition(
         "plot_JNJN",
         "Plot JNJN or related current-correlation curves from derived per-bin data.",

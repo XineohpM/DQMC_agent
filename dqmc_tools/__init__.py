@@ -53,6 +53,7 @@ from dqmc_tools.runs import summarize_run
 from dqmc_tools.scripts import (
     InputRequirement,
     ScriptDefinition,
+    audit_script_adapters,
     describe_script_adapter,
     list_script_adapters,
     run_script_adapter,
@@ -88,6 +89,7 @@ __all__ = [
     "estimate_registered_observable",
     "InputRequirement",
     "ScriptDefinition",
+    "audit_script_adapters",
     "list_script_adapters",
     "describe_script_adapter",
     "run_script_adapter",

@@ -1,6 +1,10 @@
+from pathlib import Path
+
 from dqmc_tools.scripts import (
     DEFAULT_SCRIPT_CATALOG,
     EXCLUDED_FIRST_PHASE_SCRIPTS,
+    ScriptDefinition,
+    audit_script_adapters,
     describe_script_adapter,
     list_script_adapters,
 )
@@ -39,3 +43,36 @@ def test_check_warm_schema_uses_positional_root_and_output_dir():
 
     assert description["args_schema"]["properties"]["root"]["positional"] is True
     assert description["args_schema"]["properties"]["output_dir"]["path_role"] == "output"
+
+
+def test_builtin_catalog_adapter_audit_passes():
+    result = audit_script_adapters(include_fingerprints=False)
+
+    assert result["ok"] is True
+    assert result["adapter_count"] == len(DEFAULT_SCRIPT_CATALOG)
+    assert result["summary"]["errors"] == 0
+    assert result["summary"]["warnings"] == 0
+
+
+def test_adapter_audit_detects_string_output_patterns(tmp_path: Path):
+    script = tmp_path / "fake.py"
+    script.write_text("print('ok')\n", encoding="utf-8")
+    definition = ScriptDefinition(
+        script_id="bad_output_patterns",
+        description="Bad output_patterns type.",
+        category="analysis",
+        mode="writes_output",
+        path=script,
+        args_schema={"properties": {"out": {"flag": "--out"}}},
+        output_patterns="{out}",  # type: ignore[arg-type]
+    )
+
+    result = audit_script_adapters([definition], include_fingerprints=False)
+
+    assert result["ok"] is False
+    adapter = result["adapters"][0]
+    assert adapter["script_id"] == "bad_output_patterns"
+    assert any(
+        check["name"] == "output_patterns.type" and check["status"] == "error"
+        for check in adapter["checks"]
+    )

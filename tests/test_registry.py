@@ -11,6 +11,21 @@ from dqmc_tools.registry import (
 )
 
 
+def _write_registry(path: Path, entry_id: str, alias: str, dataset_key: str) -> None:
+    path.write_text(
+        f"""
+observables:
+  - id: {entry_id}
+    aliases: [{alias}]
+    code:
+      generation:
+        variable: {dataset_key}
+parameters: []
+""".strip(),
+        encoding="utf-8",
+    )
+
+
 def test_load_default_registry_and_list_real_entries():
     registry = load_registry()
     entries = list_registry_entries()
@@ -49,6 +64,35 @@ def test_resolve_observable_limits_to_observables():
 def test_resolve_missing_name():
     with pytest.raises(RegistryNotFoundError):
         resolve_registry_entry("not_a_registered_entry")
+
+
+def test_registry_path_is_reloaded_after_file_changes(tmp_path: Path):
+    registry_path = tmp_path / "registry.yaml"
+    _write_registry(registry_path, "first_density", "hot_density", "meas_eqlt/first_density")
+
+    first = resolve_registry_entry("hot_density", registry_path=registry_path)
+
+    _write_registry(registry_path, "second_density", "hot_density", "meas_eqlt/second_density")
+    second = resolve_registry_entry("hot_density", registry_path=registry_path)
+
+    assert first["id"] == "first_density"
+    assert first["dataset_key"] == "meas_eqlt/first_density"
+    assert second["id"] == "second_density"
+    assert second["dataset_key"] == "meas_eqlt/second_density"
+
+
+def test_registry_env_override_is_used_and_reloaded(tmp_path: Path, monkeypatch):
+    registry_path = tmp_path / "registry.yaml"
+    monkeypatch.setenv("DQMC_REGISTRY_PATH", str(registry_path))
+    _write_registry(registry_path, "env_first", "env_density", "meas_eqlt/env_first")
+
+    first = resolve_registry_entry("env_density")
+
+    _write_registry(registry_path, "env_second", "env_density", "meas_eqlt/env_second")
+    second = resolve_registry_entry("env_density")
+
+    assert first["id"] == "env_first"
+    assert second["id"] == "env_second"
 
 
 def test_resolve_ambiguous_tail(tmp_path: Path):

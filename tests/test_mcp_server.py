@@ -1,5 +1,6 @@
 import asyncio
 import json
+from pathlib import Path
 
 from dqmc_mcp_server import build_server
 
@@ -75,6 +76,49 @@ def test_resolve_registry_entry_returns_json_safe_error():
     assert payload["ok"] is False
     assert payload["error_type"] == "registry_not_found"
     assert payload["details"]["name"] == "not-a-real-entry"
+
+
+def test_mcp_registry_path_reads_updated_registry_without_server_rebuild(tmp_path: Path):
+    registry_path = tmp_path / "registry.yaml"
+
+    def write_registry(entry_id: str, dataset_key: str) -> None:
+        registry_path.write_text(
+            f"""
+observables:
+  - id: {entry_id}
+    aliases: [hot_density]
+    code:
+      generation:
+        variable: {dataset_key}
+parameters: []
+""".strip(),
+            encoding="utf-8",
+        )
+
+    async def run():
+        server = build_server()
+        write_registry("mcp_first", "meas_eqlt/mcp_first")
+        first = _tool_json(
+            await server.call_tool(
+                "resolve_registry_entry",
+                {"name": "hot_density", "registry_path": str(registry_path)},
+            )
+        )
+        write_registry("mcp_second", "meas_eqlt/mcp_second")
+        second = _tool_json(
+            await server.call_tool(
+                "resolve_registry_entry",
+                {"name": "hot_density", "registry_path": str(registry_path)},
+            )
+        )
+        return first, second
+
+    first, second = _run(run())
+
+    assert first["id"] == "mcp_first"
+    assert first["dataset_key"] == "meas_eqlt/mcp_first"
+    assert second["id"] == "mcp_second"
+    assert second["dataset_key"] == "meas_eqlt/mcp_second"
 
 
 def test_describe_script_adapter_exposes_secondary_script_preflight():
