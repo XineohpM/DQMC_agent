@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from dqmc_tools.config import get_dqmc_dev_root
+from dqmc_tools.scripts.argparse_sync import sync_argparse_adapters
 from dqmc_tools.scripts.definitions import InputRequirement, ScriptDefinition
 
 
@@ -33,7 +34,7 @@ def _path_prop(flag: str, *, role: str | None = None, positional: bool = False, 
     return out
 
 
-DEFAULT_SCRIPT_CATALOG: tuple[ScriptDefinition, ...] = (
+_BASE_SCRIPT_CATALOG: tuple[ScriptDefinition, ...] = (
     ScriptDefinition(
         "gen_beta_scan",
         "Generate beta-scan HDF5 input files using dqmc-dev/scripts/gen_beta_scan.py.",
@@ -67,39 +68,6 @@ DEFAULT_SCRIPT_CATALOG: tuple[ScriptDefinition, ...] = (
         },
         required_inputs=(InputRequirement("generator", "file", "{generator_path}", required=False),),
         output_patterns=("{output_path}/**/*.h5", "{output_path}/**/*.params", "{output_path}/**/gen.log"),
-    ),
-    ScriptDefinition(
-        "gen_1band_unified_hub",
-        "Generate one-band Hubbard HDF5 inputs directly.",
-        "generation",
-        "writes_output",
-        _script("util/gen_1band_unified_hub.py"),
-        args_schema={"properties": {"args": {"raw_args": True}}},
-        output_patterns=("**/*.h5", "**/*.params"),
-    ),
-    ScriptDefinition(
-        "dqmc_info",
-        "Print metadata and parameter facts from HDF5 files.",
-        "analysis",
-        "read_only",
-        _script("util/info.py"),
-        args_schema={"properties": {"paths": {"raw_args": True}}},
-    ),
-    ScriptDefinition(
-        "dqmc_summary",
-        "Print sign, density, and local-moment summary from HDF5 files.",
-        "analysis",
-        "read_only",
-        _script("util/summary.py"),
-        args_schema={"properties": {"paths": {"raw_args": True}}},
-    ),
-    ScriptDefinition(
-        "print_n",
-        "Print density/filling information using dqmc-dev/util/print_n.py.",
-        "analysis",
-        "read_only",
-        _script("util/print_n.py"),
-        args_schema={"properties": {"paths": {"raw_args": True}}},
     ),
     ScriptDefinition(
         "check_h5_completion",
@@ -183,34 +151,11 @@ DEFAULT_SCRIPT_CATALOG: tuple[ScriptDefinition, ...] = (
         required_inputs=(),
         output_patterns=("**/*perbin*.npy",),
     ),
-    ScriptDefinition(
-        "make_bootstrap",
-        "Create bootstrap samples from per-bin imaginary-time data.",
-        "maxent",
-        "writes_output",
-        _script("scripts/make_bootstrap.py"),
-        args_schema=_props("dir", "file", "nboot", "block", "auto_block", "tau_idx", "block_mult", "min_M", "seed", "outprefix"),
-        required_inputs=(InputRequirement("perbin_file", "npy", "{dir}/{file}", shape_hint=(None, None)),),
-        parser_id="npy_manifest",
-        output_patterns=("{dir}/{outprefix}_*.npy",),
-    ),
-    ScriptDefinition(
-        "save_boot_stats",
-        "Save mean, covariance, and percentiles from bootstrap samples.",
-        "maxent",
-        "writes_output",
-        _script("scripts/save_boot_stats.py"),
-        args_schema=_props("boot", "outdir", "reg"),
-        required_inputs=(InputRequirement("boot", "npy", "{boot}", shape_hint=(None, None)),),
-        parser_id="npy_manifest",
-        output_patterns=("{outdir}/G_*.npy",),
-    ),
-    ScriptDefinition("run_maxent", "Run standard MaxEnt workflow.", "maxent", "writes_output", _script("scripts/run_maxent.py"), args_schema={"properties": {"args": {"raw_args": True}}}),
     ScriptDefinition("run_maxent_anneal", "Run MaxEnt annealing workflow.", "maxent", "writes_output", _script("scripts/run_maxent_anneal.py"), args_schema={"properties": {"args": {"raw_args": True}}}),
     ScriptDefinition("run_maxent_phoenix", "Run Phoenix MaxEnt workflow.", "maxent", "writes_output", _script("scripts/run_maxent_phoenix.py"), args_schema={"properties": {"args": {"raw_args": True}}}),
     ScriptDefinition("plot_dos", "Plot density of states from MaxEnt outputs.", "maxent", "writes_output", _script("scripts/plot_dos.py"), args_schema=_props("base", "items", "out", "output_name", "xmin", "xmax", "ymin", "ymax", "no_band"), required_inputs=(InputRequirement("base", "directory", "{base}"),), output_patterns=("{out}",)),
     ScriptDefinition("plot_double_occ", "Plot double occupancy.", "plot", "writes_output", _script("scripts/plot_double_occ.py"), args_schema=_props("path", "glob", "output_path", "out_prefix"), required_inputs=(InputRequirement("path", "directory", "{path}"),), output_patterns=("{output_path}/*double_occ*",)),
-    ScriptDefinition("plot_charge_order", "Plot charge order observables.", "plot", "writes_output", _script("scripts/plot_charge_order.py"), args_schema=_props("path", "output_path", "out_prefix"), required_inputs=(InputRequirement("path", "directory", "{path}"),), output_patterns=("{output_path}/*charge*",)),
+    ScriptDefinition("plot_charge_order", "Plot charge order observables.", "plot", "writes_output", _script("scripts/plot_charge_order.py"), args_schema=_props("path", "glob", "out_prefix", "vlim"), required_inputs=(InputRequirement("path", "directory", "{path}"),), output_patterns=("{path}/**/*charge*", "{path}/**/*S_cdw*")),
     ScriptDefinition("s_wave_pairing", "Compute and plot onsite s-wave pairing estimates.", "analysis", "writes_output", _script("scripts/s_wave_pairing.py"), args_schema=_props("path", "output_path", "out_prefix", "relpath_list"), required_inputs=(InputRequirement("path", "directory", "{path}"),), output_patterns=("{output_path}/*s_wave*",)),
     ScriptDefinition(
         "plot_JNJN",
@@ -225,19 +170,30 @@ DEFAULT_SCRIPT_CATALOG: tuple[ScriptDefinition, ...] = (
     ScriptDefinition("conductivity_plot", "Plot conductivity results.", "plot", "writes_output", _script("scripts/conductivity_plot.py"), args_schema=_props("base", "items", "out", "divide_pi", "xmax", "ymin", "ymax", "no_band"), required_inputs=(InputRequirement("base", "directory", "{base}"),), output_patterns=("{out}",)),
     ScriptDefinition("resistivity_proxy", "Compute resistivity proxy quantities.", "analysis", "writes_output", _script("scripts/resistivity_proxy.py"), args_schema={"properties": {"args": {"raw_args": True}}}),
     ScriptDefinition("resistivity_plot", "Plot resistivity from MaxEnt/proxy outputs.", "plot", "writes_output", _script("scripts/resistivity_plot.py"), args_schema=_props("base", "items", "out", "dc_method", "maxent_prefix", "maxent_subdir", "proxy1", "proxy2", "divide_pi", "convergence_plots", "linear_fit", "highT_slope"), required_inputs=(InputRequirement("base", "directory", "{base}"),), output_patterns=("{out}",)),
-    ScriptDefinition("push", "Push simulation files into a stack file.", "workflow", "mutates_workflow_files", _script("util/push.py"), args_schema={"properties": {"stackfile": {"positional": True, "position": 0, "path_role": "output"}, "files": {"positional": True, "position": 1}, "args": {"raw_args": True}}}),
     ScriptDefinition("run_stack_owners", "Run stack jobs with owner/worker organization.", "workflow", "mutates_workflow_files", _script("scripts/run_stack_owners.sh"), args_schema={"properties": {"args": {"raw_args": True}}}),
-    ScriptDefinition("run_stack_simes", "Run stack-style simulations.", "workflow", "mutates_workflow_files", _script("scripts/run_stack_simes.sh"), args_schema={"properties": {"args": {"raw_args": True}}}),
     ScriptDefinition("multi_dir_push_stack", "Push simulation files from multiple directories into stack files.", "workflow", "mutates_workflow_files", _script("scripts/multi_dir_push_stack.sh"), args_schema={"properties": {"args": {"raw_args": True}}}),
 )
 
 
+ARGPARSE_SYNC_RESULT = sync_argparse_adapters(_BASE_SCRIPT_CATALOG, scripts_root=ROOT / "scripts")
+DEFAULT_SCRIPT_CATALOG = ARGPARSE_SYNC_RESULT.adapters
+
+
 EXCLUDED_FIRST_PHASE_SCRIPTS = (
     "check_sum_rule",
+    "make_bootstrap",
+    "save_boot_stats",
+    "run_maxent",
+    "gen_1band_unified_hub",
+    "dqmc_info",
+    "dqmc_summary",
+    "print_n",
+    "push",
     "plot_compressibility_from_best_mu",
     "plot_compressibility_from_n_mu",
     "get_n_from_best_mu",
     "get_mu",
     "scripts/mu_tuning_*",
     "multi_dir_submit_sbatch",
+    "run_stack_simes",
 )

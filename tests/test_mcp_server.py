@@ -146,7 +146,7 @@ def test_run_script_adapter_requires_approval_for_execution():
         return await server.call_tool(
             "run_script_adapter",
             {
-                "script_id": "dqmc_info",
+                "script_id": "run_stack_owners",
                 "params": {},
                 "dry_run": False,
             },

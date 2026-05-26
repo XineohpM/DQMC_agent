@@ -8,6 +8,7 @@ from dqmc_tools.scripts import (
     describe_script_adapter,
     list_script_adapters,
 )
+from dqmc_tools.config import get_dqmc_dev_root
 
 
 def test_builtin_catalog_paths_exist_and_excludes_deferred_workflows():
@@ -18,12 +19,48 @@ def test_builtin_catalog_paths_exist_and_excludes_deferred_workflows():
     assert "check_warm" in script_ids
     assert "plot_JNJN" in script_ids
     assert "gen_beta_mu_scan" in script_ids
+    assert "make_bootstrap" not in script_ids
+    assert "save_boot_stats" not in script_ids
+    assert "run_maxent" not in script_ids
+    assert "run_stack_simes" not in script_ids
+    assert "gen_1band_unified_hub" not in script_ids
+    assert "dqmc_info" not in script_ids
+    assert "dqmc_summary" not in script_ids
+    assert "print_n" not in script_ids
+    assert "push" not in script_ids
     assert "check_sum_rule" not in script_ids
     assert "plot_compressibility_from_best_mu" not in script_ids
     assert "get_mu" not in script_ids
     assert "multi_dir_submit_sbatch" not in script_ids
     assert "check_sum_rule" in EXCLUDED_FIRST_PHASE_SCRIPTS
+    assert "make_bootstrap" in EXCLUDED_FIRST_PHASE_SCRIPTS
+    assert "save_boot_stats" in EXCLUDED_FIRST_PHASE_SCRIPTS
+    assert "run_maxent" in EXCLUDED_FIRST_PHASE_SCRIPTS
+    assert "run_stack_simes" in EXCLUDED_FIRST_PHASE_SCRIPTS
+    assert "gen_1band_unified_hub" in EXCLUDED_FIRST_PHASE_SCRIPTS
+    assert "dqmc_info" in EXCLUDED_FIRST_PHASE_SCRIPTS
+    assert "dqmc_summary" in EXCLUDED_FIRST_PHASE_SCRIPTS
+    assert "print_n" in EXCLUDED_FIRST_PHASE_SCRIPTS
+    assert "push" in EXCLUDED_FIRST_PHASE_SCRIPTS
     assert all(item["approval_required"] is True for item in scripts)
+
+
+def test_builtin_catalog_only_whitelists_dqmc_dev_scripts_directory():
+    scripts_dir = (get_dqmc_dev_root() / "scripts").resolve()
+
+    assert all(item.path.resolve().is_relative_to(scripts_dir) for item in DEFAULT_SCRIPT_CATALOG)
+
+
+def test_builtin_catalog_syncs_schema_from_argparse_sources():
+    description = describe_script_adapter("run_maxent_anneal")
+    properties = description["args_schema"]["properties"]
+
+    assert "args" not in properties
+    assert properties["base"]["flag"] == "--base"
+    assert properties["items"]["nargs"] == "+"
+    assert properties["sym"]["flag"] == "--sym"
+    assert properties["sym"]["false_flag"] == "--nonsym"
+    assert "data_file" in description["args_schema"]["required"]
 
 
 def test_plot_jnjn_documents_derived_input_preflight():

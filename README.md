@@ -62,7 +62,7 @@ registry 解析只使用真实字段：`id`、`aliases`、`code.generation.varia
 
 ## 脚本执行流程
 
-已有 `dqmc-dev/scripts` 和 `dqmc-dev/util` 是复用资产，不把每个脚本都重写成独立 MCP tool。统一入口是 `run_script_adapter`。
+已有 `dqmc-dev/scripts` 是复用资产，不把每个脚本都重写成独立 MCP tool。统一入口是 `run_script_adapter`。
 
 推荐流程：
 
@@ -74,17 +74,32 @@ registry 解析只使用真实字段：`id`、`aliases`、`code.generation.varia
 
 每次真实执行任何白名单脚本都必须逐次征求用户显式同意。第一版允许真实 input generation，也允许 workflow-mutating 工具，但不允许提交或取消 SLURM job。
 
+Python 白名单脚本的参数 schema 会从 `/Users/phoenixm/Desktop/dqmc-dev/scripts/` 中的 `argparse` 定义静态同步。同步只读取源码，不 import 或执行 `dqmc-dev` 脚本；shell 脚本仍保留 raw args。可用下面命令查看同步结果：
+
+```bash
+.venv/bin/python scripts/audit_script_adapters.py --json --no-fingerprints
+```
+
 ## 暂不接入
 
 第一版不接入：
 
 - `scripts/check_sum_rule.py`
+- `scripts/make_bootstrap.py`
+- `scripts/save_boot_stats.py`
+- `scripts/run_maxent.py`
+- `util/gen_1band_unified_hub.py`
+- `util/info.py`
+- `util/summary.py`
+- `util/print_n.py`
+- `util/push.py`
 - `scripts/plot_compressibility_from_best_mu.py`
 - `scripts/plot_compressibility_from_n_mu.py`
 - `scripts/get_n_from_best_mu.py`
 - `util/get_mu.py`
 - `scripts/mu_tuning_*`
 - `scripts/multi_dir_submit_sbatch.sh`
+- `scripts/run_stack_simes.sh`
 
 `plot_JNJN` 这类二级脚本只处理已派生的数据文件；运行前会检查所需的 `.npy` 等输入是否存在。
 

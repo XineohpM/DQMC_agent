@@ -176,8 +176,13 @@ def default_argv_builder(definition: ScriptDefinition, params: Mapping[str, Any]
             continue
         flag = spec.get("flag", f"--{name.replace('_', '-')}")
         if isinstance(value, bool):
-            if value:
+            if spec.get("action") == "store_false":
+                if value is False:
+                    command.append(flag)
+            elif value:
                 command.append(flag)
+            elif spec.get("false_flag"):
+                command.append(spec["false_flag"])
             continue
         if isinstance(value, (list, tuple)):
             command.append(flag)

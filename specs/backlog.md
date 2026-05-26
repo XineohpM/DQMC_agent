@@ -5,22 +5,29 @@
 ## 当前基线
 
 - [x] “手”层已经有第一版 MCP tools：`summarize_run`、`inspect_hdf5`、`read_dataset`、`resolve_registry_entry`、`read_registered_quantity`、`estimate_registered_observable`、`list_script_adapters`、`describe_script_adapter`、`run_script_adapter`、`query_slurm`。
-- [x] 当前测试可通过：`49 passed`。
+- [x] 当前测试可通过：`61 passed`。
 - [x] `registry.yaml` 是当前“手”层唯一被运行时代码真正读取的三份“眼睛”文件之一。
 - [x] `code_map.md` 和 `diagnostics_playbook.md` 目前没有被 `dqmc_tools/` 或 `dqmc_mcp_server.py` 运行时读取。
 - [x] `diagnostics_playbook.md` 当前只作为设计输入和人工知识来源；“手”层不自动执行 sign、Trotter、warmup、mu tuning、MaxEnt binning 等诊断判断。
 - [x] Slack bot 接入对象是 agent 整体，不是 MCP tools。
+- [x] 白名单 script adapter 当前只保留 `/Users/phoenixm/Desktop/dqmc-dev/scripts/` 下的脚本；`util/` 路径脚本已经移出白名单。
+- [x] 当前白名单 adapter 数量为 20；其中 18 个 Python 脚本可静态读取 `argparse`，2 个 shell 脚本保留 raw args。
 
 ## P0：先补质量和边界
 
 - [ ] 提高测试质量。
-  - 现状：测试能过，但大量测试仍是 mock、临时 HDF5、fake script 或 schema 检查。
+  - 现状：测试能过；`test_runs.py` 和 HDF5 读取类测试已改用真实 `data/T_0.1` fixture，仍保留少量 synthetic 测试用于缺失 dataset、精确 jackknife、runner subprocess、输出 parser 和 argv builder。
   - 目标：把测试从“接口能跑”提升到“真实工作流不容易坏”。
   - 建议拆分：
     - [ ] Contract tests：固定 MCP tools 输入输出 schema，避免 agent/Slack 层依赖字段漂移。
-    - [ ] Golden fixture tests：用 `data/T_0.1` 覆盖 `summarize_run`、`estimate_registered_observable`、log parsing、completion facts。
-    - [ ] Adapter integration smoke：覆盖真实 dqmc-dev script adapter 的 dry-run、preflight、缺输入、输出 manifest。
-    - [ ] Regression tests：覆盖 registry 变更、脚本参数变更、dqmc-dev 路径缺失、allowed roots fail-closed。
+    - [x] Adapter contract tests：固定真实 catalog 中 `run_maxent_anneal` argparse schema、shell raw args、approval 字段等关键契约。
+    - [x] Golden fixture tests：用 `data/T_0.1` 覆盖 `summarize_run`、`estimate_registered_observable`、log parsing、completion facts。
+    - [x] 将 `tests/test_runs.py` 从临时 synthetic run/HDF5/log 替换为真实 `data/T_0.1` run summary。
+    - [x] 将 `tests/test_hdf5.py` 的通用读取类测试替换为真实 `data/T_0.1/C_U-6_T0.1__0.h5`；仅保留 missing dataset 和小数组 jackknife 精确数值测试。
+    - [x] Adapter integration smoke：覆盖真实 dqmc-dev script adapter 的 dry-run、preflight 缺输入、output root 限制。
+    - [x] Regression tests：覆盖 registry 变更、脚本参数变更、dqmc-dev 路径缺失、allowed roots fail-closed。
+    - [x] 移除冗余 fake adapter tests：fake list/describe、fake dry-run、fake preflight、fake output-root rejection 已由真实 catalog 测试替代。
+    - [ ] 继续减少 fake tests：评估是否能用更真实的 fixture 替代剩余 fake subprocess/parser、monkeypatched SLURM 和临时 registry 测试。
 
 - [x] 明确本轮“眼睛”更新机制：`registry.yaml` 和 dqmc-dev script adapter。
   - [x] `registry.yaml`：当前调用时读取，通常不需要重启 MCP server。
@@ -37,12 +44,30 @@
     - `read_registered_quantity(n_sample_eqlt, mode=directory)` -> `meas_eqlt/n_sample`，shape `[100]`，mean `160000.0`。
     - `read_registered_quantity(sign_uneqlt, mode=directory)` -> `meas_uneqlt/sign`，shape `[100]`，mean `2000.0`。
     - `read_registered_quantity(n_sample_uneqlt, mode=directory)` -> `meas_uneqlt/n_sample`，shape `[100]`，mean `2000.0`。
-  - [ ] 后续增强：自动从脚本 `--help` 或结构化 spec 生成/校验 adapter schema。
+  - [x] 白名单收缩：移除所有原脚本路径不在 `dqmc-dev/scripts/` 下的 adapter。
+    - 移除项：`gen_1band_unified_hub`、`dqmc_info`、`dqmc_summary`、`print_n`、`push`。
+    - 第一阶段排除项同时包含此前移除的 `make_bootstrap`、`save_boot_stats`、`run_maxent`、`run_stack_simes`。
+  - [x] 新增静态 argparse 同步机制。
+    - 从当前白名单 adapter 出发，只读访问 `/Users/phoenixm/Desktop/dqmc-dev/scripts/` 下的对应源码。
+    - 不 import、不执行 dqmc-dev 脚本，避免副作用和运行环境依赖。
+    - 解析直接的 `argparse.ArgumentParser()`、`add_argument()`、argument group、mutually-exclusive group。
+    - 同步 flag、positional、required、type、choices、nargs、`store_true`/`store_false` 到 adapter `args_schema`。
+    - 保留 adapter 侧人工维护的 `path_role`、`required_inputs`、`output_patterns`、`parser_id` 和审批策略。
+  - [x] `scripts/audit_script_adapters.py` 现在报告 argparse 同步状态。
+    - 当前结果：`Argparse sync: 18 parsed, 2 skipped, 0 warnings`。
+    - `--json` 输出包含 `argparse_sync`、`argparse_parsers`、每个 parser 的 `schema_diff`。
+  - [x] runner 支持 `store_false` 和 `false_flag`，可处理 `--sym/--nonsym` 这类 argparse 互斥布尔参数。
+  - [x] 增加 adapter schema diff/report，清晰显示 dqmc-dev 脚本更新导致的参数新增、移除、changed fields、required 增减。
+  - [ ] 后续增强：为静态 argparse 同步补充更多边界场景。
+    - [ ] 支持跨 helper 函数添加参数的复杂 parser。
+    - [ ] 对 parser 中动态 default、动态 choices、无法静态解析的表达式输出 warning。
+    - [ ] 评估是否需要从 `--help` 补充静态 AST 无法覆盖的参数信息。
 
 - [ ] 明确其余“眼睛”文件的运行时接入方式。
   - [ ] `code_map.md`：当前不被运行时读取；若要生效，需要人工同步到 `dqmc_tools/scripts/builtin_catalog.py` 或新增生成/索引机制。
   - [ ] `diagnostics_playbook.md`：当前不被运行时读取；若要生效，需要新增只读 resource/tool、结构化 diagnostic registry，或 agent 层检索机制。
   - [ ] `dqmc_tools/scripts/builtin_catalog.py` 等代码：改动后需要重启 MCP server。
+  - [ ] `dqmc-dev/scripts/` 更新：重新运行 `scripts/audit_script_adapters.py` 可重新读取源码并更新当前 Python 进程内的 adapter schema；已运行的 MCP server 仍需要重启或重载。
 
 - [ ] 记录并测试“手”层边界。
   - [ ] MCP tools 只返回事实、路径、数组摘要、脚本结果和 structured error。
@@ -136,6 +161,8 @@
 ## 文档维护
 
 - [ ] 更新 README，明确三份“眼睛”文件的实际依赖形式。
+- [x] 更新 README，记录 script adapter 只复用 `dqmc-dev/scripts/`、argparse 静态同步和 audit 命令。
+- [x] 更新 script adapter 文档，记录白名单范围、argparse 同步范围和 shell raw args 边界。
 - [ ] 更新 script adapter 文档，说明 `code_map.md` 变化不会自动改变白名单。
 - [ ] 新增 agent/Slack 架构文档，说明 Slack bot 属于 agent transport。
 - [ ] 新增操作手册：registry 更新、playbook 更新、dqmc-dev 脚本更新、MCP server 重启条件。
