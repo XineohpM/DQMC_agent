@@ -3,6 +3,90 @@
 
 # Observables measured in DQMC
 observables:
+  # Equal-time sample count
+  - id: n_sample_eqlt
+    aliases: [nsample_eqlt, n_samples_eqlt, nsamp_eqlt, n_samp_eqlt, equal time nsamp, equal time nsamples, equal-time nsamp, equal-time nsamples]
+    physics:
+      definition: "Number of accumulated equal-time measurement samples."
+      formula: ['`n_sample_eqlt = number of calls to measure_eqlt()`']
+    code:
+      measurement: {file: meas.c, function: measure_eqlt(), variable: m->n_sample}
+      generation: {file: gen_1band_unified_hub.py, variable: meas_eqlt/n_sample, flags: [period_eqlt]}
+    requirements:
+      required_flags: ["period_eqlt > 0"]
+      limitations: []
+    normalization:
+      is_sign_weighted: false
+      hdf5_accumulator: "increment by 1 for each equal-time measurement"
+      final_average: "not divided by sign"
+      spatial_average: "none"
+      spin_type: none
+    units: count
+    data_layout: {type: int32, shape: [], index_convention: "scalar"}
+
+  # Equal-time sign
+  - id: sign_eqlt
+    aliases: [average sign eqlt, equal time sign, equal-time sign, eqlt sign]
+    physics:
+      definition: "Accumulated Monte Carlo phase/sign for equal-time measurements."
+      formula: ['`sign_eqlt = sum_samples phase`']
+    code:
+      measurement: {file: meas.c, function: measure_eqlt(), variable: m->sign}
+      generation: {file: gen_1band_unified_hub.py, variable: meas_eqlt/sign, flags: [period_eqlt]}
+    requirements:
+      required_flags: ["period_eqlt > 0"]
+      limitations: []
+    normalization:
+      is_sign_weighted: false
+      hdf5_accumulator: "sum phase over equal-time measurements"
+      final_average: "average sign is sign_eqlt/n_sample_eqlt"
+      spatial_average: "none"
+      spin_type: none
+    units: dimensionless
+    data_layout: {type: float_or_complex, shape: [], index_convention: "scalar"}
+
+  # Unequal-time sample count
+  - id: n_sample_uneqlt
+    aliases: [nsample_uneqlt, n_samples_uneqlt, nsamp_uneqlt, n_samp_uneqlt, unequal time nsamp, unequal time nsamples, unequal-time nsamp, unequal-time nsamples]
+    physics:
+      definition: "Number of accumulated unequal-time measurement samples."
+      formula: ['`n_sample_uneqlt = number of calls to measure_uneqlt()`']
+    code:
+      measurement: {file: meas.c, function: measure_uneqlt(), variable: m->n_sample}
+      generation: {file: gen_1band_unified_hub.py, variable: meas_uneqlt/n_sample, flags: [period_uneqlt]}
+    requirements:
+      required_flags: ["period_uneqlt > 0"]
+      limitations: []
+    normalization:
+      is_sign_weighted: false
+      hdf5_accumulator: "increment by 1 for each unequal-time measurement"
+      final_average: "not divided by sign"
+      spatial_average: "none"
+      spin_type: none
+    units: count
+    data_layout: {type: int32, shape: [], index_convention: "scalar"}
+
+  # Unequal-time sign
+  - id: sign_uneqlt
+    aliases: [average sign uneqlt, unequal time sign, unequal-time sign, uneqlt sign]
+    physics:
+      definition: "Accumulated Monte Carlo phase/sign for unequal-time measurements."
+      formula: ['`sign_uneqlt = sum_samples phase`']
+    code:
+      measurement: {file: meas.c, function: measure_uneqlt(), variable: m->sign}
+      generation: {file: gen_1band_unified_hub.py, variable: meas_uneqlt/sign, flags: [period_uneqlt]}
+    requirements:
+      required_flags: ["period_uneqlt > 0"]
+      limitations: []
+    normalization:
+      is_sign_weighted: false
+      hdf5_accumulator: "sum phase over unequal-time measurements"
+      final_average: "average sign is sign_uneqlt/n_sample_uneqlt"
+      spatial_average: "none"
+      spin_type: none
+    units: dimensionless
+    data_layout: {type: float_or_complex, shape: [], index_convention: "scalar"}
+
   # Density
   - id: density
     aliases:
