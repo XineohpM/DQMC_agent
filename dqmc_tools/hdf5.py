@@ -1,419 +1,398 @@
-"""Read-only HDF5 inspection and observable reading."""
+"""Safe wrappers around dqmc-dev util.py HDF5 helpers."""
 
 from __future__ import annotations
 
+import importlib.util
+from functools import lru_cache
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any, Iterable, Literal
 
-import h5py
 import numpy as np
 
-from dqmc_tools.errors import HDF5ReadError
-from dqmc_tools.observables import load_observable_registry, resolve_observable
+from dqmc_tools.config import get_dqmc_dev_root
+from dqmc_tools.errors import HDF5ReadError, InvalidArgumentError, RegistryError
 from dqmc_tools.paths import require_allowed_path
+from dqmc_tools.registry import resolve_registry_entry
 
 
-METADATA_KEYS = ("beta", "dt", "L", "Nx", "Ny", "U", "mu", "sign", "n_sample")
-DEFAULT_ERROR_DATASET_SUFFIXES = (
-    "_err",
-    "_error",
-    "_stderr",
-    "_std_error",
-    "_jackknife_err",
-    "_jk_err",
-)
+ReadMode = Literal["file", "firstfile", "directory"]
 
 
 def inspect_hdf5(
     path: str | Path,
+    dataset_keys: Iterable[str],
     *,
-    max_preview_items: int = 8,
-    max_objects: int = 1000,
+    mode: ReadMode = "file",
+    max_items: int = 1024,
     allowed_roots: Iterable[str | Path] | str | Path | None = None,
+    registry_path: str | Path | None = None,
 ) -> dict[str, Any]:
-    """Inspect an HDF5 file read-only without loading large datasets."""
+    """Inspect explicitly requested datasets through dqmc-dev util.py wrappers."""
+
+    keys = [_resolve_dataset_key(item, registry_path=registry_path) for item in dataset_keys]
+    if not keys:
+        raise InvalidArgumentError(
+            "inspect_hdf5 requires at least one explicit dataset key or registry name.",
+            details={"dataset_keys": list(dataset_keys)},
+        )
 
     resolved = require_allowed_path(path, allowed_roots)
-    groups: list[dict[str, Any]] = []
-    datasets: list[dict[str, Any]] = []
-    truncated = False
-
-    try:
-        with h5py.File(resolved, "r") as handle:
-            for name, item in _iter_hdf5_objects(handle):
-                if len(groups) + len(datasets) >= max_objects:
-                    truncated = True
-                    break
-                object_path = _h5_abs_path(name)
-                if isinstance(item, h5py.Group):
-                    groups.append({
-                        "path": object_path,
-                        "attrs": _attrs_to_dict(item.attrs),
-                    })
-                elif isinstance(item, h5py.Dataset):
-                    datasets.append(_dataset_info(item, object_path, max_preview_items))
-    except OSError as exc:
-        raise HDF5ReadError(
-            "HDF5 file could not be opened read-only.",
-            details={"path": resolved, "reason": str(exc)},
-        ) from exc
+    datasets = []
+    errors = []
+    for key in keys:
+        try:
+            datasets.append(read_dataset(resolved, key, mode=mode, max_items=max_items, allowed_roots=[resolved]))
+        except Exception as exc:  # keep per-key failures factual
+            errors.append({
+                "dataset_key": key,
+                "error_type": exc.__class__.__name__,
+                "message": str(exc),
+            })
 
     return {
         "ok": True,
         "path": str(resolved),
-        "groups": groups,
+        "mode": mode,
+        "util_function": _util_function_name(mode),
         "datasets": datasets,
-        "truncated": truncated,
-        "limits": {
-            "max_preview_items": max_preview_items,
-            "max_objects": max_objects,
-        },
+        "errors": errors,
+        "limits": {"max_items": max_items},
     }
 
 
 def read_dataset(
     path: str | Path,
-    dataset_path: str,
+    dataset_key: str,
     *,
+    mode: ReadMode = "file",
     max_items: int = 1024,
     allowed_roots: Iterable[str | Path] | str | Path | None = None,
 ) -> dict[str, Any]:
-    """Read a dataset summary from an HDF5 file read-only."""
+    """Read one explicit dataset key through dqmc-dev util.py."""
 
     resolved = require_allowed_path(path, allowed_roots)
-    normalized_dataset_path = _normalize_h5_path(dataset_path)
+    key = _require_dataset_key(dataset_key)
+    data = _read_keys(resolved, [key], mode=mode)[0]
+    return {
+        "ok": True,
+        "path": str(resolved),
+        "mode": mode,
+        "util_function": _util_function_name(mode),
+        "dataset_key": key,
+        "dataset": _array_summary(data, max_items=max_items),
+    }
 
-    try:
-        with h5py.File(resolved, "r") as handle:
-            if normalized_dataset_path not in handle:
-                raise HDF5ReadError(
-                    "Dataset path was not found in the HDF5 file.",
-                    details={
-                        "path": resolved,
-                        "dataset_path": normalized_dataset_path,
-                    },
-                )
-            dataset = handle[normalized_dataset_path]
-            if not isinstance(dataset, h5py.Dataset):
-                raise HDF5ReadError(
-                    "HDF5 path exists but is not a dataset.",
-                    details={
-                        "path": resolved,
-                        "dataset_path": normalized_dataset_path,
-                    },
-                )
 
+def read_registered_quantity(
+    path: str | Path,
+    name: str,
+    *,
+    mode: ReadMode = "file",
+    max_items: int = 1024,
+    allowed_roots: Iterable[str | Path] | str | Path | None = None,
+    registry_path: str | Path | None = None,
+) -> dict[str, Any]:
+    """Resolve a registry entry and read its dataset facts without error estimation."""
+
+    entry = resolve_registry_entry(name, registry_path=registry_path)
+    resolved = require_allowed_path(path, allowed_roots)
+    attempts = _candidate_dataset_keys(entry)
+    last_error: Exception | None = None
+    for key in attempts:
+        try:
+            data = _read_keys(resolved, [key], mode=mode)[0]
             return {
                 "ok": True,
                 "path": str(resolved),
-                "dataset_path": normalized_dataset_path,
-                "dataset": _dataset_summary(dataset, max_items=max_items),
+                "mode": mode,
+                "util_function": _util_function_name(mode),
+                "registry_entry": entry,
+                "dataset_key": key,
+                "candidate_dataset_keys": attempts,
+                "dataset": _array_summary(data, max_items=max_items),
+                "error": None,
+                "error_note": "Single-file/direct reads do not estimate observable errors.",
             }
-    except HDF5ReadError:
-        raise
-    except OSError as exc:
-        raise HDF5ReadError(
-            "HDF5 file could not be opened read-only.",
-            details={"path": resolved, "reason": str(exc)},
-        ) from exc
+        except Exception as exc:
+            last_error = exc
+
+    raise HDF5ReadError(
+        "Registered quantity could not be read from any candidate dataset key.",
+        details={
+            "name": name,
+            "path": resolved,
+            "candidate_dataset_keys": attempts,
+            "last_error": str(last_error) if last_error else None,
+        },
+    )
 
 
 def read_observable(
     path: str | Path,
     observable_name: str,
     *,
+    mode: ReadMode = "file",
     max_items: int = 1024,
     allowed_roots: Iterable[str | Path] | str | Path | None = None,
     registry_path: str | Path | None = None,
 ) -> dict[str, Any]:
-    """Read a registered observable from an HDF5 file."""
+    """Compatibility wrapper for reading one registered observable directly."""
 
-    observable = resolve_observable(observable_name, registry_path)
-    dataset_path = str(observable.get("h5_path", ""))
-    if not dataset_path:
-        raise HDF5ReadError(
-            "Resolved observable does not define an HDF5 path.",
-            details={"observable_name": observable_name, "observable": observable},
-        )
-
-    dataset_result = read_dataset(
+    entry = resolve_registry_entry(
+        observable_name,
+        entry_type="observable",
+        registry_path=registry_path,
+    )
+    return read_registered_quantity(
         path,
-        dataset_path,
+        str(entry["id"]),
+        mode=mode,
         max_items=max_items,
         allowed_roots=allowed_roots,
+        registry_path=registry_path,
     )
-    resolved = Path(dataset_result["path"])
+
+
+def estimate_registered_observable(
+    directory: str | Path,
+    observable_name: str,
+    *,
+    estimator: Literal["jackknife", "jackknife_noniid"] = "jackknife",
+    dataset_keys_override: dict[str, str] | None = None,
+    max_items: int = 1024,
+    allowed_roots: Iterable[str | Path] | str | Path | None = None,
+    registry_path: str | Path | None = None,
+) -> dict[str, Any]:
+    """Estimate mean/error for a registered observable across a group of HDF5 files."""
+
+    entry = resolve_registry_entry(
+        observable_name,
+        entry_type="observable",
+        registry_path=registry_path,
+    )
+    resolved = require_allowed_path(directory, allowed_roots)
+    if not resolved.is_dir():
+        raise HDF5ReadError(
+            "Jackknife estimation requires a directory of HDF5 files.",
+            details={"path": resolved},
+        )
+
+    keys = _estimation_keys(entry, dataset_keys_override)
+    util = _dqmc_util()
+    directory_arg = _directory_arg(resolved)
 
     try:
-        with h5py.File(resolved, "r") as handle:
-            metadata = _extract_metadata(handle, dataset_path, max_items=max_items)
-            error = _extract_error(
-                handle,
-                observable,
-                dataset_path,
-                registry_path=registry_path,
-                max_items=max_items,
+        if estimator == "jackknife":
+            sign, values = util.load(directory_arg, keys["sign"], keys["value"])
+            estimate = util.jackknife(sign, values)
+        elif estimator == "jackknife_noniid":
+            n_sample, sign, values = util.load(
+                directory_arg,
+                keys["n_sample"],
+                keys["sign"],
+                keys["value"],
             )
-    except OSError as exc:
+            estimate = util.jackknife_noniid(n_sample, sign, values)
+        else:
+            raise InvalidArgumentError(
+                "Unsupported estimator.",
+                details={"estimator": estimator, "supported": ["jackknife", "jackknife_noniid"]},
+            )
+    except InvalidArgumentError:
+        raise
+    except Exception as exc:
         raise HDF5ReadError(
-            "HDF5 file could not be opened read-only.",
-            details={"path": resolved, "reason": str(exc)},
+            "Registered observable could not be estimated with jackknife.",
+            details={
+                "directory": resolved,
+                "observable_name": observable_name,
+                "dataset_keys": keys,
+                "estimator": estimator,
+                "reason": str(exc),
+            },
         ) from exc
 
+    file_count = len(sorted(resolved.glob("*.h5")))
     return {
         "ok": True,
-        "path": dataset_result["path"],
-        "observable": observable,
-        "dataset_path": dataset_result["dataset_path"],
-        "dataset": dataset_result["dataset"],
-        "error": error,
-        "uncertainty": error,
-        "metadata": metadata,
-    }
-
-
-def _iter_hdf5_objects(handle: h5py.File):
-    items: list[tuple[str, h5py.Group | h5py.Dataset]] = []
-    handle.visititems(lambda name, item: items.append((name, item)))
-    return sorted(items, key=lambda pair: pair[0])
-
-
-def _dataset_info(dataset: h5py.Dataset, path: str, max_preview_items: int) -> dict[str, Any]:
-    info = {
-        "path": path,
-        "shape": list(dataset.shape),
-        "dtype": str(dataset.dtype),
-        "attrs": _attrs_to_dict(dataset.attrs),
-        "size": int(dataset.size),
-        "preview": None,
-        "preview_truncated": dataset.size > max_preview_items,
-    }
-    if dataset.size <= max_preview_items:
-        info["preview"] = _preview_dataset(dataset)
-    return info
-
-
-def _dataset_summary(dataset: h5py.Dataset, *, max_items: int) -> dict[str, Any]:
-    summary: dict[str, Any] = {
-        "shape": list(dataset.shape),
-        "dtype": str(dataset.dtype),
-        "attrs": _attrs_to_dict(dataset.attrs),
-        "summary": {
-            "size": int(dataset.size),
-            "truncated": dataset.size > max_items,
-            "preview": None,
+        "directory": str(resolved),
+        "registry_entry": entry,
+        "dataset_keys": keys,
+        "estimator": estimator,
+        "util_function": estimator,
+        "hdf5_file_count": file_count,
+        "estimate": {
+            "mean": _json_safe(np.asarray(estimate[0])),
+            "error": _json_safe(np.asarray(estimate[1])),
+            "shape": list(np.asarray(estimate[0]).shape),
         },
+        "raw_estimate": _array_summary(np.asarray(estimate), max_items=max_items),
     }
 
-    if dataset.size <= max_items:
-        data = np.asarray(dataset[()])
-        flat = data.reshape(-1) if data.shape else data.reshape(1)
-        preview = [_json_safe(item) for item in flat.tolist()]
-        summary["summary"]["preview"] = preview
-        if dataset.size == 1:
-            summary["summary"]["value"] = preview[0] if preview else None
-        if np.issubdtype(data.dtype, np.number) and dataset.size > 0:
-            summary["summary"]["min"] = _json_safe(np.nanmin(data))
-            summary["summary"]["max"] = _json_safe(np.nanmax(data))
-            summary["summary"]["mean"] = _json_safe(np.nanmean(data))
 
+def _read_keys(path: Path, keys: list[str], *, mode: ReadMode) -> tuple[Any, ...]:
+    util = _dqmc_util()
+    try:
+        if mode == "file":
+            return util.load_file(str(path), *keys)
+        if mode == "firstfile":
+            return util.load_firstfile(_directory_arg(path), *keys)
+        if mode == "directory":
+            result = util.load(_directory_arg(path), *keys)
+            if result is None:
+                raise HDF5ReadError(
+                    "No HDF5 files matched directory read.",
+                    details={"path": path, "keys": keys},
+                )
+            return result
+    except HDF5ReadError:
+        raise
+    except Exception as exc:
+        raise HDF5ReadError(
+            "Dataset could not be read through dqmc-dev util.py.",
+            details={"path": path, "dataset_keys": keys, "mode": mode, "reason": str(exc)},
+        ) from exc
+    raise InvalidArgumentError(
+        "Unsupported read mode.",
+        details={"mode": mode, "supported": ["file", "firstfile", "directory"]},
+    )
+
+
+@lru_cache(maxsize=1)
+def _dqmc_util():
+    util_path = get_dqmc_dev_root() / "util" / "util.py"
+    if not util_path.exists():
+        raise HDF5ReadError(
+            "dqmc-dev util.py was not found.",
+            details={"path": util_path},
+        )
+    spec = importlib.util.spec_from_file_location("_dqmc_dev_util", util_path)
+    if spec is None or spec.loader is None:
+        raise HDF5ReadError(
+            "dqmc-dev util.py could not be loaded.",
+            details={"path": util_path},
+        )
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def _resolve_dataset_key(value: str, *, registry_path: str | Path | None) -> str:
+    raw = _require_dataset_key(value)
+    if "/" in raw:
+        return raw.strip("/")
+    try:
+        return str(resolve_registry_entry(raw, registry_path=registry_path)["dataset_key"]).strip("/")
+    except RegistryError:
+        return raw
+
+
+def _candidate_dataset_keys(entry: dict[str, Any]) -> list[str]:
+    dataset_key = str(entry.get("dataset_key", "")).strip("/")
+    candidates = [dataset_key] if dataset_key else []
+    if entry.get("entry_type") == "parameter" and dataset_key and "/" not in dataset_key:
+        candidates.extend([f"metadata/{dataset_key}", f"params/{dataset_key}"])
+    return list(dict.fromkeys(item for item in candidates if item))
+
+
+def _estimation_keys(entry: dict[str, Any], override: dict[str, str] | None) -> dict[str, str]:
+    if override:
+        value = override.get("value")
+        sign = override.get("sign")
+        n_sample = override.get("n_sample")
+        if not value or not sign:
+            raise InvalidArgumentError(
+                "dataset_keys_override must include at least value and sign.",
+                details={"dataset_keys_override": override},
+            )
+        return {
+            "value": _require_dataset_key(value),
+            "sign": _require_dataset_key(sign),
+            "n_sample": _require_dataset_key(n_sample or _default_peer_key(value, "n_sample")),
+        }
+
+    value = _require_dataset_key(str(entry.get("dataset_key", "")))
+    sign = _default_peer_key(value, "sign")
+    n_sample = _default_peer_key(value, "n_sample")
+    return {"value": value, "sign": sign, "n_sample": n_sample}
+
+
+def _default_peer_key(dataset_key: str, peer: str) -> str:
+    parts = _require_dataset_key(dataset_key).split("/")
+    if len(parts) <= 1:
+        return peer
+    return "/".join([*parts[:-1], peer])
+
+
+def _require_dataset_key(dataset_key: str) -> str:
+    key = str(dataset_key).strip().strip("/")
+    if not key:
+        raise InvalidArgumentError(
+            "Dataset key must be a non-empty string.",
+            details={"dataset_key": dataset_key},
+        )
+    return key
+
+
+def _directory_arg(path: Path) -> str:
+    text = str(path)
+    return text if text.endswith("/") else f"{text}/"
+
+
+def _util_function_name(mode: ReadMode) -> str:
+    return {
+        "file": "load_file",
+        "firstfile": "load_firstfile",
+        "directory": "load",
+    }.get(mode, str(mode))
+
+
+def _array_summary(value: Any, *, max_items: int) -> dict[str, Any]:
+    data = np.asarray(value)
+    flat = data.reshape(-1) if data.shape else data.reshape(1)
+    summary: dict[str, Any] = {
+        "shape": list(data.shape),
+        "dtype": str(data.dtype),
+        "size": int(data.size),
+        "truncated": data.size > max_items,
+        "preview": None,
+    }
+    if data.size <= max_items:
+        summary["preview"] = [_json_safe(item) for item in flat.tolist()]
+        if data.size == 1:
+            summary["value"] = summary["preview"][0]
+        summary.update(_numeric_summary(data))
     return summary
 
 
-def _extract_metadata(
-    handle: h5py.File,
-    dataset_path: str,
-    *,
-    max_items: int,
-) -> dict[str, Any]:
-    metadata: dict[str, Any] = {}
-    measurement_group = _measurement_group_for(dataset_path)
-
-    for key in METADATA_KEYS:
-        candidates = _metadata_candidates(key, measurement_group)
-        for candidate in candidates:
-            if candidate in handle and isinstance(handle[candidate], h5py.Dataset):
-                dataset = handle[candidate]
-                value = _metadata_value(dataset, max_items=max_items)
-                metadata[key] = value
-                break
-
-    return metadata
-
-
-def _extract_error(
-    handle: h5py.File,
-    observable: dict[str, Any],
-    dataset_path: str,
-    *,
-    registry_path: str | Path | None,
-    max_items: int,
-) -> dict[str, Any]:
-    method = _error_method(observable, registry_path)
-    candidates = _error_candidates(observable, dataset_path, registry_path)
-    checked: list[str] = []
-
-    for candidate in candidates:
-        normalized = _normalize_h5_path(candidate)
-        checked.append(normalized)
-        if normalized in handle and isinstance(handle[normalized], h5py.Dataset):
-            dataset = handle[normalized]
-            return {
-                "available": True,
-                "method": method,
-                "dataset_path": normalized,
-                "dataset": _dataset_summary(dataset, max_items=max_items),
-                "candidates_checked": checked,
-            }
-
-    return {
-        "available": False,
-        "method": method,
-        "dataset_path": None,
-        "dataset": None,
-        "candidates_checked": checked,
-        "reason": "no_error_dataset_found",
-    }
-
-
-def _error_method(
-    observable: dict[str, Any],
-    registry_path: str | Path | None,
-) -> str:
-    nested = observable.get("uncertainty")
-    if isinstance(nested, dict) and nested.get("method"):
-        return str(nested["method"])
-    if observable.get("error_method"):
-        return str(observable["error_method"])
-
-    conventions = _uncertainty_conventions(registry_path)
-    return str(conventions.get("default_error_method", "unknown"))
-
-
-def _error_candidates(
-    observable: dict[str, Any],
-    dataset_path: str,
-    registry_path: str | Path | None,
-) -> list[str]:
-    candidates: list[str] = []
-    for key in (
-        "error_h5_path",
-        "error_dataset",
-    ):
-        value = observable.get(key)
-        if value:
-            candidates.append(str(value))
-
-    for key in (
-        "error_h5_paths",
-        "error_h5_path_candidates",
-        "error_dataset_candidates",
-    ):
-        candidates.extend(_as_str_list(observable.get(key)))
-
-    nested = observable.get("uncertainty")
-    if isinstance(nested, dict):
-        for key in ("h5_path", "error_dataset"):
-            if nested.get(key):
-                candidates.append(str(nested[key]))
-        for key in ("h5_paths", "h5_path_candidates", "error_dataset_candidates"):
-            candidates.extend(_as_str_list(nested.get(key)))
-
-    base = _normalize_h5_path(dataset_path)
-    conventions = _uncertainty_conventions(registry_path)
-    suffixes = _as_str_list(conventions.get("default_error_dataset_suffixes"))
-    if not suffixes:
-        suffixes = list(DEFAULT_ERROR_DATASET_SUFFIXES)
-    candidates.extend(f"{base}{suffix}" for suffix in suffixes)
-
-    return list(dict.fromkeys(_normalize_h5_path(item) for item in candidates if item))
-
-
-def _uncertainty_conventions(registry_path: str | Path | None) -> dict[str, Any]:
-    try:
-        registry = load_observable_registry(registry_path)
-    except Exception:
+def _numeric_summary(data: np.ndarray) -> dict[str, Any]:
+    if data.size == 0 or not np.issubdtype(data.dtype, np.number):
         return {}
-    conventions = registry.get("uncertainty_conventions", {})
-    return conventions if isinstance(conventions, dict) else {}
-
-
-def _as_str_list(value: Any) -> list[str]:
-    if value is None:
-        return []
-    if isinstance(value, str):
-        return [value]
-    if isinstance(value, (list, tuple)):
-        return [str(item) for item in value if str(item).strip()]
-    return [str(value)]
-
-
-def _metadata_candidates(key: str, measurement_group: str | None) -> list[str]:
-    candidates = []
-    if key in {"sign", "n_sample"} and measurement_group:
-        candidates.append(f"/{measurement_group}/{key}")
-    candidates.extend([
-        f"/metadata/{key}",
-        f"/params/{key}",
-    ])
-    if key in {"sign", "n_sample"}:
-        candidates.extend([
-            "/meas_eqlt/" + key,
-            "/meas_uneqlt/" + key,
-        ])
-    return list(dict.fromkeys(candidates))
-
-
-def _metadata_value(dataset: h5py.Dataset, *, max_items: int) -> Any:
-    result = _dataset_summary(dataset, max_items=max_items)
-    summary = result["summary"]
-    if "value" in summary:
-        return summary["value"]
+    if np.issubdtype(data.dtype, np.complexfloating):
+        abs_data = np.abs(data)
+        return {
+            "mean_real": _json_safe(np.nanmean(data.real)),
+            "mean_imag": _json_safe(np.nanmean(data.imag)),
+            "abs_min": _json_safe(np.nanmin(abs_data)),
+            "abs_max": _json_safe(np.nanmax(abs_data)),
+            "abs_mean": _json_safe(np.nanmean(abs_data)),
+        }
     return {
-        "shape": result["shape"],
-        "dtype": result["dtype"],
-        "summary": summary,
+        "min": _json_safe(np.nanmin(data)),
+        "max": _json_safe(np.nanmax(data)),
+        "mean": _json_safe(np.nanmean(data)),
     }
-
-
-def _measurement_group_for(dataset_path: str) -> str | None:
-    parts = _normalize_h5_path(dataset_path).strip("/").split("/")
-    if parts and parts[0] in {"meas_eqlt", "meas_uneqlt"}:
-        return parts[0]
-    return None
-
-
-def _preview_dataset(dataset: h5py.Dataset) -> Any:
-    data = dataset[()]
-    return _json_safe(data)
-
-
-def _attrs_to_dict(attrs: h5py.AttributeManager) -> dict[str, Any]:
-    return {str(key): _json_safe(value) for key, value in attrs.items()}
-
-
-def _normalize_h5_path(path: str) -> str:
-    stripped = str(path).strip()
-    if not stripped:
-        return ""
-    return stripped if stripped.startswith("/") else f"/{stripped}"
-
-
-def _h5_abs_path(name: str) -> str:
-    return "/" + name.strip("/")
 
 
 def _json_safe(value: Any) -> Any:
     if value is None or isinstance(value, (str, int, float, bool)):
         return value
-    if isinstance(value, bytes):
-        return value.decode("utf-8", errors="replace")
+    if isinstance(value, complex):
+        return {"real": value.real, "imag": value.imag}
     if isinstance(value, np.generic):
         return _json_safe(value.item())
     if isinstance(value, np.ndarray):
         as_list = value.tolist()
-        if isinstance(as_list, list):
-            return [_json_safe(item) for item in as_list]
         return _json_safe(as_list)
     if isinstance(value, (list, tuple)):
         return [_json_safe(item) for item in value]

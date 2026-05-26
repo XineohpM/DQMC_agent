@@ -7,26 +7,35 @@ import shutil
 import subprocess
 from typing import Any
 
-from dqmc_tools.errors import InvalidFilterError, ToolUnavailableError
+from dqmc_tools.errors import InvalidArgumentError, ToolUnavailableError
 
 
 SUPPORTED_FILTERS = {"user", "job_id", "state", "partition"}
-FALLBACK_COLUMNS = ("job_id", "name", "user", "state", "time_used", "time_limit", "partition", "nodes")
+FALLBACK_COLUMNS = (
+    "job_id",
+    "name",
+    "user",
+    "state",
+    "time_used",
+    "time_limit",
+    "partition",
+    "nodes",
+)
 
 
 def query_slurm(filters: dict[str, Any] | None = None) -> dict[str, Any]:
-    """Query SLURM job status using read-only local commands."""
+    """Query SLURM job status with read-only squeue."""
 
     parsed_filters = _validate_filters(filters or {})
     squeue_path = shutil.which("squeue")
     if not squeue_path:
         raise ToolUnavailableError(
-            "SLURM command `squeue` is not available on this system.",
+            "SLURM command `squeue` is not available.",
             details={"command": "squeue"},
         )
 
     json_command = _build_squeue_command(squeue_path, parsed_filters, json_output=True)
-    attempted: list[list[str]] = [json_command]
+    attempted = [json_command]
     json_result = _run_command(json_command)
     if json_result.returncode == 0:
         try:
@@ -68,11 +77,10 @@ def query_slurm(filters: dict[str, Any] | None = None) -> dict[str, Any]:
 def _validate_filters(filters: dict[str, Any]) -> dict[str, str]:
     unknown = sorted(set(filters) - SUPPORTED_FILTERS)
     if unknown:
-        raise InvalidFilterError(
+        raise InvalidArgumentError(
             "Unsupported SLURM filters were provided.",
             details={"unsupported_filters": unknown, "supported_filters": sorted(SUPPORTED_FILTERS)},
         )
-
     parsed: dict[str, str] = {}
     for key, value in filters.items():
         if value is None or str(value).strip() == "":
@@ -81,12 +89,7 @@ def _validate_filters(filters: dict[str, Any]) -> dict[str, str]:
     return parsed
 
 
-def _build_squeue_command(
-    squeue_path: str,
-    filters: dict[str, str],
-    *,
-    json_output: bool,
-) -> list[str]:
+def _build_squeue_command(squeue_path: str, filters: dict[str, str], *, json_output: bool) -> list[str]:
     args = [squeue_path]
     if json_output:
         args.append("--json")
@@ -106,13 +109,7 @@ def _build_squeue_command(
 
 def _run_command(args: list[str]) -> subprocess.CompletedProcess[str]:
     try:
-        return subprocess.run(
-            args,
-            capture_output=True,
-            text=True,
-            check=False,
-            timeout=30,
-        )
+        return subprocess.run(args, capture_output=True, text=True, check=False, timeout=30)
     except OSError as exc:
         raise ToolUnavailableError(
             "SLURM command could not be executed.",
@@ -126,7 +123,7 @@ def _run_command(args: list[str]) -> subprocess.CompletedProcess[str]:
 
 
 def _parse_fallback_rows(stdout: str) -> list[dict[str, str]]:
-    rows: list[dict[str, str]] = []
+    rows = []
     for line in stdout.splitlines():
         if not line.strip():
             continue

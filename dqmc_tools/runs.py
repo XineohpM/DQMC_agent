@@ -1,251 +1,158 @@
-"""Run directory discovery and factual summaries."""
+"""Summaries for explicitly provided DQMC run directories."""
 
 from __future__ import annotations
 
-import os
-from datetime import datetime
+import re
 from pathlib import Path
 from typing import Any, Iterable
 
-from dqmc_tools.errors import InvalidFilterError, PathResolutionError
-from dqmc_tools.hdf5 import inspect_hdf5
-from dqmc_tools.observables import list_observables
+from dqmc_tools.hdf5 import read_dataset, read_registered_quantity
 from dqmc_tools.paths import require_allowed_path
+from dqmc_tools.registry import list_registry_entries
 
 
 HDF5_SUFFIXES = {".h5", ".hdf5"}
-LOG_SUFFIXES = {".log", ".out", ".err"}
-JOB_SUFFIXES = {".slurm", ".sbatch", ".sh"}
-SKIP_DIRS = {
-    ".git",
-    "__pycache__",
-    ".pytest_cache",
-    ".mypy_cache",
-    ".venv",
-    "venv",
-    "node_modules",
-    "build",
-    "dist",
-    "dqmc_tools.egg-info",
-}
-SUPPORTED_FILTERS = {"name_contains", "modified_after", "modified_before", "has_hdf5"}
-
-
-def list_runs(
-    root: str | Path,
-    filters: dict[str, Any] | None = None,
-    *,
-    max_runs: int = 200,
-    allowed_roots: Iterable[str | Path] | str | Path | None = None,
-) -> list[dict[str, Any]]:
-    """List candidate DQMC run directories under an allowed root."""
-
-    root_path = require_allowed_path(root, allowed_roots)
-    if not root_path.is_dir():
-        raise PathResolutionError(
-            "Run-listing root must be a directory.",
-            details={"path": root_path},
-        )
-
-    parsed_filters = _validate_filters(filters or {})
-    runs: list[dict[str, Any]] = []
-
-    for directory in _iter_directories(root_path):
-        summary = _directory_summary(directory)
-        if not _is_run_candidate(summary):
-            continue
-        if not _matches_filters(summary, parsed_filters):
-            continue
-        runs.append(summary)
-        if len(runs) >= max_runs:
-            break
-
-    runs.sort(key=lambda item: (-item["mtime"], item["path"]))
-    return runs
+METADATA_KEYS = (
+    "metadata/beta",
+    "metadata/U",
+    "metadata/mu",
+    "metadata/Nx",
+    "metadata/Ny",
+    "params/dt",
+    "params/L",
+    "params/n_sweep",
+    "params/n_sweep_warm",
+    "params/n_sweep_meas",
+    "params/period_eqlt",
+    "params/period_uneqlt",
+    "meas_eqlt/sign",
+    "meas_eqlt/n_sample",
+)
 
 
 def summarize_run(
     path: str | Path,
     *,
     max_files: int = 20,
+    max_registry_entries: int = 100,
+    max_log_chars: int = 4000,
     allowed_roots: Iterable[str | Path] | str | Path | None = None,
+    registry_path: str | Path | None = None,
 ) -> dict[str, Any]:
-    """Return a compact factual summary of a DQMC run directory."""
+    """Summarize a user-provided run directory without discovering runs."""
 
     run_path = require_allowed_path(path, allowed_roots)
     if not run_path.is_dir():
-        raise PathResolutionError(
-            "Run path must be a directory.",
-            details={"path": run_path},
-        )
+        raise NotADirectoryError(f"Run path must be a directory: {run_path}")
 
-    hdf5_files = _find_hdf5_files(run_path, max_files=max_files)
-    observables = list_observables()
-    observable_paths = {
-        str(item.get("h5_path", "")): str(item.get("repo_id", ""))
-        for item in observables
-        if item.get("h5_path") and item.get("repo_id")
-    }
+    hdf5_files = _hdf5_files(run_path)
+    metadata = _metadata_facts(run_path, allowed_roots=[run_path])
+    available, missing = _registry_availability(
+        run_path,
+        max_entries=max_registry_entries,
+        allowed_roots=[run_path],
+        registry_path=registry_path,
+    )
 
-    files = []
-    for hdf5_path in hdf5_files:
-        inspection = inspect_hdf5(hdf5_path, allowed_roots=[run_path])
-        dataset_paths = {item["path"] for item in inspection["datasets"]}
-        available = [
-            {"repo_id": repo_id, "h5_path": h5_path}
-            for h5_path, repo_id in sorted(observable_paths.items())
-            if h5_path in dataset_paths
-        ]
-        missing = [
-            {"repo_id": repo_id, "h5_path": h5_path}
-            for h5_path, repo_id in sorted(observable_paths.items())
-            if h5_path not in dataset_paths
-        ]
-        files.append({
-            "path": str(hdf5_path),
-            "relative_path": str(hdf5_path.relative_to(run_path)),
-            "datasets": len(inspection["datasets"]),
-            "groups": len(inspection["groups"]),
-            "available_observables": available,
-            "missing_observables": missing,
-            "metadata": _metadata_from_inspection(inspection),
-            "inspection_truncated": inspection["truncated"],
-        })
-
+    reported_files = hdf5_files[:max_files]
     return {
         "ok": True,
         "path": str(run_path),
         "name": run_path.name,
-        "mtime": run_path.stat().st_mtime,
-        "mtime_iso": _mtime_iso(run_path),
-        "hdf5_file_count": _count_hdf5_files(run_path),
-        "reported_hdf5_file_count": len(files),
-        "hdf5_files_truncated": _count_hdf5_files(run_path) > len(files),
-        "hdf5_files": files,
-        "limits": {"max_files": max_files},
+        "hdf5_file_count": len(hdf5_files),
+        "reported_hdf5_file_count": len(reported_files),
+        "hdf5_files_truncated": len(hdf5_files) > len(reported_files),
+        "hdf5_files": [
+            {
+                "path": str(item),
+                "relative_path": str(item.relative_to(run_path)),
+                "size_bytes": item.stat().st_size,
+                "log": _sibling_log_facts(item, max_chars=max_log_chars),
+            }
+            for item in reported_files
+        ],
+        "metadata": metadata,
+        "available_registry_entries": available,
+        "missing_registry_entries": missing,
+        "limits": {
+            "max_files": max_files,
+            "max_registry_entries": max_registry_entries,
+            "max_log_chars": max_log_chars,
+        },
     }
 
 
-def _iter_directories(root: Path):
-    yield root
-    for current_root, dirs, _files in os.walk(root):
-        dirs[:] = [item for item in dirs if item not in SKIP_DIRS]
-        for dirname in sorted(dirs):
-            yield Path(current_root) / dirname
-
-
-def _directory_summary(directory: Path) -> dict[str, Any]:
-    files = [item for item in directory.iterdir() if item.is_file()]
-    hdf5_count = sum(1 for item in files if item.suffix.lower() in HDF5_SUFFIXES)
-    log_count = sum(1 for item in files if item.suffix.lower() in LOG_SUFFIXES)
-    job_count = sum(1 for item in files if item.suffix.lower() in JOB_SUFFIXES)
-    stat = directory.stat()
-    return {
-        "path": str(directory),
-        "name": directory.name,
-        "mtime": stat.st_mtime,
-        "mtime_iso": _mtime_iso(directory),
-        "hdf5_file_count": hdf5_count,
-        "log_file_count": log_count,
-        "job_file_count": job_count,
-    }
-
-
-def _is_run_candidate(summary: dict[str, Any]) -> bool:
-    return (
-        summary["hdf5_file_count"] > 0
-        or summary["log_file_count"] > 0
-        or summary["job_file_count"] > 0
+def _hdf5_files(path: Path) -> list[Path]:
+    return sorted(
+        item for item in path.iterdir()
+        if item.is_file() and item.suffix.lower() in HDF5_SUFFIXES
     )
 
 
-def _validate_filters(filters: dict[str, Any]) -> dict[str, Any]:
-    unknown = sorted(set(filters) - SUPPORTED_FILTERS)
-    if unknown:
-        raise InvalidFilterError(
-            "Unsupported run filters were provided.",
-            details={"unsupported_filters": unknown, "supported_filters": sorted(SUPPORTED_FILTERS)},
-        )
-
-    parsed = dict(filters)
-    for key in ("modified_after", "modified_before"):
-        if key in parsed and parsed[key] is not None:
-            parsed[key] = _parse_time_filter(parsed[key], key)
-    if "has_hdf5" in parsed and not isinstance(parsed["has_hdf5"], bool):
-        raise InvalidFilterError(
-            "`has_hdf5` filter must be a boolean.",
-            details={"filter": "has_hdf5", "value": parsed["has_hdf5"]},
-        )
-    return parsed
-
-
-def _matches_filters(summary: dict[str, Any], filters: dict[str, Any]) -> bool:
-    name_contains = filters.get("name_contains")
-    if name_contains and str(name_contains).lower() not in summary["name"].lower():
-        return False
-    if "has_hdf5" in filters:
-        has_hdf5 = summary["hdf5_file_count"] > 0
-        if has_hdf5 != filters["has_hdf5"]:
-            return False
-    if "modified_after" in filters and summary["mtime"] < filters["modified_after"]:
-        return False
-    if "modified_before" in filters and summary["mtime"] > filters["modified_before"]:
-        return False
-    return True
-
-
-def _parse_time_filter(value: Any, filter_name: str) -> float:
-    if isinstance(value, (int, float)):
-        return float(value)
-    if isinstance(value, str):
-        try:
-            return datetime.fromisoformat(value).timestamp()
-        except ValueError as exc:
-            raise InvalidFilterError(
-                "Time filter must be a Unix timestamp or ISO datetime string.",
-                details={"filter": filter_name, "value": value},
-            ) from exc
-    raise InvalidFilterError(
-        "Time filter must be a Unix timestamp or ISO datetime string.",
-        details={"filter": filter_name, "value": value},
-    )
-
-
-def _find_hdf5_files(root: Path, *, max_files: int) -> list[Path]:
-    files = []
-    for current_root, dirs, filenames in os.walk(root):
-        dirs[:] = [item for item in dirs if item not in SKIP_DIRS]
-        for filename in sorted(filenames):
-            candidate = Path(current_root) / filename
-            if candidate.suffix.lower() in HDF5_SUFFIXES:
-                files.append(candidate.resolve())
-                if len(files) >= max_files:
-                    return files
-    return files
-
-
-def _count_hdf5_files(root: Path) -> int:
-    count = 0
-    for current_root, dirs, filenames in os.walk(root):
-        dirs[:] = [item for item in dirs if item not in SKIP_DIRS]
-        count += sum(1 for name in filenames if Path(name).suffix.lower() in HDF5_SUFFIXES)
-    return count
-
-
-def _metadata_from_inspection(inspection: dict[str, Any]) -> dict[str, Any]:
-    datasets = {item["path"]: item for item in inspection["datasets"]}
+def _metadata_facts(path: Path, *, allowed_roots: list[Path]) -> dict[str, Any]:
     out: dict[str, Any] = {}
-    for family in ("metadata", "params", "meas_eqlt", "meas_uneqlt"):
-        for key in ("beta", "dt", "L", "Nx", "Ny", "U", "mu", "sign", "n_sample"):
-            path = f"/{family}/{key}"
-            if key not in out and path in datasets:
-                preview = datasets[path].get("preview")
-                if isinstance(preview, list) and len(preview) == 1:
-                    out[key] = preview[0]
-                elif preview is not None:
-                    out[key] = preview
+    for key in METADATA_KEYS:
+        try:
+            result = read_dataset(path, key, mode="firstfile", max_items=16, allowed_roots=allowed_roots)
+        except Exception:
+            continue
+        summary = result["dataset"]
+        out[key] = summary.get("value", summary)
     return out
 
 
-def _mtime_iso(path: Path) -> str:
-    return datetime.fromtimestamp(path.stat().st_mtime).isoformat(timespec="seconds")
+def _registry_availability(
+    path: Path,
+    *,
+    max_entries: int,
+    allowed_roots: list[Path],
+    registry_path: str | Path | None,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    available = []
+    missing = []
+    entries = list_registry_entries(registry_path=registry_path)[:max_entries]
+    for entry in entries:
+        item = {
+            "entry_type": entry.get("entry_type"),
+            "id": entry.get("id"),
+            "dataset_key": entry.get("dataset_key"),
+        }
+        try:
+            result = read_registered_quantity(
+                path,
+                str(entry.get("id", "")),
+                mode="firstfile",
+                max_items=0,
+                allowed_roots=allowed_roots,
+                registry_path=registry_path,
+            )
+            item["resolved_dataset_key"] = result["dataset_key"]
+            item["shape"] = result["dataset"]["shape"]
+            item["dtype"] = result["dataset"]["dtype"]
+            available.append(item)
+        except Exception as exc:
+            item["reason"] = str(exc)
+            missing.append(item)
+    return available, missing
+
+
+def _sibling_log_facts(hdf5_file: Path, *, max_chars: int) -> dict[str, Any]:
+    log_path = Path(str(hdf5_file) + ".log")
+    if not log_path.exists():
+        return {"exists": False, "path": str(log_path)}
+    text = log_path.read_text(encoding="utf-8", errors="replace")
+    tail = text[-max_chars:]
+    sweep_matches = list(re.finditer(r"(\d+)\s*/\s*(\d+)\s+sweeps completed", text))
+    last_sweep = None
+    if sweep_matches:
+        last = sweep_matches[-1]
+        last_sweep = {"completed": int(last.group(1)), "total": int(last.group(2))}
+    return {
+        "exists": True,
+        "path": str(log_path),
+        "size_bytes": log_path.stat().st_size,
+        "tail": tail,
+        "has_saving_data_marker": "saving data to disk" in text,
+        "has_save_success_marker": "sim_data_save() succeeded" in text,
+        "last_sweep": last_sweep,
+    }
