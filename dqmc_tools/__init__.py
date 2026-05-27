@@ -61,6 +61,7 @@ from dqmc_tools.scripts import (
     run_script_adapter,
 )
 from dqmc_tools.slurm import get_slurm_job_detail, query_slurm, query_slurm_history
+from dqmc_tools.slurm_paths import infer_slurm_path_candidates
 from dqmc_tools.slurm_presenter import format_slurm_status_summary
 
 __version__ = "0.1.0"
@@ -98,6 +99,7 @@ __all__ = [
     "describe_script_adapter",
     "run_script_adapter",
     "get_slurm_job_detail",
+    "infer_slurm_path_candidates",
     "query_slurm",
     "query_slurm_history",
     "format_slurm_status_summary",

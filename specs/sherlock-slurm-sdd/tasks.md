@@ -131,19 +131,19 @@
 
 ## Phase L4：Job 到 run/output path 关联
 
-- [ ] 定义 `path_candidates` schema。
-- [ ] 写 `sacct.WorkDir` high-confidence candidate test。
-- [ ] 写 stdout/stderr parent candidate test。
-- [ ] 写多个候选不猜 test。
-- [ ] 写越过 allowed roots 的路径拒绝或不可访问 test。
-- [ ] 实现纯推断 helper。
+- [x] 定义 `path_candidates` schema。
+- [x] 写 `sacct.WorkDir` high-confidence candidate test。
+- [x] 写 stdout/stderr parent candidate test。
+- [x] 写多个候选不猜 test。
+- [x] 写越过 allowed roots 的路径拒绝或不可访问 test。
+- [x] 实现纯推断 helper。
 - [ ] 对候选 run path 可调用现有 `summarize_run` 做 bounded 验证。
 
 验收：
 
-- [ ] path candidates schema 稳定。
-- [ ] 不做大目录扫描。
-- [ ] 路径边界 fail closed。
+- [x] path candidates schema 稳定。
+- [x] 不做大目录扫描。
+- [x] 路径边界 fail closed。
 - [ ] 成功关联后可衔接 `summarize_run`。
 
 ## Phase L4 的 Sherlock 验证步骤

@@ -4,8 +4,8 @@
 
 ## 当前基线
 
-- [x] “手”层已经有第一版 MCP tools：`summarize_run`、`inspect_hdf5`、`read_dataset`、`resolve_registry_entry`、`read_registered_quantity`、`estimate_registered_observable`、`list_script_adapters`、`describe_script_adapter`、`run_script_adapter`、`query_slurm`。
-- [x] 当前测试可通过：`70 passed`。
+- [x] “手”层已经有第一版 MCP tools：`summarize_run`、`inspect_hdf5`、`read_dataset`、`resolve_registry_entry`、`read_registered_quantity`、`estimate_registered_observable`、`list_script_adapters`、`describe_script_adapter`、`run_script_adapter`、`query_slurm`、`query_slurm_history`、`get_slurm_job_detail`、`infer_slurm_path_candidates`。
+- [x] 当前测试可通过：`102 passed`。
 - [x] `registry.yaml` 是当前“手”层唯一被运行时代码真正读取的三份“眼睛”文件之一。
 - [x] `code_map.md` 和 `diagnostics_playbook.md` 目前没有被 `dqmc_tools/` 或 `dqmc_mcp_server.py` 运行时读取。
 - [x] `diagnostics_playbook.md` 当前只作为设计输入和人工知识来源；“手”层不自动执行 sign、Trotter、warmup、mu tuning、MaxEnt binning 等诊断判断。
@@ -21,8 +21,8 @@
   - 建议拆分：
     - [x] Contract tests：固定核心 MCP tools 输入输出 schema，避免 agent/Slack 层依赖字段漂移。
       - 覆盖文件：`tests/test_mcp_contracts.py`。
-      - 成功路径：`summarize_run`、`read_dataset`、`inspect_hdf5`、`read_registered_quantity`、`estimate_registered_observable`、`list_script_adapters`、`describe_script_adapter`、`run_script_adapter(dry_run=true)`、`query_slurm`。
-      - 错误路径：`path_not_allowed`、`user_approval_required`、`tool_unavailable` 的 MCP 层 JSON-safe error contract。
+      - 成功路径：`summarize_run`、`read_dataset`、`inspect_hdf5`、`read_registered_quantity`、`estimate_registered_observable`、`list_script_adapters`、`describe_script_adapter`、`run_script_adapter(dry_run=true)`、`query_slurm`、`query_slurm_history`、`get_slurm_job_detail`、`infer_slurm_path_candidates`。
+      - 错误路径：`path_not_allowed`、`user_approval_required`、`tool_unavailable`、`invalid_argument` 的 MCP 层 JSON-safe error contract。
       - 记录 MCP 层细节：顶层 list 返回在 `FastMCP.call_tool` structured content 中表现为 `{"result": [...]}`。
     - [x] Adapter contract tests：固定真实 catalog 中 `run_maxent_anneal` argparse schema、shell raw args、approval 字段等关键契约。
     - [x] Golden fixture tests：用 `data/T_0.1` 覆盖 `summarize_run`、`estimate_registered_observable`、log parsing、completion facts。
@@ -140,27 +140,28 @@
 
 ## P2：已结束任务状态补全
 
-- [ ] 实现 `query_slurm_history` / `sacct` 只读历史查询。
+- [x] 实现 `query_slurm_history` / `sacct` 只读历史查询。
   - 对应 `sherlock-slurm-sdd` Phase L2。
-  - [ ] 新增 MCP tool：`query_slurm_history`。
-  - [ ] 使用 `sacct --parsable2 --noheader` 和字段白名单。
-  - [ ] 支持 filters：me、user、job_id、state、start、end、partition、max_rows。
-  - [ ] 返回 state counts、exit code counts、warnings。
-  - [ ] `sacct` 不可用时返回 structured `tool_unavailable`。
+  - [x] 新增 MCP tool：`query_slurm_history`。
+  - [x] 使用 `sacct --parsable2 --noheader` 和字段白名单。
+  - [x] 支持 filters：me、user、job_id、state、start、end、partition、max_rows。
+  - [x] 返回 state counts、exit code counts、warnings。
+  - [x] `sacct` 不可用时返回 structured `tool_unavailable`。
   - [ ] 在 Sherlock 上确认 `sacct` 可用性、默认时间窗口、`WorkDir` 和 array job 格式。
 
-- [ ] Job id 详情入口。
+- [x] Job id 详情入口。
   - 对应 `sherlock-slurm-sdd` Phase L3。
-  - [ ] 新增 `get_slurm_job_detail`。
-  - [ ] 当前队列优先查 `query_slurm`，需要历史时查 `query_slurm_history`。
-  - [ ] 支持 array parent/task id。
-  - [ ] 多个匹配返回 candidates，不猜。
+  - [x] 新增 `get_slurm_job_detail`。
+  - [x] 当前队列优先查 `query_slurm`，需要历史时查 `query_slurm_history`。
+  - [x] 支持 array parent/task id。
+  - [x] 多个匹配返回 candidates，不猜。
 
-- [ ] Job 到 run/output path 候选关联。
+- [x] Job 到 run/output path 候选关联。
   - 对应 `sherlock-slurm-sdd` Phase L4。
-  - [ ] 候选来源：`sacct WorkDir`、stdout/stderr parent、submit cwd、用户显式 path。
-  - [ ] 不做大目录扫描。
-  - [ ] 路径必须在 allowed roots 内，越界 fail closed。
+  - [x] 候选来源：`sacct WorkDir`、stdout/stderr parent、用户显式 path。
+  - [x] 不做大目录扫描。
+  - [x] 路径必须在 allowed roots 内，越界 fail closed。
+  - [ ] submit cwd 需要 Sherlock 真实字段确认后补 fixture。
 
 ## P3：提交 SLURM 任务
 

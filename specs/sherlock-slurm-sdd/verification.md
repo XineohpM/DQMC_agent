@@ -38,7 +38,7 @@ DQMC_DEV_ROOT=/Users/phoenixm/Desktop/dqmc-dev .venv/bin/python -m pytest
 
 结果：
 
-- `96 passed in 8.72s`
+- `102 passed in 8.52s`
 
 ## Phase L1 本地 Presenter
 
@@ -106,6 +106,27 @@ DQMC_DEV_ROOT=/Users/phoenixm/Desktop/dqmc-dev .venv/bin/python -m pytest
 - array parent 返回多个 candidates，具体 task id 只返回对应 candidate。
 - 空 job id structured error。
 - MCP tool set 和 success/error contract。
+
+## Phase L4 本地 Path Candidates
+
+命令：
+
+```bash
+.venv/bin/python -m pytest tests/test_slurm_paths.py tests/test_mcp_contracts.py::test_infer_slurm_path_candidates_mcp_success_contract tests/test_mcp_server.py::test_mcp_tool_set_has_current_hands_surface tests/test_mcp_server.py::test_mcp_descriptions_match_current_registry_and_run_rules -q
+```
+
+结果：
+
+- `8 passed`
+
+覆盖：
+
+- `sacct.WorkDir` 生成 high-confidence candidate。
+- stdout/stderr parent 分别生成 medium-confidence candidate，不做唯一猜测。
+- allowed roots 外路径标记为 inaccessible 和 `outside_allowed_roots`。
+- 同一路径去重并保留更高 confidence evidence。
+- 用户显式 path 作为 high-confidence candidate。
+- MCP tool set 和 success contract。
 
 ## Sherlock 环境基线
 

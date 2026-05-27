@@ -38,6 +38,7 @@ def test_mcp_tool_set_has_current_hands_surface():
         "query_slurm",
         "query_slurm_history",
         "get_slurm_job_detail",
+        "infer_slurm_path_candidates",
     }
 
 
@@ -56,6 +57,7 @@ def test_mcp_descriptions_match_current_registry_and_run_rules():
     assert "grouped summary by job name and array job id" in descriptions["query_slurm"]
     assert "local sacct" in descriptions["query_slurm_history"]
     assert "current squeue first" in descriptions["get_slurm_job_detail"]
+    assert "path candidates" in descriptions["infer_slurm_path_candidates"]
 
 
 def test_resolve_registry_entry_uses_real_registry_shape():

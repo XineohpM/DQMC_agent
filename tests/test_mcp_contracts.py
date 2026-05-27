@@ -425,3 +425,39 @@ def test_get_slurm_job_detail_mcp_error_contract():
     assert payload["ok"] is False
     assert payload["error_type"] == "invalid_argument"
     assert payload["details"] == {"job_id": " "}
+
+
+def test_infer_slurm_path_candidates_mcp_success_contract(tmp_path: Path):
+    run_path = tmp_path / "run123"
+    run_path.mkdir()
+
+    payload = _run(_call_tool(
+        "infer_slurm_path_candidates",
+        {
+            "job_detail": {
+                "candidates": [
+                    {
+                        "source": "sacct",
+                        "job_id": "123",
+                        "work_dir": str(run_path),
+                    }
+                ],
+            },
+            "allowed_roots": [str(tmp_path)],
+        },
+    ))
+
+    assert set(payload) == {"ok", "path_candidates", "warnings"}
+    assert payload["ok"] is True
+    assert payload["path_candidates"] == [
+        {
+            "path": str(run_path.resolve()),
+            "confidence": "high",
+            "evidence": "sacct.WorkDir",
+            "accessible": True,
+            "within_allowed_roots": True,
+            "rejection_reason": "",
+            "source_job_id": "123",
+        }
+    ]
+    assert payload["warnings"] == []

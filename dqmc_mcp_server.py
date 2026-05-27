@@ -19,6 +19,7 @@ from dqmc_tools.scripts.runner import run_script_adapter as dqmc_run_script_adap
 from dqmc_tools.slurm import get_slurm_job_detail as dqmc_get_slurm_job_detail
 from dqmc_tools.slurm import query_slurm as dqmc_query_slurm
 from dqmc_tools.slurm import query_slurm_history as dqmc_query_slurm_history
+from dqmc_tools.slurm_paths import infer_slurm_path_candidates as dqmc_infer_slurm_path_candidates
 
 
 SERVER_INSTRUCTIONS = (
@@ -313,6 +314,29 @@ def build_server() -> FastMCP:
     def get_slurm_job_detail(job_id: str, include_history: bool = True) -> dict[str, Any]:
         try:
             return dqmc_get_slurm_job_detail(job_id, include_history=include_history)
+        except Exception as exc:
+            return error_dict(exc)
+
+    @server.tool(
+        name="infer_slurm_path_candidates",
+        description=(
+            "Infer read-only SLURM run/output path candidates from job detail "
+            "facts. This does not scan directories. It returns path candidates "
+            "with evidence, confidence, and allowed-roots accessibility. "
+            "Parameters: job_detail, optional allowed_roots, user_path."
+        ),
+    )
+    def infer_slurm_path_candidates(
+        job_detail: dict[str, Any],
+        allowed_roots: list[str] | None = None,
+        user_path: str | None = None,
+    ) -> dict[str, Any]:
+        try:
+            return dqmc_infer_slurm_path_candidates(
+                job_detail,
+                allowed_roots=allowed_roots,
+                user_path=user_path,
+            )
         except Exception as exc:
             return error_dict(exc)
 
