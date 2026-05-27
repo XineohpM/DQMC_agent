@@ -3,7 +3,7 @@ import subprocess
 import pytest
 
 from dqmc_tools.errors import InvalidArgumentError, ToolUnavailableError
-from dqmc_tools.slurm import query_slurm
+from dqmc_tools.slurm import query_slurm, query_slurm_history
 
 
 def test_query_slurm_unavailable(monkeypatch):
@@ -209,6 +209,155 @@ def test_query_slurm_groups_fallback_array_rows(monkeypatch):
     scan_group = _group_by_name(result, "scan_mu")
     assert scan_group["array_job_count"] == 1
     assert _array_group(scan_group, "300")["array_task_ids"] == ["0", "1"]
+
+
+def test_query_slurm_history_unavailable(monkeypatch):
+    monkeypatch.setattr("dqmc_tools.slurm.shutil.which", lambda _name: None)
+
+    with pytest.raises(ToolUnavailableError):
+        query_slurm_history()
+
+
+def test_query_slurm_history_rejects_unknown_filter(monkeypatch):
+    monkeypatch.setattr("dqmc_tools.slurm.shutil.which", lambda _name: "sacct")
+
+    with pytest.raises(InvalidArgumentError):
+        query_slurm_history({"account": "abc"})
+
+
+def test_query_slurm_history_timeout(monkeypatch):
+    monkeypatch.setattr("dqmc_tools.slurm.shutil.which", lambda _name: "sacct")
+
+    def fake_run(args, **_kwargs):
+        raise subprocess.TimeoutExpired(cmd=args, timeout=30)
+
+    monkeypatch.setattr("dqmc_tools.slurm.subprocess.run", fake_run)
+
+    with pytest.raises(ToolUnavailableError) as exc_info:
+        query_slurm_history()
+
+    assert exc_info.value.details == {
+        "command": [
+            "sacct",
+            "--parsable2",
+            "--noheader",
+            "--format=JobID,JobName,User,State,ExitCode,Elapsed,Timelimit,Submit,Start,End,Partition,NodeList,WorkDir",
+        ],
+        "timeout_seconds": 30,
+    }
+
+
+def test_query_slurm_history_builds_sacct_command_and_parses_rows(monkeypatch):
+    monkeypatch.setattr("dqmc_tools.slurm.shutil.which", lambda _name: "sacct")
+    monkeypatch.setattr("dqmc_tools.slurm.getpass.getuser", lambda: "phoenix")
+
+    def fake_run(args, **_kwargs):
+        return subprocess.CompletedProcess(
+            args=args,
+            returncode=0,
+            stdout=(
+                "100|scan_T|phoenix|COMPLETED|0:0|00:10:00|01:00:00|"
+                "2026-05-26T10:00:00|2026-05-26T10:01:00|2026-05-26T10:11:00|normal|node001|/oak/run100\n"
+                "101|scan_T|phoenix|FAILED|1:0|00:05:00|01:00:00|"
+                "2026-05-26T11:00:00|2026-05-26T11:01:00|2026-05-26T11:06:00|normal|node002|/oak/run101\n"
+                "102|scan_T|phoenix|TIMEOUT|0:1|01:00:00|01:00:00|"
+                "2026-05-26T12:00:00|2026-05-26T12:01:00|2026-05-26T13:01:00|normal|node003|/oak/run102\n"
+                "103|scan_T|phoenix|OUT_OF_MEMORY|0:125|00:20:00|01:00:00|"
+                "2026-05-26T14:00:00|2026-05-26T14:01:00|2026-05-26T14:21:00|normal|node004|/oak/run103\n"
+            ),
+            stderr="",
+        )
+
+    monkeypatch.setattr("dqmc_tools.slurm.subprocess.run", fake_run)
+
+    result = query_slurm_history({
+        "me": True,
+        "state": "FAILED,TIMEOUT",
+        "start": "2026-05-25",
+        "end": "2026-05-27",
+        "partition": "normal",
+    })
+
+    assert result["ok"] is True
+    assert result["source"] == "sacct_parsable2"
+    assert result["command"][:3] == ["sacct", "--parsable2", "--noheader"]
+    assert "--user" in result["command"]
+    assert "phoenix" in result["command"]
+    assert "--state" in result["command"]
+    assert "--starttime" in result["command"]
+    assert "--endtime" in result["command"]
+    assert "--partition" in result["command"]
+    assert result["jobs"][0] == {
+        "job_id": "100",
+        "job_name": "scan_T",
+        "user": "phoenix",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "elapsed": "00:10:00",
+        "time_limit": "01:00:00",
+        "submit": "2026-05-26T10:00:00",
+        "start": "2026-05-26T10:01:00",
+        "end": "2026-05-26T10:11:00",
+        "partition": "normal",
+        "node_list": "node001",
+        "work_dir": "/oak/run100",
+    }
+    assert result["summary"] == {
+        "total_jobs": 4,
+        "state_counts": {
+            "COMPLETED": 1,
+            "FAILED": 1,
+            "OUT_OF_MEMORY": 1,
+            "TIMEOUT": 1,
+        },
+        "exit_code_counts": {"0:0": 1, "0:1": 1, "0:125": 1, "1:0": 1},
+    }
+    assert result["warnings"] == []
+
+
+def test_query_slurm_history_applies_job_filter_and_max_rows(monkeypatch):
+    monkeypatch.setattr("dqmc_tools.slurm.shutil.which", lambda _name: "sacct")
+
+    def fake_run(args, **_kwargs):
+        return subprocess.CompletedProcess(
+            args=args,
+            returncode=0,
+            stdout=(
+                "200|a|phoenix|COMPLETED|0:0|00:01:00|01:00:00||||normal|node001|/run/a\n"
+                "201|b|phoenix|FAILED|1:0|00:01:00|01:00:00||||normal|node002|/run/b\n"
+            ),
+            stderr="",
+        )
+
+    monkeypatch.setattr("dqmc_tools.slurm.subprocess.run", fake_run)
+
+    result = query_slurm_history({"job_id": "200", "max_rows": 1})
+
+    assert "--jobs" in result["command"]
+    assert "200" in result["command"]
+    assert len(result["jobs"]) == 1
+    assert result["summary"]["total_jobs"] == 1
+    assert result["warnings"] == ["Result truncated to max_rows=1."]
+
+
+def test_query_slurm_history_warns_on_short_rows(monkeypatch):
+    monkeypatch.setattr("dqmc_tools.slurm.shutil.which", lambda _name: "sacct")
+
+    def fake_run(args, **_kwargs):
+        return subprocess.CompletedProcess(
+            args=args,
+            returncode=0,
+            stdout="300|short|phoenix|COMPLETED|0:0\n",
+            stderr="",
+        )
+
+    monkeypatch.setattr("dqmc_tools.slurm.subprocess.run", fake_run)
+
+    result = query_slurm_history()
+
+    assert result["jobs"][0]["job_id"] == "300"
+    assert result["jobs"][0]["work_dir"] == ""
+    assert result["warnings"] == ["1 sacct row(s) had fewer fields than expected."]
 
 
 def json_jobs(jobs):

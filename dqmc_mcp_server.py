@@ -17,6 +17,7 @@ from dqmc_tools.scripts.runner import describe_script_adapter as dqmc_describe_s
 from dqmc_tools.scripts.runner import list_script_adapters as dqmc_list_script_adapters
 from dqmc_tools.scripts.runner import run_script_adapter as dqmc_run_script_adapter
 from dqmc_tools.slurm import query_slurm as dqmc_query_slurm
+from dqmc_tools.slurm import query_slurm_history as dqmc_query_slurm_history
 
 
 SERVER_INSTRUCTIONS = (
@@ -282,6 +283,21 @@ def build_server() -> FastMCP:
     def query_slurm(filters: dict[str, Any] | None = None) -> dict[str, Any]:
         try:
             return dqmc_query_slurm(filters=filters)
+        except Exception as exc:
+            return error_dict(exc)
+
+    @server.tool(
+        name="query_slurm_history",
+        description=(
+            "Query read-only historical SLURM job status with local sacct. "
+            "This never submits, cancels, or mutates jobs. Returns parsed "
+            "sacct rows plus state and exit-code counts. Parameters: optional "
+            "filters with me, user, job_id, state, start, end, partition, or max_rows."
+        ),
+    )
+    def query_slurm_history(filters: dict[str, Any] | None = None) -> dict[str, Any]:
+        try:
+            return dqmc_query_slurm_history(filters=filters)
         except Exception as exc:
             return error_dict(exc)
 

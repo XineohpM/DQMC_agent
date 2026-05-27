@@ -36,6 +36,7 @@ def test_mcp_tool_set_has_current_hands_surface():
         "describe_script_adapter",
         "run_script_adapter",
         "query_slurm",
+        "query_slurm_history",
     }
 
 
@@ -52,6 +53,7 @@ def test_mcp_descriptions_match_current_registry_and_run_rules():
     assert "jackknife" in descriptions["estimate_registered_observable"]
     assert "explicit user_confirmation" in descriptions["run_script_adapter"]
     assert "grouped summary by job name and array job id" in descriptions["query_slurm"]
+    assert "local sacct" in descriptions["query_slurm_history"]
 
 
 def test_resolve_registry_entry_uses_real_registry_shape():

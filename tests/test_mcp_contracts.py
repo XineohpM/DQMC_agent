@@ -345,3 +345,40 @@ def test_query_slurm_mcp_error_contract(monkeypatch):
     assert payload["ok"] is False
     assert payload["error_type"] == "tool_unavailable"
     assert payload["details"] == {"command": "squeue"}
+
+
+def test_query_slurm_history_mcp_success_contract(monkeypatch):
+    monkeypatch.setattr("dqmc_tools.slurm.shutil.which", lambda _name: "sacct")
+
+    def fake_run(args, **_kwargs):
+        return subprocess.CompletedProcess(
+            args=args,
+            returncode=0,
+            stdout=(
+                "123|dqmc|phoenix|COMPLETED|0:0|00:10:00|01:00:00|"
+                "2026-05-26T10:00:00|2026-05-26T10:01:00|2026-05-26T10:11:00|normal|node001|/oak/run123\n"
+            ),
+            stderr="",
+        )
+
+    monkeypatch.setattr("dqmc_tools.slurm.subprocess.run", fake_run)
+
+    payload = _run(_call_tool("query_slurm_history", {"filters": {"user": "phoenix"}}))
+
+    assert set(payload) == {"ok", "source", "command", "jobs", "summary", "warnings"}
+    assert payload["ok"] is True
+    assert payload["source"] == "sacct_parsable2"
+    assert payload["jobs"][0]["job_id"] == "123"
+    assert payload["summary"]["state_counts"] == {"COMPLETED": 1}
+    assert payload["summary"]["exit_code_counts"] == {"0:0": 1}
+
+
+def test_query_slurm_history_mcp_error_contract(monkeypatch):
+    monkeypatch.setattr("dqmc_tools.slurm.shutil.which", lambda _name: None)
+
+    payload = _run(_call_tool("query_slurm_history"))
+
+    assert set(payload) == {"ok", "error_type", "message", "details"}
+    assert payload["ok"] is False
+    assert payload["error_type"] == "tool_unavailable"
+    assert payload["details"] == {"command": "sacct"}

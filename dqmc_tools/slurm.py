@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import getpass
 import shutil
 import subprocess
 from collections import Counter, defaultdict
@@ -12,6 +13,7 @@ from dqmc_tools.errors import InvalidArgumentError, ToolUnavailableError
 
 
 SUPPORTED_FILTERS = {"me", "user", "job_id", "state", "partition"}
+HISTORY_SUPPORTED_FILTERS = {"me", "user", "job_id", "state", "start", "end", "partition", "max_rows"}
 FALLBACK_COLUMNS = (
     "job_id",
     "name",
@@ -21,6 +23,36 @@ FALLBACK_COLUMNS = (
     "time_limit",
     "partition",
     "nodes",
+)
+SACCT_COLUMNS = (
+    "JobID",
+    "JobName",
+    "User",
+    "State",
+    "ExitCode",
+    "Elapsed",
+    "Timelimit",
+    "Submit",
+    "Start",
+    "End",
+    "Partition",
+    "NodeList",
+    "WorkDir",
+)
+SACCT_FIELD_NAMES = (
+    "job_id",
+    "job_name",
+    "user",
+    "state",
+    "exit_code",
+    "elapsed",
+    "time_limit",
+    "submit",
+    "start",
+    "end",
+    "partition",
+    "node_list",
+    "work_dir",
 )
 
 
@@ -79,6 +111,41 @@ def query_slurm(filters: dict[str, Any] | None = None) -> dict[str, Any]:
     }
 
 
+def query_slurm_history(filters: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Query historical SLURM job status with read-only sacct."""
+
+    parsed_filters = _validate_history_filters(filters or {})
+    max_rows = parsed_filters.pop("max_rows", None)
+    sacct_path = shutil.which("sacct")
+    if not sacct_path:
+        raise ToolUnavailableError(
+            "SLURM command `sacct` is not available.",
+            details={"command": "sacct"},
+        )
+
+    command = _build_sacct_command(sacct_path, parsed_filters)
+    result = _run_command(command)
+    if result.returncode != 0:
+        raise ToolUnavailableError(
+            "SLURM `sacct` query failed.",
+            details={"command": command, "stderr": result.stderr},
+        )
+
+    jobs, warnings = _parse_sacct_rows(result.stdout)
+    if max_rows is not None and len(jobs) > max_rows:
+        jobs = jobs[:max_rows]
+        warnings.append(f"Result truncated to max_rows={max_rows}.")
+
+    return {
+        "ok": True,
+        "source": "sacct_parsable2",
+        "command": command,
+        "jobs": jobs,
+        "summary": _history_summary(jobs),
+        "warnings": warnings,
+    }
+
+
 def _validate_filters(filters: dict[str, Any]) -> dict[str, Any]:
     unknown = sorted(set(filters) - SUPPORTED_FILTERS)
     if unknown:
@@ -93,6 +160,29 @@ def _validate_filters(filters: dict[str, Any]) -> dict[str, Any]:
         if key == "me":
             if _truthy_filter(value):
                 parsed[key] = True
+            continue
+        parsed[key] = str(value).strip()
+    return parsed
+
+
+def _validate_history_filters(filters: dict[str, Any]) -> dict[str, Any]:
+    unknown = sorted(set(filters) - HISTORY_SUPPORTED_FILTERS)
+    if unknown:
+        raise InvalidArgumentError(
+            "Unsupported SLURM history filters were provided.",
+            details={"unsupported_filters": unknown, "supported_filters": sorted(HISTORY_SUPPORTED_FILTERS)},
+        )
+
+    parsed: dict[str, Any] = {}
+    for key, value in filters.items():
+        if value is None or str(value).strip() == "":
+            continue
+        if key == "me":
+            if _truthy_filter(value):
+                parsed[key] = True
+            continue
+        if key == "max_rows":
+            parsed[key] = _positive_int_filter(key, value)
             continue
         parsed[key] = str(value).strip()
     return parsed
@@ -113,6 +203,30 @@ def _build_squeue_command(squeue_path: str, filters: dict[str, Any], *, json_out
         args.extend(["--jobs", filters["job_id"]])
     if "state" in filters:
         args.extend(["--states", filters["state"]])
+    if "partition" in filters:
+        args.extend(["--partition", filters["partition"]])
+    return args
+
+
+def _build_sacct_command(sacct_path: str, filters: dict[str, Any]) -> list[str]:
+    args = [
+        sacct_path,
+        "--parsable2",
+        "--noheader",
+        f"--format={','.join(SACCT_COLUMNS)}",
+    ]
+    if filters.get("me"):
+        args.extend(["--user", getpass.getuser()])
+    if "user" in filters:
+        args.extend(["--user", filters["user"]])
+    if "job_id" in filters:
+        args.extend(["--jobs", filters["job_id"]])
+    if "state" in filters:
+        args.extend(["--state", filters["state"]])
+    if "start" in filters:
+        args.extend(["--starttime", filters["start"]])
+    if "end" in filters:
+        args.extend(["--endtime", filters["end"]])
     if "partition" in filters:
         args.extend(["--partition", filters["partition"]])
     return args
@@ -144,6 +258,26 @@ def _parse_fallback_rows(stdout: str) -> list[dict[str, str]]:
     return rows
 
 
+def _parse_sacct_rows(stdout: str) -> tuple[list[dict[str, str]], list[str]]:
+    rows = []
+    short_row_count = 0
+    for line in stdout.splitlines():
+        if not line.strip():
+            continue
+        parts = line.split("|", maxsplit=len(SACCT_COLUMNS) - 1)
+        if len(parts) < len(SACCT_COLUMNS):
+            short_row_count += 1
+        parts = parts + [""] * (len(SACCT_COLUMNS) - len(parts))
+        row = dict(zip(SACCT_FIELD_NAMES, [_slurm_text(part) for part in parts]))
+        row["state"] = row["state"].upper()
+        rows.append(row)
+
+    warnings = []
+    if short_row_count:
+        warnings.append(f"{short_row_count} sacct row(s) had fewer fields than expected.")
+    return rows, warnings
+
+
 def _truthy_filter(value: Any) -> bool:
     if isinstance(value, bool):
         return value
@@ -156,6 +290,22 @@ def _truthy_filter(value: Any) -> bool:
         "SLURM `me` filter must be a boolean value.",
         details={"me": value},
     )
+
+
+def _positive_int_filter(key: str, value: Any) -> int:
+    try:
+        parsed = int(str(value).strip())
+    except ValueError as exc:
+        raise InvalidArgumentError(
+            f"SLURM `{key}` filter must be a positive integer.",
+            details={key: value},
+        ) from exc
+    if parsed <= 0:
+        raise InvalidArgumentError(
+            f"SLURM `{key}` filter must be a positive integer.",
+            details={key: value},
+        )
+    return parsed
 
 
 def _grouped_job_summary(jobs: list[dict[str, Any]]) -> dict[str, Any]:
@@ -208,6 +358,14 @@ def _grouped_job_summary(jobs: list[dict[str, Any]]) -> dict[str, Any]:
             "array_job_count": array_job_total,
         },
         "groups": {"by_job_name": groups},
+    }
+
+
+def _history_summary(jobs: list[dict[str, str]]) -> dict[str, Any]:
+    return {
+        "total_jobs": len(jobs),
+        "state_counts": _counts(job["state"] for job in jobs),
+        "exit_code_counts": _counts(job["exit_code"] for job in jobs),
     }
 
 

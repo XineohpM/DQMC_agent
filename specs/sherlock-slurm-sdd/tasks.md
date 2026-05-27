@@ -73,25 +73,25 @@
 
 ## Phase L2：`sacct` 历史查询工具
 
-- [ ] 设计 `query_slurm_history(filters=None)` public API。
-- [ ] 设计 MCP tool `query_slurm_history`。
-- [ ] 写 command builder test：生成 `sacct --parsable2 --noheader` 和白名单字段。
-- [ ] 写 filter tests：`me`、`user`、`job_id`、`state`、`start`、`end`、`partition`、`max_rows`。
-- [ ] 写 unknown filter structured `invalid_argument` test。
-- [ ] 写 `sacct` unavailable structured `tool_unavailable` test。
-- [ ] 写 timeout structured error test。
-- [ ] 写 parsable2 fixture test：completed、failed、timeout、OOM。
-- [ ] 写缺失可选字段 warning test。
+- [x] 设计 `query_slurm_history(filters=None)` public API。
+- [x] 设计 MCP tool `query_slurm_history`。
+- [x] 写 command builder test：生成 `sacct --parsable2 --noheader` 和白名单字段。
+- [x] 写 filter tests：`me`、`user`、`job_id`、`state`、`start`、`end`、`partition`、`max_rows`。
+- [x] 写 unknown filter structured `invalid_argument` test。
+- [x] 写 `sacct` unavailable structured `tool_unavailable` test。
+- [x] 写 timeout structured error test。
+- [x] 写 parsable2 fixture test：completed、failed、timeout、OOM。
+- [x] 写缺失可选字段 warning test。
 - [ ] 如 Sherlock 的 `sacct` 输出嵌入 wrapped 或 multi-value 字段，新增脱敏 fixture 并覆盖 normalization。
-- [ ] 实现 command builder、parser、summary 和 warnings。
-- [ ] 注册 MCP tool，并补 MCP contract tests。
+- [x] 实现 command builder、parser、summary 和 warnings。
+- [x] 注册 MCP tool，并补 MCP contract tests。
 
 验收：
 
 - [ ] 查询最近 N 天当前用户任务可成功。
-- [ ] 对 failed/timeout/completed 任务能返回 state 和 exit code。
-- [ ] `sacct` 不可用时返回 structured `tool_unavailable`。
-- [ ] 不调用任何修改任务状态的 SLURM 命令。
+- [x] 对 failed/timeout/completed 任务能返回 state 和 exit code。
+- [x] `sacct` 不可用时返回 structured `tool_unavailable`。
+- [x] 不调用任何修改任务状态的 SLURM 命令。
 
 ## Phase L2 的 Sherlock 验证步骤
 

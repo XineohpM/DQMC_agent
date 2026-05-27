@@ -38,7 +38,7 @@ DQMC_DEV_ROOT=/Users/phoenixm/Desktop/dqmc-dev .venv/bin/python -m pytest
 
 结果：
 
-- `79 passed in 8.50s`
+- `87 passed in 8.53s`
 
 ## Phase L1 本地 Presenter
 
@@ -61,6 +61,29 @@ DQMC_DEV_ROOT=/Users/phoenixm/Desktop/dqmc-dev .venv/bin/python -m pytest
 - array job 汇总保持紧凑，不逐条刷屏。
 - pending reason 或 node 信息保留在示例行。
 - 不新增 Slack 依赖。
+
+## Phase L2 本地 `sacct` 历史查询
+
+命令：
+
+```bash
+.venv/bin/python -m pytest tests/test_slurm.py::test_query_slurm_history_unavailable tests/test_slurm.py::test_query_slurm_history_rejects_unknown_filter tests/test_slurm.py::test_query_slurm_history_timeout tests/test_slurm.py::test_query_slurm_history_builds_sacct_command_and_parses_rows tests/test_slurm.py::test_query_slurm_history_applies_job_filter_and_max_rows tests/test_slurm.py::test_query_slurm_history_warns_on_short_rows tests/test_mcp_contracts.py::test_query_slurm_history_mcp_success_contract tests/test_mcp_contracts.py::test_query_slurm_history_mcp_error_contract tests/test_mcp_server.py::test_mcp_tool_set_has_current_hands_surface tests/test_mcp_server.py::test_mcp_descriptions_match_current_registry_and_run_rules -q
+```
+
+结果：
+
+- `10 passed`
+
+覆盖：
+
+- `sacct --parsable2 --noheader` command builder 和字段白名单。
+- filters：`me`、`job_id`、`state`、`start`、`end`、`partition`、`max_rows`。
+- unknown filter structured error。
+- `sacct` unavailable structured `tool_unavailable`。
+- timeout structured error。
+- completed/failed/timeout/OOM parsable2 fixture。
+- short rows warning。
+- MCP tool set 和 success/error contract。
 
 ## Sherlock 环境基线
 
