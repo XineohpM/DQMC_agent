@@ -18,17 +18,31 @@ pip install -e ".[mcp,test]"
 
 ## 配置
 
+Codex 启动 MCP server 时需要在用户级 `~/.codex/config.toml` 的
+`[mcp_servers.dqmc-hands.env]` 中注入运行配置，例如：
+
+```toml
+[mcp_servers.dqmc-hands.env]
+DQMC_ALLOWED_ROOTS = "/path/to/run:/path/to/another-root"
+DQMC_OUTPUT_ROOT = "/Users/phoenixm/Desktop/DQMC_agent/outputs"
+DQMC_REGISTRY_PATH = "/Users/phoenixm/Desktop/DQMC_agent/registry.yaml"
+DQMC_DEV_ROOT = "/Users/phoenixm/Desktop/dqmc-dev"
+```
+
+如果 `DQMC_DEV_ROOT` 没有设置、为空，或路径不存在，相关工具会直接报 `configuration_error`，不会回退到硬编码路径。
+
 - `DQMC_ALLOWED_ROOTS`：允许读取的原始数据根目录，多个路径按系统 path separator 分隔。没有配置时，原始数据读取 fail closed。
 - `DQMC_OUTPUT_ROOT`：生成文件默认根目录。未设置时使用本工程 `outputs/`。
 - `DQMC_REGISTRY_PATH`：registry 文件路径。未设置时使用本工程 `registry.yaml`。
 - `DQMC_SCRIPT_TIMEOUT_SECONDS`：白名单脚本默认超时秒数，默认 `300`。
-- `dqmc-dev` 固定路径：`/Users/phoenixm/Desktop/dqmc-dev`。
+- `DQMC_DEV_ROOT`：`dqmc-dev` checkout 根目录。必须显式设置。
 
 示例：
 
 ```bash
 export DQMC_ALLOWED_ROOTS="/path/to/run:/path/to/another-root"
 export DQMC_OUTPUT_ROOT="/Users/phoenixm/Desktop/DQMC_agent/outputs"
+export DQMC_DEV_ROOT="/Users/phoenixm/Desktop/dqmc-dev"
 ```
 
 ## MCP 启动
@@ -59,7 +73,7 @@ MCP 暴露 10 个工具：
 
 registry 解析只使用真实字段：`id`、`aliases`、`code.generation.variable`。返回结果会附加运行期辅助字段 `entry_type` 和 `dataset_key`，但不会引入额外标识体系。
 
-`inspect_hdf5` 只是 `/Users/phoenixm/Desktop/dqmc-dev/util/util.py` 中 `load_file()`、`load_firstfile()`、`load()` 的 wrapper；调用时必须显式给出 `dataset_keys`，它不做 HDF5 tree discovery。
+`inspect_hdf5` 只是 `DQMC_DEV_ROOT` 指向的 `util/util.py` 里 `load_file()`、`load_firstfile()`、`load()` 的 wrapper；调用时必须显式给出 `dataset_keys`，它不做 HDF5 tree discovery。
 
 单文件或直接读取不会估计 error。对 registry 中 observable 的整体误差估计使用 `estimate_registered_observable`，它会对一个目录下的一组 HDF5 文件调用 `util.py` 的 `jackknife()` 或 `jackknife_noniid()`。
 
@@ -77,7 +91,7 @@ registry 解析只使用真实字段：`id`、`aliases`、`code.generation.varia
 
 每次真实执行任何白名单脚本都必须逐次征求用户显式同意。第一版允许真实 input generation，也允许 workflow-mutating 工具，但不允许提交或取消 SLURM job。
 
-Python 白名单脚本的参数 schema 会从 `/Users/phoenixm/Desktop/dqmc-dev/scripts/` 中的 `argparse` 定义静态同步。同步只读取源码，不 import 或执行 `dqmc-dev` 脚本；shell 脚本仍保留 raw args。可用下面命令查看同步结果：
+Python 白名单脚本的参数 schema 会从 `DQMC_DEV_ROOT/scripts/` 目录里静态同步 `argparse` 定义。同步只读取源码，不 import 或执行 `dqmc-dev` 脚本；shell 脚本仍保留 raw args。可用下面命令查看同步结果：
 
 ```bash
 .venv/bin/python scripts/audit_script_adapters.py --json --no-fingerprints

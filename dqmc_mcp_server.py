@@ -20,7 +20,7 @@ from dqmc_tools.slurm import query_slurm as dqmc_query_slurm
 
 
 SERVER_INSTRUCTIONS = (
-    "DQMC hands tools expose controlled wrappers around the fixed dqmc-dev "
+    "DQMC hands tools expose controlled wrappers around the configured dqmc-dev "
     "checkout, registry.yaml, explicit HDF5 dataset reads, user-provided run "
     "summaries, whitelisted scripts, and read-only SLURM status. No list_runs "
     "tool is exposed; users must provide directories explicitly."
@@ -209,8 +209,8 @@ def build_server() -> FastMCP:
     @server.tool(
         name="list_script_adapters",
         description=(
-            "List whitelisted dqmc-dev script adapters. The fixed dqmc-dev root is "
-            "/Users/phoenixm/Desktop/dqmc-dev. Some adapters require derived "
+            "List whitelisted dqmc-dev script adapters. The dqmc-dev root is "
+            "read from required DQMC_DEV_ROOT. Some adapters require derived "
             "input files produced by earlier scripts; use describe_script_adapter "
             "or dry-run run_script_adapter to inspect preflight requirements."
         ),

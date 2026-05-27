@@ -39,7 +39,7 @@ tests/
 其中：
 
 - `registry.py`：读取并解析 `registry.yaml` 的真实字段，不引入不存在的 registry 字段。
-- `hdf5.py`：只做 `/Users/phoenixm/Desktop/dqmc-dev/util/util.py` 中 `load()`、`load_file()`、`load_firstfile()`、`jackknife()`、`jackknife_noniid()` 的安全包装和 JSON-safe 汇总。
+- `hdf5.py`：只做 `DQMC_DEV_ROOT` 指向的 `util/util.py` 中 `load()`、`load_file()`、`load_firstfile()`、`jackknife()`、`jackknife_noniid()` 的安全包装和 JSON-safe 汇总。
 - `runs.py`：只对用户显式输入的目录做 bounded summary 和 metadata aggregation；不做 run discovery。
 - `scripts/`：脚本白名单、参数 schema、subprocess runner、执行前同意检查、输出 manifest、解析器。
 - `slurm.py`：只读 `squeue`。
@@ -56,7 +56,7 @@ tests/
 | `DQMC_REGISTRY_PATH` | 可选 registry override |
 | `DQMC_SCRIPT_TIMEOUT_SECONDS` | 默认脚本超时时间 |
 
-`dqmc-dev` 根目录固定为 `/Users/phoenixm/Desktop/dqmc-dev`。调用参数可以覆盖 output 子路径和 allowed roots，但仍必须通过同样的安全检查。
+`dqmc-dev` 根目录来自必填环境变量 `DQMC_DEV_ROOT`。调用参数可以覆盖 output 子路径和 allowed roots，但仍必须通过同样的安全检查。
 
 ## Registry 设计
 

@@ -6,14 +6,16 @@ import os
 from pathlib import Path
 from typing import Iterable
 
+from dqmc_tools.errors import ConfigurationError
+
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-FIXED_DQMC_DEV_ROOT = Path("/Users/phoenixm/Desktop/dqmc-dev")
 
 ALLOWED_ROOTS_ENV = "DQMC_ALLOWED_ROOTS"
 OUTPUT_ROOT_ENV = "DQMC_OUTPUT_ROOT"
 REGISTRY_PATH_ENV = "DQMC_REGISTRY_PATH"
 SCRIPT_TIMEOUT_ENV = "DQMC_SCRIPT_TIMEOUT_SECONDS"
+DQMC_DEV_ROOT_ENV = "DQMC_DEV_ROOT"
 
 DEFAULT_SCRIPT_TIMEOUT_SECONDS = 300
 
@@ -49,10 +51,32 @@ def get_registry_path(value: str | Path | None = None) -> Path:
     return Path(raw_value).expanduser()
 
 
-def get_dqmc_dev_root() -> Path:
-    """Return the fixed dqmc-dev root for this project."""
+def get_dqmc_dev_root(value: str | Path | None = None) -> Path:
+    """Return the required dqmc-dev root from DQMC_DEV_ROOT."""
 
-    return FIXED_DQMC_DEV_ROOT
+    raw_value = os.environ.get(DQMC_DEV_ROOT_ENV, "") if value is None else value
+    if raw_value is None or str(raw_value).strip() == "":
+        raise ConfigurationError(
+            f"`{DQMC_DEV_ROOT_ENV}` must be set to the dqmc-dev checkout path.",
+            details={"env_var": DQMC_DEV_ROOT_ENV},
+        )
+    root = Path(raw_value).expanduser()
+    try:
+        return root.resolve(strict=True)
+    except FileNotFoundError as exc:
+        raise ConfigurationError(
+            f"`{DQMC_DEV_ROOT_ENV}` points to a path that does not exist.",
+            details={"env_var": DQMC_DEV_ROOT_ENV, "path": root},
+        ) from exc
+    except OSError as exc:
+        raise ConfigurationError(
+            f"`{DQMC_DEV_ROOT_ENV}` could not be resolved.",
+            details={
+                "env_var": DQMC_DEV_ROOT_ENV,
+                "path": root,
+                "reason": str(exc),
+            },
+        ) from exc
 
 
 def get_script_timeout(value: int | str | None = None) -> int:

@@ -18,9 +18,9 @@
 
 - 普通 Python 包先成立，MCP 只是薄包装。
 - 工具返回事实、元数据、输出文件路径、命令 provenance；不返回“可信/不可信”“物理上合理/不合理”等判断。
-- 优先复用 `/Users/phoenixm/Desktop/dqmc-dev` 中已有 `util/` 和 `scripts/` 能力；不要把每个分析需求重新实现成一个新 MCP tool。
+- 优先复用 `DQMC_DEV_ROOT` 指向的 `dqmc-dev` checkout 中已有 `util/` 和 `scripts/` 能力；不要把每个分析需求重新实现成一个新 MCP tool。
 - 原始 HDF5 不允许被修改；会写文件的动作只能写到 output root 或被允许的 workflow 文件位置。
-- `dqmc-dev` 路径固定为 `/Users/phoenixm/Desktop/dqmc-dev`，第一版不做路径自动发现。
+- `dqmc-dev` 路径来自必填环境变量 `DQMC_DEV_ROOT`，第一版不做路径自动发现。
 - output root 默认是当前工程的 `outputs/`，也可用显式参数覆盖到该根目录下的子路径。
 
 ## 非目标
@@ -83,7 +83,7 @@
 
 ### R3 HDF5 事实读取
 
-- HDF5 数据读取调用 `/Users/phoenixm/Desktop/dqmc-dev/util/util.py` 中已有的 `load()`、`load_file()`、`load_firstfile()`。手层不重新实现读取、bin 聚合或 jackknife 约定。
+- HDF5 数据读取调用 `DQMC_DEV_ROOT` 指向的 `util/util.py` 中已有的 `load()`、`load_file()`、`load_firstfile()`。手层不重新实现读取、bin 聚合或 jackknife 约定。
 - `inspect_hdf5` 只做 `util.py` 相关函数的 wrapper：输入必须包含明确的 dataset keys 或 registry entry names；它不做 HDF5 tree 枚举、不新增 shape discovery 逻辑、不直接使用 `h5py`。
 - `read_dataset` 是 `util.load_file(path, dataset_key)` 的安全包装，返回 shape、dtype、bounded preview、size、numeric summary。
 - `read_registered_quantity` 根据 registry 的 `id/aliases/code.generation.variable` 找到 dataset key，然后调用 `load_file()`、`load_firstfile()` 或 `load()` 读取事实。
@@ -208,6 +208,6 @@ MCP 层应保持少量通用工具：
 
 - 第一版允许真实运行 input generation。
 - 第一版允许 workflow-mutating 工具，例如 `util/push.py` 和 `check_h5_completion.py --push_stack`，但不允许提交/取消 SLURM job。
-- `dqmc-dev` 路径固定为 `/Users/phoenixm/Desktop/dqmc-dev`。
+- `dqmc-dev` 路径来自必填环境变量 `DQMC_DEV_ROOT`。
 - output root 默认是当前工程 `outputs/`。
 - 不实现 `list_runs`；所有 run 目录由用户手动输入。

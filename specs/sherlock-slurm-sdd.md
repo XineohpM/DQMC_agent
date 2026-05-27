@@ -54,8 +54,8 @@
 
 - 克隆或同步当前仓库到 Sherlock。
 - 创建 `.venv`，安装 `.[mcp,test]`。
-- 确认 `/Users/phoenixm/Desktop/dqmc-dev` 这个本地固定路径在 Sherlock 上是否需要替换为 Sherlock 路径。
-- 如果 Sherlock 路径不同，先设计配置项，不要硬改所有调用点。
+- 在 Sherlock 的 Codex 用户级 `~/.codex/config.toml` 中为 `dqmc-hands` MCP server 设置 `DQMC_DEV_ROOT`。
+- 如果 `DQMC_DEV_ROOT` 缺失、为空或路径不存在，先修复配置，不要启动 MCP server。
 - 配置：
   - `DQMC_ALLOWED_ROOTS`：Sherlock 上允许读取的 run/output 根目录。
   - `DQMC_OUTPUT_ROOT`：Sherlock 上允许写入的 agent output 根目录。
@@ -281,7 +281,7 @@
 
 实现步骤：
 
-- 确认 `/Users/phoenixm/Desktop/dqmc-dev` 在 Sherlock 上的路径配置问题已解决。
+- 确认 `DQMC_DEV_ROOT` 在 Sherlock 上指向正确的 `dqmc-dev` checkout。
 - 运行 `scripts/audit_script_adapters.py`，确认白名单脚本存在且 argparse schema 可同步。
 - 对需要派生产物的脚本，先用 `describe_script_adapter` 和 dry-run 检查 preflight。
 - 对真实执行，必须传入 `user_confirmation={"approved": true, "text": "..."}`。

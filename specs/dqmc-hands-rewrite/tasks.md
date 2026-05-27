@@ -7,7 +7,7 @@
 - [ ] 审阅 `requirements.md` 和 `design.md`。
 - [x] 第一版允许真实 input generation，同时保留 dry-run。
 - [x] 第一版允许 workflow-mutating 脚本，但仍不允许提交/取消 SLURM job。
-- [x] `dqmc-dev` 路径固定为 `/Users/phoenixm/Desktop/dqmc-dev`。
+- [x] `dqmc-dev` 路径来自必填环境变量 `DQMC_DEV_ROOT`。
 - [x] output root 默认当前工程 `outputs/`。
 - [x] 不实现 `list_runs`，所有 run 目录由用户手动输入。
 - [x] 第一期不做 `check_sum_rule.py`。
@@ -21,7 +21,7 @@
 
 - [ ] 重建 `dqmc_tools` 包结构，保持 package import 不依赖 MCP。
 - [ ] 定义统一错误类型和 JSON-safe `error_dict`。
-- [ ] 实现 `config.py`：allowed roots、默认 output root、registry path、固定 dqmc-dev root、timeout。
+- [ ] 实现 `config.py`：allowed roots、默认 output root、registry path、必填 dqmc-dev root、timeout。
 - [ ] 实现 `paths.py`：read path、output path、script root path、workflow-mutating path 的 resolve 和越界拒绝。
 - [ ] 添加基础 import 测试。
 
@@ -105,7 +105,7 @@
 
 ## Phase 6：注册已有 dqmc-dev 脚本
 
-- [ ] 使用固定 dqmc-dev root：`/Users/phoenixm/Desktop/dqmc-dev`。
+- [ ] 使用必填环境变量 `DQMC_DEV_ROOT`。
 - [ ] 注册输入生成脚本：`gen_beta_scan`、`gen_beta_mu_scan`、`gen_1band_unified_hub`。
 - [ ] 注册基础信息脚本：`dqmc_info`、`dqmc_summary`、`print_n`。
 - [ ] 注册诊断脚本：`check_h5_completion`、`check_warm`。

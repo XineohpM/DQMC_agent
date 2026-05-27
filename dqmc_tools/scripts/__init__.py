@@ -1,11 +1,6 @@
 """Whitelisted DQMC script adapters."""
 
 from dqmc_tools.scripts.definitions import InputRequirement, ScriptDefinition
-from dqmc_tools.scripts.builtin_catalog import (
-    ARGPARSE_SYNC_RESULT,
-    DEFAULT_SCRIPT_CATALOG,
-    EXCLUDED_FIRST_PHASE_SCRIPTS,
-)
 from dqmc_tools.scripts.audit import audit_script_adapters
 from dqmc_tools.scripts.runner import (
     describe_script_adapter,
@@ -26,3 +21,11 @@ __all__ = [
     "run_script_adapter",
     "parse_outputs",
 ]
+
+
+def __getattr__(name: str):
+    if name in {"ARGPARSE_SYNC_RESULT", "DEFAULT_SCRIPT_CATALOG", "EXCLUDED_FIRST_PHASE_SCRIPTS"}:
+        from dqmc_tools.scripts import builtin_catalog
+
+        return getattr(builtin_catalog, name)
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

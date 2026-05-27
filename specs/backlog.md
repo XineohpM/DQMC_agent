@@ -10,7 +10,7 @@
 - [x] `code_map.md` 和 `diagnostics_playbook.md` 目前没有被 `dqmc_tools/` 或 `dqmc_mcp_server.py` 运行时读取。
 - [x] `diagnostics_playbook.md` 当前只作为设计输入和人工知识来源；“手”层不自动执行 sign、Trotter、warmup、mu tuning、MaxEnt binning 等诊断判断。
 - [x] Slack bot 接入对象是 agent 整体，不是 MCP tools。
-- [x] 白名单 script adapter 当前只保留 `/Users/phoenixm/Desktop/dqmc-dev/scripts/` 下的脚本；`util/` 路径脚本已经移出白名单。
+- [x] 白名单 script adapter 当前只保留 `DQMC_DEV_ROOT/scripts/` 下的脚本；`util/` 路径脚本已经移出白名单。
 - [x] 当前白名单 adapter 数量为 20；其中 18 个 Python 脚本可静态读取 `argparse`，2 个 shell 脚本保留 raw args。
 
 ## P0：先补质量和边界
@@ -42,7 +42,7 @@
   - [x] 新增 adapter audit：`scripts/audit_script_adapters.py`。
   - [x] audit 覆盖 script path、launcher、category/mode、args schema、required input templates、output patterns、parser id、script id uniqueness、mtime/size/SHA-256。
   - [x] 修正内置 catalog 中单元素 `output_patterns` 被误写成字符串的问题。
-  - [x] 记录 `/Users/phoenixm/Desktop/dqmc-dev` 底层脚本更新后的 adapter 同步流程。
+  - [x] 记录 `DQMC_DEV_ROOT` 指向的底层脚本更新后的 adapter 同步流程。
   - [x] 文档落盘：`docs/update-mechanism.md`。
   - [x] 手工 MCP 验证：修改后的 `registry.yaml` 新增条目可被当前会话读取。
     - `read_registered_quantity(sign_eqlt, mode=directory)` -> `meas_eqlt/sign`，shape `[100]`，mean `160000.0`。
@@ -53,7 +53,7 @@
     - 移除项：`gen_1band_unified_hub`、`dqmc_info`、`dqmc_summary`、`print_n`、`push`。
     - 第一阶段排除项同时包含此前移除的 `make_bootstrap`、`save_boot_stats`、`run_maxent`、`run_stack_simes`。
   - [x] 新增静态 argparse 同步机制。
-    - 从当前白名单 adapter 出发，只读访问 `/Users/phoenixm/Desktop/dqmc-dev/scripts/` 下的对应源码。
+    - 从当前白名单 adapter 出发，只读访问 `DQMC_DEV_ROOT/scripts/` 下的对应源码。
     - 不 import、不执行 dqmc-dev 脚本，避免副作用和运行环境依赖。
     - 解析直接的 `argparse.ArgumentParser()`、`add_argument()`、argument group、mutually-exclusive group。
     - 同步 flag、positional、required、type、choices、nargs、`store_true`/`store_false` 到 adapter `args_schema`。

@@ -6,6 +6,7 @@ adapters should import these functions rather than own domain logic.
 
 from dqmc_tools.config import (
     ALLOWED_ROOTS_ENV,
+    DQMC_DEV_ROOT_ENV,
     OUTPUT_ROOT_ENV,
     REGISTRY_PATH_ENV,
     get_allowed_roots,
@@ -15,6 +16,7 @@ from dqmc_tools.config import (
     get_script_timeout,
 )
 from dqmc_tools.errors import (
+    ConfigurationError,
     DQMCError,
     HDF5ReadError,
     InvalidArgumentError,
@@ -65,6 +67,7 @@ __version__ = "0.1.0"
 __all__ = [
     "__version__",
     "ALLOWED_ROOTS_ENV",
+    "DQMC_DEV_ROOT_ENV",
     "OUTPUT_ROOT_ENV",
     "REGISTRY_PATH_ENV",
     "get_allowed_roots",
@@ -94,6 +97,7 @@ __all__ = [
     "describe_script_adapter",
     "run_script_adapter",
     "query_slurm",
+    "ConfigurationError",
     "DQMCError",
     "HDF5ReadError",
     "InvalidArgumentError",

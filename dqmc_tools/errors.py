@@ -70,6 +70,12 @@ class InvalidArgumentError(DQMCError):
     code = "invalid_argument"
 
 
+class ConfigurationError(DQMCError):
+    """Raised when required runtime configuration is missing or invalid."""
+
+    code = "configuration_error"
+
+
 class ScriptRegistryError(DQMCError):
     """Raised for script registry and runner failures."""
 

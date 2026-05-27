@@ -1,6 +1,8 @@
 # Script Adapter Registry
 
-脚本 adapter 统一复用固定目录 `/Users/phoenixm/Desktop/dqmc-dev/scripts/` 下已有脚本。MCP 层只暴露 `list_script_adapters`、`describe_script_adapter` 和 `run_script_adapter`，不把每个脚本注册成独立 MCP tool。
+脚本 adapter 统一复用 `DQMC_DEV_ROOT/scripts/` 目录下已有脚本。MCP 层只暴露 `list_script_adapters`、`describe_script_adapter` 和 `run_script_adapter`，不把每个脚本注册成独立 MCP tool。
+
+`DQMC_DEV_ROOT` 必须在 Codex 用户级 `~/.codex/config.toml` 的 `[mcp_servers.dqmc-hands.env]` 中显式设置；缺失、为空或路径不存在时会报 `configuration_error`，不会回退到硬编码路径。
 
 ## 执行约束
 
@@ -17,7 +19,7 @@
 
 同步范围：
 
-- 只处理当前白名单中位于 `/Users/phoenixm/Desktop/dqmc-dev/scripts/` 的 Python 脚本。
+- 只处理当前白名单中位于 `DQMC_DEV_ROOT/scripts/` 的 Python 脚本。
 - 解析直接的 `argparse.ArgumentParser()`、`add_argument()`、argument group 和 mutually-exclusive group。
 - 将 flag、positional、required、type、choices、nargs、store_true/store_false 合并进 adapter `args_schema`。
 - `path_role`、`required_inputs`、`output_patterns`、`parser_id` 和审批策略仍由 adapter catalog 维护。

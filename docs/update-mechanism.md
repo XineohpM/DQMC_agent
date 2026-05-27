@@ -39,7 +39,16 @@ export DQMC_REGISTRY_PATH=/path/to/registry.yaml
 - `DQMC_REGISTRY_PATH` 环境变量覆盖路径后，文件修改会被下一次调用读取。
 - MCP server 在同一个 server 实例内通过 `registry_path` 读取更新后的 registry。
 
-## `/Users/phoenixm/Desktop/dqmc-dev` 脚本
+## `dqmc-dev` 脚本
+
+`dqmc-dev` 根目录由 Codex 用户级 `~/.codex/config.toml` 中的 MCP env 决定：
+
+```toml
+[mcp_servers.dqmc-hands.env]
+DQMC_DEV_ROOT = "/Users/phoenixm/Desktop/dqmc-dev"
+```
+
+`DQMC_DEV_ROOT` 缺失、为空或路径不存在时，相关工具会报 `configuration_error`，不会回退到硬编码路径。
 
 script adapter catalog 当前维护在：
 
@@ -88,7 +97,7 @@ audit 当前检查：
 
 更新流程：
 
-1. 更新 `/Users/phoenixm/Desktop/dqmc-dev`。
+1. 更新 `DQMC_DEV_ROOT` 指向的 `dqmc-dev` checkout。
 2. 运行 adapter audit。
 3. 如果 audit 失败，按报告同步 `dqmc_tools/scripts/builtin_catalog.py`。
 4. 如果底层脚本 CLI 变化，同步 adapter 的 `args_schema`。

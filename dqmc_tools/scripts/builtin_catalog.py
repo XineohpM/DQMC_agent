@@ -1,4 +1,4 @@
-"""Built-in script catalog for the fixed dqmc-dev checkout."""
+"""Built-in script catalog for the configured dqmc-dev checkout."""
 
 from __future__ import annotations
 
