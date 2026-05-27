@@ -8,3 +8,4 @@ pytest-cache-files-*/
 .env
 formal/.lake/
 .DS_Store
+*.log
