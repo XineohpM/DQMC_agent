@@ -33,10 +33,34 @@
 ### 共享契约变更后
 
 ```bash
-.venv/bin/python -m pytest
+DQMC_DEV_ROOT=/Users/phoenixm/Desktop/dqmc-dev .venv/bin/python -m pytest
 ```
 
-期望：全量测试通过。
+结果：
+
+- `79 passed in 8.50s`
+
+## Phase L1 本地 Presenter
+
+命令：
+
+```bash
+.venv/bin/python -m pytest tests/test_slurm_presenter.py -q
+.venv/bin/python -m pytest tests/test_slurm_presenter.py tests/test_package_import.py tests/test_slurm.py tests/test_mcp_contracts.py::test_query_slurm_mcp_success_contract tests/test_mcp_contracts.py::test_query_slurm_mcp_error_contract tests/test_mcp_server.py::test_mcp_tool_set_has_current_hands_surface tests/test_mcp_server.py::test_mcp_descriptions_match_current_registry_and_run_rules -q
+```
+
+结果：
+
+- `tests/test_slurm_presenter.py -q`：`3 passed`
+- presenter/import/SLURM/MCP targeted suite：`15 passed`
+
+覆盖：
+
+- 空队列输出 `当前没有任务。`
+- running/pending/held_blocked/other 计数。
+- array job 汇总保持紧凑，不逐条刷屏。
+- pending reason 或 node 信息保留在示例行。
+- 不新增 Slack 依赖。
 
 ## Sherlock 环境基线
 

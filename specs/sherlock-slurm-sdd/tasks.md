@@ -4,18 +4,18 @@
 
 ## Phase L0：本地基线和契约冻结
 
-- [ ] 运行 `tests/test_slurm.py`。
-- [ ] 运行 `query_slurm` MCP success/error contract tests。
-- [ ] 运行 MCP tool set test，确认当前暴露 10 个 tools。
-- [ ] 运行 wrapped SLURM JSON fields 测试，确认 `job_state` list、`array_job_id` dict、`array_task_id set=false` 都被正确 normalize。
-- [ ] 记录 `query_slurm` 当前 schema：`ok`、`source`、`command`、`commands_attempted`、`jobs`、`summary`、`groups`、JSON path 的 `raw`。
+- [x] 运行 `tests/test_slurm.py`。
+- [x] 运行 `query_slurm` MCP success/error contract tests。
+- [x] 运行 MCP tool set test，确认当前暴露 10 个 tools。
+- [x] 运行 wrapped SLURM JSON fields 测试，确认 `job_state` list、`array_job_id` dict、`array_task_id set=false` 都被正确 normalize。
+- [x] 记录 `query_slurm` 当前 schema：`ok`、`source`、`command`、`commands_attempted`、`jobs`、`summary`、`groups`、JSON path 的 `raw`。
 
 验收：
 
-- [ ] `query_slurm` 本地测试通过。
-- [ ] MCP contract tests 通过。
-- [ ] wrapped SLURM JSON fields 不会破坏 state/category 计数或 array job 分组。
-- [ ] `requirements.md` 的“当前已实现能力”没有描述不存在的代码。
+- [x] `query_slurm` 本地测试通过。
+- [x] MCP contract tests 通过。
+- [x] wrapped SLURM JSON fields 不会破坏 state/category 计数或 array job 分组。
+- [x] `requirements.md` 的“当前已实现能力”没有描述不存在的代码。
 
 ## Phase R0：Sherlock 环境基线
 
@@ -57,19 +57,19 @@
 
 ## Phase L1：非 Slack 的“我的任务状态”presenter
 
-- [ ] 明确 presenter 输入为 `query_slurm` 返回 dict。
-- [ ] 明确 presenter 输出为纯文本摘要。
-- [ ] 写空队列 fixture test。
-- [ ] 写 running/pending/held_blocked/other fixture test。
-- [ ] 写 array job 汇总 fixture test，默认不逐条刷屏。
-- [ ] 实现 pure function，不新增服务。
-- [ ] 保证原始 rows 仍可供 agent 展开查看。
+- [x] 明确 presenter 输入为 `query_slurm` 返回 dict。
+- [x] 明确 presenter 输出为纯文本摘要。
+- [x] 写空队列 fixture test。
+- [x] 写 running/pending/held_blocked/other fixture test。
+- [x] 写 array job 汇总 fixture test，默认不逐条刷屏。
+- [x] 实现 pure function，不新增服务。
+- [x] 保证原始 rows 仍可供 agent 展开查看。
 
 验收：
 
-- [ ] presenter fixture tests 通过。
+- [x] presenter fixture tests 通过。
 - [ ] 真实 Sherlock payload 能生成可读摘要。
-- [ ] 不新增 Slack 依赖。
+- [x] 不新增 Slack 依赖。
 
 ## Phase L2：`sacct` 历史查询工具
 
