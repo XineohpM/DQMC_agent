@@ -119,6 +119,7 @@ _BASE_SCRIPT_CATALOG: tuple[ScriptDefinition, ...] = (
         _script("scripts/extract_energy_perfile.py"),
         args_schema={"required": ["dir"], "properties": {"dir": _path_prop("--dir", role="input"), "U": {"flag": "--U"}, "out": {"flag": "--out"}}},
         required_inputs=(InputRequirement("dir", "directory", "{dir}"),),
+        parser_id="npy_manifest",
         output_patterns=("{dir}/{out}", "{dir}/{out}.meta.npy"),
     ),
     ScriptDefinition(

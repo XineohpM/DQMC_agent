@@ -24,7 +24,17 @@ def parse_outputs(
         if parser_id == "tsv":
             return {"tsv": [_parse_tsv(Path(item["path"]), max_preview_rows) for item in output_files if item["path"].endswith(".tsv")]}, []
         if parser_id == "npy_manifest":
-            return {"arrays": [_parse_array(Path(item["path"])) for item in output_files if Path(item["path"]).suffix in {".npy", ".npz"}]}, []
+            arrays = []
+            warnings = []
+            for item in output_files:
+                path = Path(item["path"])
+                if path.suffix not in {".npy", ".npz"}:
+                    continue
+                try:
+                    arrays.append(_parse_array(path))
+                except Exception as exc:
+                    warnings.append(f"parser_failed:{parser_id}:{path}:{exc}")
+            return {"arrays": arrays}, warnings
         if parser_id == "image_manifest":
             return {"images": [_parse_image(Path(item["path"])) for item in output_files if Path(item["path"]).suffix.lower() in {".png", ".pdf", ".jpg", ".jpeg"}]}, []
         if parser_id == "stdout_key_value":

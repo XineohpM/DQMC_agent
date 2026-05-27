@@ -16,7 +16,7 @@
 ## P0：先补质量和边界
 
 - [ ] 提高测试质量。
-  - 现状：测试能过；已新增 MCP 层 contract tests，`test_runs.py` 和 HDF5 读取类测试已改用真实 `data/T_0.1` fixture，仍保留少量 synthetic 测试用于缺失 dataset、精确 jackknife、runner subprocess、输出 parser 和 argv builder。
+  - 现状：测试能过；已新增 MCP 层 contract tests，`test_runs.py` 和 HDF5 读取类测试已改用真实 `data/T_0.1` fixture，runner subprocess 和输出 parser 集成测试已改用真实 dqmc-dev adapters + `data/T_0.1` 临时 fixture；仍保留少量 synthetic 测试用于缺失 dataset、精确 jackknife、argv builder、monkeypatched SLURM 和临时 registry。
   - 目标：把测试从“接口能跑”提升到“真实工作流不容易坏”。
   - 建议拆分：
     - [x] Contract tests：固定核心 MCP tools 输入输出 schema，避免 agent/Slack 层依赖字段漂移。
@@ -31,7 +31,8 @@
     - [x] Adapter integration smoke：覆盖真实 dqmc-dev script adapter 的 dry-run、preflight 缺输入、output root 限制。
     - [x] Regression tests：覆盖 registry 变更、脚本参数变更、dqmc-dev 路径缺失、allowed roots fail-closed。
     - [x] 移除冗余 fake adapter tests：fake list/describe、fake dry-run、fake preflight、fake output-root rejection 已由真实 catalog 测试替代。
-    - [ ] 继续减少 fake tests：评估是否能用更真实的 fixture 替代剩余 fake subprocess/parser、monkeypatched SLURM 和临时 registry 测试。
+    - [x] 用真实 adapter 替代 fake subprocess/parser tests：`check_h5_completion` 覆盖 TSV parser，`extract_energy_perfile` 覆盖 NPY manifest parser，二者都使用 `data/T_0.1` 复制到 `tmp_path` 的临时真实 fixture。
+    - [ ] 继续减少 fake tests：评估是否能用更真实的 fixture 替代剩余 monkeypatched SLURM、临时 registry 和纯 argv builder synthetic 测试。
 
 - [x] 明确本轮“眼睛”更新机制：`registry.yaml` 和 dqmc-dev script adapter。
   - [x] `registry.yaml`：当前调用时读取，通常不需要重启 MCP server。
