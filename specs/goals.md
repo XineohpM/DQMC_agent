@@ -23,7 +23,7 @@ MCP hands 要提供稳定、低层、事实型能力：
 - 根据 `registry.yaml` 解析 observable/parameter。
 - 调用 dqmc-dev 已有 util 和 scripts。
 - 做路径安全、preflight、dry-run、输出 manifest、structured error。
-- 查询 SLURM 当前队列事实。
+- 查询 SLURM 当前队列和近期历史任务事实。
 - 为 agent 层提供稳定的工具契约和可测试返回结构。
 
 ### Eyes / Knowledge
@@ -62,8 +62,9 @@ Slack bot 是 agent 的交互入口：
 
 最终 agent 应能稳定回答：
 
-- 当前 Sherlock/SLURM 中我的任务有哪些。
+- 当前和近期历史 Sherlock/SLURM 中我的任务有哪些。
 - 哪些任务 running、pending、held、failed、completed。
+- 某个 job id 的当前或历史详情，以及它可能对应的 run/output path。
 - 某个 run 目录有哪些 HDF5 文件、metadata、log completion facts。
 - 某个 observable/parameter 在 registry 里如何定义，HDF5 dataset key 是什么。
 - 某组 HDF5 文件的 observable mean/error 是多少。

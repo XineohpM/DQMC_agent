@@ -81,24 +81,29 @@
 
 ## P1：SLURM 只读能力增强
 
+对应细化规格：`specs/sherlock-slurm-sdd/`。
+
 - [x] 增强 `query_slurm` 的分类视图。
   - [x] 支持 `filters={"me": true}`，底层命令生成 `squeue --me`。
   - [x] 分类显示当前队列任务：`running`、`pending`、`held_blocked`、`other`。
   - [x] 保留当前 filters：user、job_id、state、partition；新增 `me`。
   - [x] 返回按 job name、array job id 分组的 `groups.by_job_name`。
   - [x] 返回全局 `summary`：total jobs、state counts、category counts、job name count、array job count。
-  - [x] 保留原始 structured rows，供 agent/Slack 层展示 partition、reason/runtime/limit/nodes 等细节。
+  - [x] 保留原始 structured rows，供 agent/transport 层展示 partition、reason/runtime/limit/nodes 等细节。
   - [x] 覆盖 `squeue --json` 和 fallback delimited output 两种路径。
+  - [x] normalize `squeue --json` wrapped fields，例如 list `job_state` 和 dict `array_job_id`/`array_task_id`。
   - [x] 保持只读：不接入 `sbatch`、`scancel`、`scontrol update`。
   - [ ] 在 Sherlock login node 上做真实 `squeue --me` 集成验证。
   - [ ] 周期性查询暂不做阻塞式 MCP watcher；agent 层后续按用户指定 interval 重复调用 `query_slurm(filters={"me": true})` 并逐次返回 snapshot。
 
 - [ ] Sherlock 当前运行状态入口。
-  - [ ] agent 层提供“当前我的 Sherlock 任务状态”工作流。
+  - [ ] agent 层提供“当前我的 Sherlock 任务状态”工作流；对应 `sherlock-slurm-sdd` Phase L1。
   - [ ] 底层仍调用 MCP `query_slurm`。
   - [ ] 返回面向用户的简洁摘要，同时保留原始 structured rows。
 
 ## P1：Agent 层 Slack Bot IM 接入
+
+说明：本节是独立 transport backlog，不属于 `specs/sherlock-slurm-sdd/` 范围；Sherlock SLURM SDD 只定义 MCP hands 和非 Slack agent workflow。
 
 - [ ] 接入 Slack bot 作为 agent 的 transport adapter。
   - 注意：Slack bot 不应接进 MCP tools；MCP tools 不应知道 Slack user/channel/thread。
@@ -122,6 +127,7 @@
 ## P1/P2：同步 SLURM 产物到本地
 
 - [ ] 设计 rsync/同步能力。
+  - 对应 `sherlock-slurm-sdd` Phase L5/R5。
   - [ ] 先做 dry-run。
   - [ ] 明确远端 allowlist、目标本地 output root、覆盖策略。
   - [ ] 返回同步 manifest：新增文件、更新文件、跳过文件、大小、mtime。
@@ -134,19 +140,33 @@
 
 ## P2：已结束任务状态补全
 
-- [ ] 评估只读邮件接入。
-  - 目标：访问已结束任务的成功/失败通知。
-  - 依赖：邮箱/IMAP/API 权限、隐私过滤、job id/path 关联规则。
-  - 风险：邮件格式不稳定，权限和隐私边界更复杂。
+- [ ] 实现 `query_slurm_history` / `sacct` 只读历史查询。
+  - 对应 `sherlock-slurm-sdd` Phase L2。
+  - [ ] 新增 MCP tool：`query_slurm_history`。
+  - [ ] 使用 `sacct --parsable2 --noheader` 和字段白名单。
+  - [ ] 支持 filters：me、user、job_id、state、start、end、partition、max_rows。
+  - [ ] 返回 state counts、exit code counts、warnings。
+  - [ ] `sacct` 不可用时返回 structured `tool_unavailable`。
+  - [ ] 在 Sherlock 上确认 `sacct` 可用性、默认时间窗口、`WorkDir` 和 array job 格式。
 
-- [ ] 优先评估 SLURM 原生命令是否足够。
-  - [ ] `sacct` 只读历史状态可能比邮件更结构化。
-  - [ ] 若 `sacct` 可用，应优先接入 `sacct`，邮件作为补充。
+- [ ] Job id 详情入口。
+  - 对应 `sherlock-slurm-sdd` Phase L3。
+  - [ ] 新增 `get_slurm_job_detail`。
+  - [ ] 当前队列优先查 `query_slurm`，需要历史时查 `query_slurm_history`。
+  - [ ] 支持 array parent/task id。
+  - [ ] 多个匹配返回 candidates，不猜。
+
+- [ ] Job 到 run/output path 候选关联。
+  - 对应 `sherlock-slurm-sdd` Phase L4。
+  - [ ] 候选来源：`sacct WorkDir`、stdout/stderr parent、submit cwd、用户显式 path。
+  - [ ] 不做大目录扫描。
+  - [ ] 路径必须在 allowed roots 内，越界 fail closed。
 
 ## P3：提交 SLURM 任务
 
 - [ ] 设计 `sbatch` 提交能力。
-  - 这是高风险能力，应在测试、Slack 审批、只读状态查询、产物同步都稳定后再做。
+  - 对应 `sherlock-slurm-sdd` Phase L7/R7；这是高风险能力，应在测试、只读状态查询、历史查询、job detail、产物同步、逐次审批和 provenance 都稳定后再做。
+  - Slack 审批是独立 transport 能力，不作为 Sherlock SLURM SDD 的前置条件。
   - [ ] 必须先 dry-run，展示 job script、命令、cwd、读写路径、资源参数。
   - [ ] 必须逐次用户审批。
   - [ ] 必须记录 provenance：提交人、参数、脚本、git hash、job id、输出路径。
