@@ -1,0 +1,43 @@
+===== dqmc MCP wrapper start: Tue May 26 20:29:17 PDT 2026 =====
+PWD=/home/users/phoenixm/DQMC_agent
+PATH=/home/users/phoenixm/.npm-global/bin:/share/software/user/open/nodejs/25.3.0/bin:/home/users/phoenixm/DQMC_agent/.venv/bin:/share/software/user/open/python/3.12.1/bin:/share/software/user/open/openssl/3.0.7/bin:/share/software/user/open/sqlite/3.44.2/bin:/share/software/user/open/ncurses/6.4/bin:/share/software/user/open/gcc/12.4.0/bin:/share/software/user/open/nodejs/25.3.0/bin:/home/users/phoenixm/.npm-global/bin:/home/users/phoenixm/.npm-global/bin:/share/software/user/open/gcc/12.4.0/bin:/home/users/phoenixm/bin:/share/software/user/srcc/bin:/usr/local/bin:/usr/bin:/usr/local/sbin:/usr/sbin:/home/users/phoenixm/.local/bin:/home/users/phoenixm/bin
+LD_LIBRARY_PATH=/share/software/user/open/python/3.12.1/lib:/share/software/user/open/openssl/3.0.7/lib64:/share/software/user/open/openssl/3.0.7/lib:/share/software/user/open/gcc/12.4.0/lib64:/share/software/user/open/gcc/12.4.0/lib:/share/software/user/open/gcc/12.4.0/lib/gcc/x86_64-pc-linux-gnu:/share/software/user/open/libffi/3.2.1/lib64:/share/software/user/open/sqlite/3.44.2/lib:/share/software/user/open/readline/8.2/lib:/share/software/user/open/ncurses/6.4/lib:/share/software/user/open/tcltk/8.6.6/lib:/share/software/user/open/zlib/1.2.11/lib:/share/software/user/open/gcc/12.4.0/lib64:/share/software/user/open/gcc/12.4.0/lib/gcc/x86_64-pc-linux-gnu:/share/software/user/open/gcc/12.4.0/lib
+DQMC_ALLOWED_ROOTS=/scratch/users/phoenixm/dqmc_runs:/home/users/phoenixm/DQMC_agent
+DQMC_OUTPUT_ROOT=/home/users/phoenixm/dqmc_agent_outputs
+DQMC_OBSERVABLE_REGISTRY=
+/home/users/phoenixm/DQMC_agent/.venv/bin/python
+ssl ok
+h5py ok
+numpy ok
+dqmc_tools ok /home/users/phoenixm/DQMC_agent/dqmc_tools/__init__.py
+===== starting dqmc_mcp_server.py =====
+===== dqmc MCP wrapper start: Tue May 26 20:29:54 PDT 2026 =====
+PWD=/home/users/phoenixm/DQMC_agent
+PATH=/home/users/phoenixm/.npm-global/bin:/share/software/user/open/nodejs/25.3.0/bin:/home/users/phoenixm/DQMC_agent/.venv/bin:/share/software/user/open/python/3.12.1/bin:/share/software/user/open/openssl/3.0.7/bin:/share/software/user/open/sqlite/3.44.2/bin:/share/software/user/open/ncurses/6.4/bin:/share/software/user/open/gcc/12.4.0/bin:/home/users/phoenixm/.codex/tmp/arg0/codex-arg07iFByG:/home/users/phoenixm/.npm-global/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/codex-path:/share/software/user/open/nodejs/25.3.0/bin:/home/users/phoenixm/.npm-global/bin:/home/users/phoenixm/.npm-global/bin:/share/software/user/open/gcc/12.4.0/bin:/home/users/phoenixm/bin:/share/software/user/srcc/bin:/usr/local/bin:/usr/bin:/usr/local/sbin:/usr/sbin:/home/users/phoenixm/.local/bin:/home/users/phoenixm/bin
+LD_LIBRARY_PATH=/share/software/user/open/python/3.12.1/lib:/share/software/user/open/openssl/3.0.7/lib64:/share/software/user/open/openssl/3.0.7/lib:/share/software/user/open/gcc/12.4.0/lib64:/share/software/user/open/gcc/12.4.0/lib:/share/software/user/open/gcc/12.4.0/lib/gcc/x86_64-pc-linux-gnu:/share/software/user/open/libffi/3.2.1/lib64:/share/software/user/open/sqlite/3.44.2/lib:/share/software/user/open/readline/8.2/lib:/share/software/user/open/ncurses/6.4/lib:/share/software/user/open/tcltk/8.6.6/lib:/share/software/user/open/zlib/1.2.11/lib:
+DQMC_ALLOWED_ROOTS=/scratch/users/phoenixm/dqmc_runs:/home/users/phoenixm/DQMC_agent
+DQMC_OUTPUT_ROOT=/home/users/phoenixm/dqmc_agent_outputs
+DQMC_OBSERVABLE_REGISTRY=
+/home/users/phoenixm/DQMC_agent/.venv/bin/python
+ssl ok
+h5py ok
+numpy ok
+dqmc_tools ok /home/users/phoenixm/DQMC_agent/dqmc_tools/__init__.py
+===== starting dqmc_mcp_server.py =====
+[05/26/26 20:30:02] INFO     Processing request of type            server.py:727
+                             ListToolsRequest                                   
+===== dqmc MCP wrapper start: Tue May 26 20:30:06 PDT 2026 =====
+PWD=/home/users/phoenixm/DQMC_agent
+PATH=/home/users/phoenixm/.npm-global/bin:/share/software/user/open/nodejs/25.3.0/bin:/home/users/phoenixm/DQMC_agent/.venv/bin:/share/software/user/open/python/3.12.1/bin:/share/software/user/open/openssl/3.0.7/bin:/share/software/user/open/sqlite/3.44.2/bin:/share/software/user/open/ncurses/6.4/bin:/share/software/user/open/gcc/12.4.0/bin:/home/users/phoenixm/.codex/tmp/arg0/codex-arg07iFByG:/home/users/phoenixm/.npm-global/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/codex-path:/share/software/user/open/nodejs/25.3.0/bin:/home/users/phoenixm/.npm-global/bin:/home/users/phoenixm/.npm-global/bin:/share/software/user/open/gcc/12.4.0/bin:/home/users/phoenixm/bin:/share/software/user/srcc/bin:/usr/local/bin:/usr/bin:/usr/local/sbin:/usr/sbin:/home/users/phoenixm/.local/bin:/home/users/phoenixm/bin
+LD_LIBRARY_PATH=/share/software/user/open/python/3.12.1/lib:/share/software/user/open/openssl/3.0.7/lib64:/share/software/user/open/openssl/3.0.7/lib:/share/software/user/open/gcc/12.4.0/lib64:/share/software/user/open/gcc/12.4.0/lib:/share/software/user/open/gcc/12.4.0/lib/gcc/x86_64-pc-linux-gnu:/share/software/user/open/libffi/3.2.1/lib64:/share/software/user/open/sqlite/3.44.2/lib:/share/software/user/open/readline/8.2/lib:/share/software/user/open/ncurses/6.4/lib:/share/software/user/open/tcltk/8.6.6/lib:/share/software/user/open/zlib/1.2.11/lib:
+DQMC_ALLOWED_ROOTS=/scratch/users/phoenixm/dqmc_runs:/home/users/phoenixm/DQMC_agent
+DQMC_OUTPUT_ROOT=/home/users/phoenixm/dqmc_agent_outputs
+DQMC_OBSERVABLE_REGISTRY=
+/home/users/phoenixm/DQMC_agent/.venv/bin/python
+ssl ok
+h5py ok
+numpy ok
+dqmc_tools ok /home/users/phoenixm/DQMC_agent/dqmc_tools/__init__.py
+===== starting dqmc_mcp_server.py =====
+[05/26/26 20:30:11] INFO     Processing request of type            server.py:727
+                             ListToolsRequest                                   
