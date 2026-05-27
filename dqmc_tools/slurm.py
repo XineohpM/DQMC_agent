@@ -212,12 +212,12 @@ def _grouped_job_summary(jobs: list[dict[str, Any]]) -> dict[str, Any]:
 
 
 def _job_facts(job: dict[str, Any]) -> dict[str, Any]:
-    job_id = str(job.get("job_id") or job.get("id") or "")
+    job_id = _slurm_text(job.get("job_id") or job.get("id") or "")
     state = _job_state(job)
     return {
         "raw": job,
         "job_id": job_id,
-        "job_name": str(job.get("name") or job.get("job_name") or "(unnamed)"),
+        "job_name": _slurm_text(job.get("name") or job.get("job_name") or "(unnamed)"),
         "state": state,
         "category": _state_category(state, _job_reason(job)),
         "array_job_id": _array_job_id(job, job_id),
@@ -227,30 +227,65 @@ def _job_facts(job: dict[str, Any]) -> dict[str, Any]:
 
 def _job_state(job: dict[str, Any]) -> str:
     value = job.get("job_state") or job.get("state") or job.get("state_description") or "UNKNOWN"
-    return str(value).strip().upper() or "UNKNOWN"
+    return _slurm_text(value).upper() or "UNKNOWN"
 
 
 def _job_reason(job: dict[str, Any]) -> str:
     value = job.get("state_reason") or job.get("reason") or job.get("nodes") or ""
-    return str(value).strip()
+    return _slurm_text(value)
 
 
 def _array_job_id(job: dict[str, Any], job_id: str) -> str:
-    value = job.get("array_job_id")
-    if value not in {None, "", "N/A"}:
-        return str(value)
+    value = _slurm_scalar(job.get("array_job_id"))
+    if _has_slurm_value(value):
+        return str(value).strip()
     if "_" in job_id:
         return job_id.split("_", maxsplit=1)[0]
     return job_id or "unknown"
 
 
 def _array_task_id(job: dict[str, Any], job_id: str) -> str | None:
-    value = job.get("array_task_id")
-    if value not in {None, "", "N/A"}:
-        return str(value)
+    value = _slurm_scalar(job.get("array_task_id"))
+    if _has_slurm_value(value):
+        return str(value).strip()
     if "_" in job_id:
         return job_id.split("_", maxsplit=1)[1]
     return None
+
+
+def _slurm_text(value: Any) -> str:
+    scalar = _slurm_scalar(value)
+    if scalar is None:
+        return ""
+    return str(scalar).strip()
+
+
+def _slurm_scalar(value: Any) -> Any:
+    if isinstance(value, list):
+        for item in value:
+            scalar = _slurm_scalar(item)
+            if _has_slurm_value(scalar):
+                return scalar
+        return None
+    if isinstance(value, dict):
+        if value.get("set") is False:
+            return None
+        if value.get("infinite") is True:
+            return "INFINITE"
+        if "number" in value:
+            return value["number"]
+        if "name" in value:
+            return value["name"]
+        if "id" in value:
+            return _slurm_scalar(value["id"])
+        return None
+    return value
+
+
+def _has_slurm_value(value: Any) -> bool:
+    if value is None:
+        return False
+    return str(value).strip() not in {"", "N/A", "NONE"}
 
 
 def _state_category(state: str, reason: str) -> str:
