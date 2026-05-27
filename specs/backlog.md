@@ -69,7 +69,7 @@
 
 - [ ] 明确其余“眼睛”文件的运行时接入方式。
   - [ ] `code_map.md`：当前不被运行时读取；若要生效，需要人工同步到 `dqmc_tools/scripts/builtin_catalog.py` 或新增生成/索引机制。
-  - [ ] `diagnostics_playbook.md`：当前不被运行时读取；若要生效，需要新增只读 resource/tool、结构化 diagnostic registry，或 agent 层检索机制。
+  - [x] `diagnostics_playbook.md`：第一阶段通过 agent-side skill 接入；skill 固定要求 agent 读取 playbook 相关段落、调用 MCP hands 获取事实，并区分工具事实、playbook 规则和 agent 推断。MCP hands 当前仍不在运行时读取 playbook。
   - [ ] `dqmc_tools/scripts/builtin_catalog.py` 等代码：改动后需要重启 MCP server。
   - [ ] `dqmc-dev/scripts/` 更新：重新运行 `scripts/audit_script_adapters.py` 可重新读取源码并更新当前 Python 进程内的 adapter schema；已运行的 MCP server 仍需要重启或重载。
 
@@ -152,21 +152,22 @@
   - [ ] 必须限制资源参数和提交目录。
   - [ ] 第一版不做 cancel；cancel 是单独高风险 backlog。
 
-## 诊断知识接入待决
+## 诊断知识接入
 
-- [ ] 决定 `diagnostics_playbook.md` 的接入方式。
+- [x] 决定 `diagnostics_playbook.md` 的第一阶段接入方式：新增 agent-side skill。
+  - 已新增 repo-local skill：`skills/dqmc-diagnostics-playbook/SKILL.md`。
+  - 已同步到 Codex 全局 skill 目录：`/Users/phoenixm/.codex/skills/dqmc-diagnostics-playbook/SKILL.md`。
+  - 选项 D：agent-side skill 作为选项 A 的流程化实现。它不新增 MCP tool，不执行代码，只固定 agent 的读取、事实收集和分层解释流程。
   - 选项 A：只作为 agent 可读文档，由 agent 在需要时读取或检索。
-  - 选项 B：拆成结构化 YAML/JSON diagnostic rules，由工具返回事实、agent 解释规则。
-  - 选项 C：新增只读 MCP resource/tool 暴露 playbook sections。
   - 需要保持边界：MCP hands 默认不做物理可靠性结论，除非新增工具明确命名为 diagnostic guidance。
 
-- [ ] 若结构化接入，需要覆盖以下 playbook 内容。
-  - [ ] sign problem：平均 sign 小会放大统计误差；sign reweighting 需要 jackknife/bootstrap。
-  - [ ] Trotter error：`beta = L * dt`，经验条件 `dt^2 * U * t <= 1/8`。
-  - [ ] warmup/sweeps：早期 time series、running mean、前后半段均值差异。
-  - [ ] mu tuning：半填充约定、目标 filling、`|n_measured - n_target| <= 0.01`。
-  - [ ] compressibility：`dn/dmu` 通常应为正。
-  - [ ] MaxEnt binning：典型 bin 数建议 `n_bin = 2L`。
+- [x] Agent-side skill 当前覆盖以下 playbook 内容。
+  - [x] sign problem：平均 sign 小会放大统计误差；sign reweighting 需要 jackknife/bootstrap。
+  - [x] Trotter error：`beta = L * dt`，经验条件 `dt^2 * U * t <= 1/8`。
+  - [x] warmup/sweeps：早期 time series、running mean、前后半段均值差异。
+  - [x] mu tuning：半填充约定、目标 filling、`|n_measured - n_target| <= 0.01`。
+  - [x] compressibility：`dn/dmu` 通常应为正。
+  - [x] MaxEnt binning：典型 bin 数建议 `n_bin = 2L`。
 
 ## 文档维护
 
