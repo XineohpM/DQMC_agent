@@ -382,3 +382,46 @@ def test_query_slurm_history_mcp_error_contract(monkeypatch):
     assert payload["ok"] is False
     assert payload["error_type"] == "tool_unavailable"
     assert payload["details"] == {"command": "sacct"}
+
+
+def test_get_slurm_job_detail_mcp_success_contract(monkeypatch):
+    monkeypatch.setattr(
+        "dqmc_tools.slurm.query_slurm",
+        lambda filters=None: {
+            "ok": True,
+            "source": "squeue_json",
+            "command": ["squeue", "--json", "--jobs", filters["job_id"]],
+            "jobs": [{"job_id": 123, "name": "dqmc", "job_state": "RUNNING"}],
+        },
+    )
+    monkeypatch.setattr(
+        "dqmc_tools.slurm.query_slurm_history",
+        lambda _filters=None: (_ for _ in ()).throw(AssertionError("history should not be queried")),
+    )
+
+    payload = _run(_call_tool("get_slurm_job_detail", {"job_id": "123"}))
+
+    assert set(payload) == {
+        "ok",
+        "job_id",
+        "include_history",
+        "match_count",
+        "multiple_matches",
+        "candidates",
+        "queries",
+        "warnings",
+    }
+    assert payload["ok"] is True
+    assert payload["job_id"] == "123"
+    assert payload["match_count"] == 1
+    assert payload["candidates"][0]["source"] == "squeue"
+    assert payload["candidates"][0]["state"] == "RUNNING"
+
+
+def test_get_slurm_job_detail_mcp_error_contract():
+    payload = _run(_call_tool("get_slurm_job_detail", {"job_id": " "}))
+
+    assert set(payload) == {"ok", "error_type", "message", "details"}
+    assert payload["ok"] is False
+    assert payload["error_type"] == "invalid_argument"
+    assert payload["details"] == {"job_id": " "}

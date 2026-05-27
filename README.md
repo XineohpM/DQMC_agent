@@ -51,7 +51,7 @@ export DQMC_DEV_ROOT="/Users/phoenixm/Desktop/dqmc-dev"
 .venv/bin/python dqmc_mcp_server.py
 ```
 
-MCP 暴露 11 个工具：
+MCP 暴露 12 个工具：
 
 - `summarize_run`
 - `inspect_hdf5`
@@ -64,6 +64,7 @@ MCP 暴露 11 个工具：
 - `run_script_adapter`
 - `query_slurm`
 - `query_slurm_history`
+- `get_slurm_job_detail`
 
 不暴露 `list_runs`。run 目录、T 目录、脚本输入目录都必须由用户显式给出。
 
@@ -71,6 +72,8 @@ MCP 暴露 11 个工具：
 返回原始 job rows，并按 job name 和 array job id 生成 grouped summary。
 `query_slurm_history` 是只读历史查询：使用本地 `sacct --parsable2 --noheader`，
 返回 parsed job rows、state counts、exit code counts 和 warnings。
+`get_slurm_job_detail` 是只读 job 详情入口：先查当前 `squeue`，必要时查
+本地 `sacct` 历史，返回 detail candidates，不对多个候选做唯一猜测。
 
 ## Registry 和 HDF5
 

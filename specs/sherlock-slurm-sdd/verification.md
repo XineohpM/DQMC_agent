@@ -38,7 +38,7 @@ DQMC_DEV_ROOT=/Users/phoenixm/Desktop/dqmc-dev .venv/bin/python -m pytest
 
 结果：
 
-- `87 passed in 8.53s`
+- `96 passed in 8.72s`
 
 ## Phase L1 本地 Presenter
 
@@ -83,6 +83,28 @@ DQMC_DEV_ROOT=/Users/phoenixm/Desktop/dqmc-dev .venv/bin/python -m pytest
 - timeout structured error。
 - completed/failed/timeout/OOM parsable2 fixture。
 - short rows warning。
+- MCP tool set 和 success/error contract。
+
+## Phase L3 本地 Job 详情入口
+
+命令：
+
+```bash
+.venv/bin/python -m pytest tests/test_slurm.py::test_get_slurm_job_detail_prefers_current_queue tests/test_slurm.py::test_get_slurm_job_detail_uses_history_when_current_queue_is_empty tests/test_slurm.py::test_get_slurm_job_detail_preserves_failed_history_candidate tests/test_slurm.py::test_get_slurm_job_detail_returns_stable_empty_result_without_history tests/test_slurm.py::test_get_slurm_job_detail_returns_array_candidates_without_guessing tests/test_slurm.py::test_get_slurm_job_detail_filters_specific_array_task tests/test_slurm.py::test_get_slurm_job_detail_rejects_empty_job_id tests/test_mcp_contracts.py::test_get_slurm_job_detail_mcp_success_contract tests/test_mcp_contracts.py::test_get_slurm_job_detail_mcp_error_contract tests/test_mcp_server.py::test_mcp_tool_set_has_current_hands_surface tests/test_mcp_server.py::test_mcp_descriptions_match_current_registry_and_run_rules -q
+```
+
+结果：
+
+- `11 passed`
+
+覆盖：
+
+- `get_slurm_job_detail(job_id, include_history=True)` public API。
+- 当前队列 `squeue` 命中时不查历史。
+- 当前队列为空时查 `sacct` 历史，覆盖 completed 和 failed 状态。
+- `include_history=false` 时返回稳定空结果。
+- array parent 返回多个 candidates，具体 task id 只返回对应 candidate。
+- 空 job id structured error。
 - MCP tool set 和 success/error contract。
 
 ## Sherlock 环境基线

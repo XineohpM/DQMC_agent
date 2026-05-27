@@ -3,7 +3,7 @@ import subprocess
 import pytest
 
 from dqmc_tools.errors import InvalidArgumentError, ToolUnavailableError
-from dqmc_tools.slurm import query_slurm, query_slurm_history
+from dqmc_tools.slurm import get_slurm_job_detail, query_slurm, query_slurm_history
 
 
 def test_query_slurm_unavailable(monkeypatch):
@@ -358,6 +358,278 @@ def test_query_slurm_history_warns_on_short_rows(monkeypatch):
     assert result["jobs"][0]["job_id"] == "300"
     assert result["jobs"][0]["work_dir"] == ""
     assert result["warnings"] == ["1 sacct row(s) had fewer fields than expected."]
+
+
+def test_get_slurm_job_detail_prefers_current_queue(monkeypatch):
+    def fake_query_slurm(filters=None):
+        assert filters == {"job_id": "123"}
+        return {
+            "ok": True,
+            "source": "squeue_json",
+            "command": ["squeue", "--json", "--jobs", "123"],
+            "commands_attempted": [["squeue", "--json", "--jobs", "123"]],
+            "jobs": [
+                {
+                    "job_id": 123,
+                    "name": "dqmc_scan",
+                    "job_state": ["RUNNING"],
+                    "partition": "normal",
+                    "time_used": "00:12:00",
+                    "time_limit": "01:00:00",
+                    "nodes": "node001",
+                    "standard_output": "/oak/runs/123/slurm-%j.out",
+                    "standard_error": "/oak/runs/123/slurm-%j.err",
+                }
+            ],
+        }
+
+    def fake_query_slurm_history(_filters=None):
+        raise AssertionError("history should not be queried when current queue has a match")
+
+    monkeypatch.setattr("dqmc_tools.slurm.query_slurm", fake_query_slurm)
+    monkeypatch.setattr("dqmc_tools.slurm.query_slurm_history", fake_query_slurm_history)
+
+    result = get_slurm_job_detail("123")
+
+    assert result == {
+        "ok": True,
+        "job_id": "123",
+        "include_history": True,
+        "match_count": 1,
+        "multiple_matches": False,
+        "candidates": [
+            {
+                "source": "squeue",
+                "job_id": "123",
+                "job_name": "dqmc_scan",
+                "state": "RUNNING",
+                "category": "running",
+                "partition": "normal",
+                "elapsed": "00:12:00",
+                "time_limit": "01:00:00",
+                "node_or_reason": "node001",
+                "submit": "",
+                "start": "",
+                "end": "",
+                "work_dir": "",
+                "stdout_path": "/oak/runs/123/slurm-%j.out",
+                "stderr_path": "/oak/runs/123/slurm-%j.err",
+                "raw": {
+                    "job_id": 123,
+                    "name": "dqmc_scan",
+                    "job_state": ["RUNNING"],
+                    "partition": "normal",
+                    "time_used": "00:12:00",
+                    "time_limit": "01:00:00",
+                    "nodes": "node001",
+                    "standard_output": "/oak/runs/123/slurm-%j.out",
+                    "standard_error": "/oak/runs/123/slurm-%j.err",
+                },
+            }
+        ],
+        "queries": [{"source": "squeue", "job_count": 1, "command": ["squeue", "--json", "--jobs", "123"]}],
+        "warnings": [],
+    }
+
+
+def test_get_slurm_job_detail_uses_history_when_current_queue_is_empty(monkeypatch):
+    monkeypatch.setattr(
+        "dqmc_tools.slurm.query_slurm",
+        lambda filters=None: {
+            "ok": True,
+            "source": "squeue_json",
+            "command": ["squeue", "--json", "--jobs", filters["job_id"]],
+            "jobs": [],
+        },
+    )
+    monkeypatch.setattr(
+        "dqmc_tools.slurm.query_slurm_history",
+        lambda filters=None: {
+            "ok": True,
+            "source": "sacct_parsable2",
+            "command": ["sacct", "--parsable2", "--jobs", filters["job_id"]],
+            "jobs": [
+                {
+                    "job_id": "456",
+                    "job_name": "finished_scan",
+                    "user": "phoenix",
+                    "state": "COMPLETED",
+                    "exit_code": "0:0",
+                    "elapsed": "00:42:00",
+                    "time_limit": "01:00:00",
+                    "submit": "2026-05-26T10:00:00",
+                    "start": "2026-05-26T10:02:00",
+                    "end": "2026-05-26T10:44:00",
+                    "partition": "normal",
+                    "node_list": "node007",
+                    "work_dir": "/oak/run456",
+                }
+            ],
+            "warnings": ["history warning"],
+        },
+    )
+
+    result = get_slurm_job_detail("456")
+
+    assert result["match_count"] == 1
+    assert result["queries"] == [
+        {"source": "squeue", "job_count": 0, "command": ["squeue", "--json", "--jobs", "456"]},
+        {"source": "sacct", "job_count": 1, "command": ["sacct", "--parsable2", "--jobs", "456"]},
+    ]
+    assert result["warnings"] == ["history warning"]
+    assert result["candidates"][0] == {
+        "source": "sacct",
+        "job_id": "456",
+        "job_name": "finished_scan",
+        "state": "COMPLETED",
+        "category": "completed",
+        "partition": "normal",
+        "elapsed": "00:42:00",
+        "time_limit": "01:00:00",
+        "node_or_reason": "node007",
+        "submit": "2026-05-26T10:00:00",
+        "start": "2026-05-26T10:02:00",
+        "end": "2026-05-26T10:44:00",
+        "work_dir": "/oak/run456",
+        "stdout_path": "",
+        "stderr_path": "",
+        "raw": {
+            "job_id": "456",
+            "job_name": "finished_scan",
+            "user": "phoenix",
+            "state": "COMPLETED",
+            "exit_code": "0:0",
+            "elapsed": "00:42:00",
+            "time_limit": "01:00:00",
+            "submit": "2026-05-26T10:00:00",
+            "start": "2026-05-26T10:02:00",
+            "end": "2026-05-26T10:44:00",
+            "partition": "normal",
+            "node_list": "node007",
+            "work_dir": "/oak/run456",
+        },
+    }
+
+
+def test_get_slurm_job_detail_preserves_failed_history_candidate(monkeypatch):
+    monkeypatch.setattr(
+        "dqmc_tools.slurm.query_slurm",
+        lambda filters=None: {
+            "ok": True,
+            "source": "squeue_json",
+            "command": ["squeue", "--json", "--jobs", filters["job_id"]],
+            "jobs": [],
+        },
+    )
+    monkeypatch.setattr(
+        "dqmc_tools.slurm.query_slurm_history",
+        lambda filters=None: {
+            "ok": True,
+            "source": "sacct_parsable2",
+            "command": ["sacct", "--parsable2", "--jobs", filters["job_id"]],
+            "jobs": [
+                {
+                    "job_id": "457",
+                    "job_name": "failed_scan",
+                    "state": "FAILED",
+                    "exit_code": "1:0",
+                    "elapsed": "00:03:00",
+                    "time_limit": "01:00:00",
+                    "partition": "normal",
+                    "node_list": "node009",
+                    "work_dir": "/oak/run457",
+                }
+            ],
+            "warnings": [],
+        },
+    )
+
+    result = get_slurm_job_detail("457")
+
+    assert result["match_count"] == 1
+    assert result["candidates"][0]["state"] == "FAILED"
+    assert result["candidates"][0]["category"] == "held_blocked"
+    assert result["candidates"][0]["raw"]["exit_code"] == "1:0"
+
+
+def test_get_slurm_job_detail_returns_stable_empty_result_without_history(monkeypatch):
+    history_called = False
+
+    def fake_history(_filters=None):
+        nonlocal history_called
+        history_called = True
+        return {"ok": True, "jobs": []}
+
+    monkeypatch.setattr(
+        "dqmc_tools.slurm.query_slurm",
+        lambda filters=None: {"ok": True, "command": ["squeue", "--jobs", filters["job_id"]], "jobs": []},
+    )
+    monkeypatch.setattr("dqmc_tools.slurm.query_slurm_history", fake_history)
+
+    result = get_slurm_job_detail("999", include_history=False)
+
+    assert history_called is False
+    assert result == {
+        "ok": True,
+        "job_id": "999",
+        "include_history": False,
+        "match_count": 0,
+        "multiple_matches": False,
+        "candidates": [],
+        "queries": [{"source": "squeue", "job_count": 0, "command": ["squeue", "--jobs", "999"]}],
+        "warnings": [],
+    }
+
+
+def test_get_slurm_job_detail_returns_array_candidates_without_guessing(monkeypatch):
+    monkeypatch.setattr(
+        "dqmc_tools.slurm.query_slurm",
+        lambda filters=None: {
+            "ok": True,
+            "source": "squeue_json",
+            "command": ["squeue", "--json", "--jobs", filters["job_id"]],
+            "jobs": [
+                {"job_id": "700_0", "name": "scan", "job_state": "RUNNING", "array_job_id": 700, "array_task_id": 0},
+                {"job_id": "700_1", "name": "scan", "job_state": "PENDING", "array_job_id": 700, "array_task_id": 1},
+            ],
+        },
+    )
+    monkeypatch.setattr(
+        "dqmc_tools.slurm.query_slurm_history",
+        lambda _filters=None: (_ for _ in ()).throw(AssertionError("history should not be queried")),
+    )
+
+    result = get_slurm_job_detail("700")
+
+    assert result["match_count"] == 2
+    assert result["multiple_matches"] is True
+    assert [candidate["job_id"] for candidate in result["candidates"]] == ["700_0", "700_1"]
+
+
+def test_get_slurm_job_detail_filters_specific_array_task(monkeypatch):
+    monkeypatch.setattr(
+        "dqmc_tools.slurm.query_slurm",
+        lambda filters=None: {
+            "ok": True,
+            "source": "squeue_json",
+            "command": ["squeue", "--json", "--jobs", filters["job_id"]],
+            "jobs": [
+                {"job_id": "700_0", "name": "scan", "job_state": "RUNNING", "array_job_id": 700, "array_task_id": 0},
+                {"job_id": "700_1", "name": "scan", "job_state": "PENDING", "array_job_id": 700, "array_task_id": 1},
+            ],
+        },
+    )
+
+    result = get_slurm_job_detail("700_1")
+
+    assert result["match_count"] == 1
+    assert result["multiple_matches"] is False
+    assert result["candidates"][0]["job_id"] == "700_1"
+
+
+def test_get_slurm_job_detail_rejects_empty_job_id():
+    with pytest.raises(InvalidArgumentError):
+        get_slurm_job_detail(" ")
 
 
 def json_jobs(jobs):

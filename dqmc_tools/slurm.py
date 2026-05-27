@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-import json
 import getpass
+import json
 import shutil
 import subprocess
 from collections import Counter, defaultdict
@@ -146,6 +146,40 @@ def query_slurm_history(filters: dict[str, Any] | None = None) -> dict[str, Any]
     }
 
 
+def get_slurm_job_detail(job_id: str, include_history: bool = True) -> dict[str, Any]:
+    """Return current or historical detail candidates for one SLURM job id."""
+
+    requested_job_id = _validate_job_id(job_id)
+    queries = []
+    warnings: list[str] = []
+
+    current_payload = query_slurm({"job_id": requested_job_id})
+    queries.append(_query_record("squeue", current_payload))
+    candidates = [
+        _detail_candidate_from_current(row)
+        for row in current_payload.get("jobs", [])
+        if _matches_requested_job_id(row, requested_job_id)
+    ]
+
+    if not candidates and include_history:
+        history_payload = query_slurm_history({"job_id": requested_job_id})
+        queries.append(_query_record("sacct", history_payload))
+        warnings.extend(str(warning) for warning in history_payload.get("warnings", []))
+        candidates = [
+            _detail_candidate_from_history(row)
+            for row in history_payload.get("jobs", [])
+            if _matches_requested_job_id(row, requested_job_id)
+        ]
+
+    return _job_detail_result(
+        requested_job_id,
+        include_history=include_history,
+        candidates=candidates,
+        queries=queries,
+        warnings=warnings,
+    )
+
+
 def _validate_filters(filters: dict[str, Any]) -> dict[str, Any]:
     unknown = sorted(set(filters) - SUPPORTED_FILTERS)
     if unknown:
@@ -185,6 +219,16 @@ def _validate_history_filters(filters: dict[str, Any]) -> dict[str, Any]:
             parsed[key] = _positive_int_filter(key, value)
             continue
         parsed[key] = str(value).strip()
+    return parsed
+
+
+def _validate_job_id(job_id: str) -> str:
+    parsed = str(job_id).strip()
+    if not parsed:
+        raise InvalidArgumentError(
+            "SLURM job_id must be a non-empty string.",
+            details={"job_id": job_id},
+        )
     return parsed
 
 
@@ -367,6 +411,99 @@ def _history_summary(jobs: list[dict[str, str]]) -> dict[str, Any]:
         "state_counts": _counts(job["state"] for job in jobs),
         "exit_code_counts": _counts(job["exit_code"] for job in jobs),
     }
+
+
+def _job_detail_result(
+    job_id: str,
+    *,
+    include_history: bool,
+    candidates: list[dict[str, Any]],
+    queries: list[dict[str, Any]],
+    warnings: list[str],
+) -> dict[str, Any]:
+    return {
+        "ok": True,
+        "job_id": job_id,
+        "include_history": include_history,
+        "match_count": len(candidates),
+        "multiple_matches": len(candidates) > 1,
+        "candidates": candidates,
+        "queries": queries,
+        "warnings": warnings,
+    }
+
+
+def _query_record(source: str, payload: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "source": source,
+        "job_count": len(payload.get("jobs") or []),
+        "command": payload.get("command") or [],
+    }
+
+
+def _detail_candidate_from_current(job: dict[str, Any]) -> dict[str, Any]:
+    state = _job_state(job)
+    return {
+        "source": "squeue",
+        "job_id": _candidate_job_id(job),
+        "job_name": _slurm_text(job.get("name") or job.get("job_name")),
+        "state": state,
+        "category": _detail_state_category(state, _job_reason(job)),
+        "partition": _slurm_text(job.get("partition")),
+        "elapsed": _slurm_text(job.get("time_used") or job.get("elapsed")),
+        "time_limit": _slurm_text(job.get("time_limit") or job.get("time_limit_raw")),
+        "node_or_reason": _job_reason(job),
+        "submit": _slurm_text(job.get("submit_time") or job.get("submit")),
+        "start": _slurm_text(job.get("start_time") or job.get("start")),
+        "end": _slurm_text(job.get("end_time") or job.get("end")),
+        "work_dir": _slurm_text(job.get("work_dir") or job.get("workdir")),
+        "stdout_path": _slurm_text(job.get("standard_output") or job.get("stdout_path") or job.get("std_out")),
+        "stderr_path": _slurm_text(job.get("standard_error") or job.get("stderr_path") or job.get("std_err")),
+        "raw": job,
+    }
+
+
+def _detail_candidate_from_history(job: dict[str, Any]) -> dict[str, Any]:
+    state = _job_state(job)
+    return {
+        "source": "sacct",
+        "job_id": _candidate_job_id(job),
+        "job_name": _slurm_text(job.get("job_name") or job.get("name")),
+        "state": state,
+        "category": _detail_state_category(state, _job_reason(job)),
+        "partition": _slurm_text(job.get("partition")),
+        "elapsed": _slurm_text(job.get("elapsed") or job.get("time_used")),
+        "time_limit": _slurm_text(job.get("time_limit") or job.get("timelimit")),
+        "node_or_reason": _slurm_text(job.get("node_list") or job.get("nodes") or job.get("reason")),
+        "submit": _slurm_text(job.get("submit") or job.get("submit_time")),
+        "start": _slurm_text(job.get("start") or job.get("start_time")),
+        "end": _slurm_text(job.get("end") or job.get("end_time")),
+        "work_dir": _slurm_text(job.get("work_dir") or job.get("workdir")),
+        "stdout_path": _slurm_text(job.get("stdout_path") or job.get("standard_output") or job.get("std_out")),
+        "stderr_path": _slurm_text(job.get("stderr_path") or job.get("standard_error") or job.get("std_err")),
+        "raw": job,
+    }
+
+
+def _matches_requested_job_id(job: dict[str, Any], requested_job_id: str) -> bool:
+    candidate_job_id = _candidate_job_id(job)
+    if candidate_job_id == requested_job_id:
+        return True
+    if candidate_job_id.startswith(f"{requested_job_id}."):
+        return True
+    if "_" not in requested_job_id and candidate_job_id.startswith(f"{requested_job_id}_"):
+        return True
+    return _slurm_text(job.get("array_job_id")) == requested_job_id
+
+
+def _candidate_job_id(job: dict[str, Any]) -> str:
+    return _slurm_text(job.get("job_id") or job.get("id"))
+
+
+def _detail_state_category(state: str, reason: str) -> str:
+    if state.strip().upper() in {"COMPLETED", "CD"}:
+        return "completed"
+    return _state_category(state, reason)
 
 
 def _job_facts(job: dict[str, Any]) -> dict[str, Any]:

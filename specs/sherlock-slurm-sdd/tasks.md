@@ -105,23 +105,23 @@
 
 ## Phase L3：Job 详情入口
 
-- [ ] 设计 `get_slurm_job_detail(job_id, include_history=True)` public API。
-- [ ] 写 running job 从 mocked `query_slurm` 返回详情的 test。
-- [ ] 写 completed/failed job 从 mocked `query_slurm_history` 返回详情的 test。
-- [ ] 写 array parent 和 task id 行为 test。
-- [ ] 写多个 matching rows 返回 candidates 的 test。
-- [ ] 写查不到 job 时返回稳定空结果的 test。
-- [ ] 实现查询顺序：当前队列优先，必要时查历史。
-- [ ] 基于 normalized facts 构造 detail candidate。
-- [ ] raw rows 只作为 provenance 返回。
-- [ ] 注册 MCP tool，并补 MCP contract tests。
+- [x] 设计 `get_slurm_job_detail(job_id, include_history=True)` public API。
+- [x] 写 running job 从 mocked `query_slurm` 返回详情的 test。
+- [x] 写 completed/failed job 从 mocked `query_slurm_history` 返回详情的 test。
+- [x] 写 array parent 和 task id 行为 test。
+- [x] 写多个 matching rows 返回 candidates 的 test。
+- [x] 写查不到 job 时返回稳定空结果的 test。
+- [x] 实现查询顺序：当前队列优先，必要时查历史。
+- [x] 基于 normalized facts 构造 detail candidate。
+- [x] raw rows 只作为 provenance 返回。
+- [x] 注册 MCP tool，并补 MCP contract tests。
 
 验收：
 
-- [ ] running job 从 `squeue` 返回详情。
-- [ ] completed/failed job 从 `sacct` 返回详情。
-- [ ] 查不到 job 时返回稳定结构。
-- [ ] 不猜测多个候选中的唯一结果。
+- [x] running job 从 `squeue` 返回详情。
+- [x] completed/failed job 从 `sacct` 返回详情。
+- [x] 查不到 job 时返回稳定结构。
+- [x] 不猜测多个候选中的唯一结果。
 
 ## Phase L3 的 Sherlock 验证步骤
 

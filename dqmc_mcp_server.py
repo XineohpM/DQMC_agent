@@ -16,6 +16,7 @@ from dqmc_tools.runs import summarize_run as dqmc_summarize_run
 from dqmc_tools.scripts.runner import describe_script_adapter as dqmc_describe_script_adapter
 from dqmc_tools.scripts.runner import list_script_adapters as dqmc_list_script_adapters
 from dqmc_tools.scripts.runner import run_script_adapter as dqmc_run_script_adapter
+from dqmc_tools.slurm import get_slurm_job_detail as dqmc_get_slurm_job_detail
 from dqmc_tools.slurm import query_slurm as dqmc_query_slurm
 from dqmc_tools.slurm import query_slurm_history as dqmc_query_slurm_history
 
@@ -298,6 +299,20 @@ def build_server() -> FastMCP:
     def query_slurm_history(filters: dict[str, Any] | None = None) -> dict[str, Any]:
         try:
             return dqmc_query_slurm_history(filters=filters)
+        except Exception as exc:
+            return error_dict(exc)
+
+    @server.tool(
+        name="get_slurm_job_detail",
+        description=(
+            "Get read-only SLURM job detail candidates by job id with current "
+            "squeue first, then optional local sacct history. This never submits, "
+            "cancels, or mutates jobs. Parameters: job_id, include_history."
+        ),
+    )
+    def get_slurm_job_detail(job_id: str, include_history: bool = True) -> dict[str, Any]:
+        try:
+            return dqmc_get_slurm_job_detail(job_id, include_history=include_history)
         except Exception as exc:
             return error_dict(exc)
 
