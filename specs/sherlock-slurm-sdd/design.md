@@ -184,6 +184,14 @@ Sherlock 上复用现有 `run_script_adapter`：
 - 真实执行必须传入 `user_confirmation`。
 - 输出写入 Sherlock 上的 `DQMC_OUTPUT_ROOT`。
 
+## 周期性状态查询
+
+周期性查询由 agent 层实现，不在 MCP hands 中做 daemon。当前 workflow 文档：
+
+- `polling-workflow.md`
+
+MCP hands 只提供单次 `query_slurm` snapshot；agent 保存 previous/current snapshots，并使用纯 helper 比较新增、消失和 state 改变。
+
 ## 受限 `sbatch`
 
 `sbatch` 不在第一轮实现中。后续单独设计时必须满足：

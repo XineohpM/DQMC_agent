@@ -38,7 +38,7 @@ DQMC_DEV_ROOT=/Users/phoenixm/Desktop/dqmc-dev .venv/bin/python -m pytest
 
 结果：
 
-- `113 passed in 13.47s`
+- `116 passed in 13.13s`
 
 ## Phase L1 本地 Presenter
 
@@ -164,6 +164,25 @@ DQMC_DEV_ROOT=/Users/phoenixm/Desktop/dqmc-dev .venv/bin/python -m pytest
 - 已审批同步命令不带 `--dry-run`，并返回 manifest。
 - `rsync` unavailable 返回 structured `tool_unavailable`。
 - MCP success/error contract 和 tool set。
+
+## Phase L6 本地 Polling Workflow
+
+命令：
+
+```bash
+.venv/bin/python -m pytest tests/test_slurm_monitor.py -q
+```
+
+结果：
+
+- `3 passed`
+
+覆盖：
+
+- 固定 snapshots diff：新增、消失、state 改变和 unchanged count。
+- snapshot diff 文本摘要。
+- 无变化时输出稳定摘要。
+- workflow 文档：`polling-workflow.md`，说明轮询由 agent 层驱动，MCP hands 不启动后台进程。
 
 ## Sherlock 环境基线
 

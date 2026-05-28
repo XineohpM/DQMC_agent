@@ -5,7 +5,7 @@
 ## 当前基线
 
 - [x] “手”层已经有第一版 MCP tools：`summarize_run`、`inspect_hdf5`、`read_dataset`、`resolve_registry_entry`、`read_registered_quantity`、`estimate_registered_observable`、`list_script_adapters`、`describe_script_adapter`、`run_script_adapter`、`query_slurm`、`query_slurm_history`、`get_slurm_job_detail`、`infer_slurm_path_candidates`、`sync_sherlock_artifacts`。
-- [x] 当前测试可通过：`113 passed`。
+- [x] 当前测试可通过：`116 passed`。
 - [x] `registry.yaml` 是当前“手”层唯一被运行时代码真正读取的三份“眼睛”文件之一。
 - [x] `code_map.md` 和 `diagnostics_playbook.md` 目前没有被 `dqmc_tools/` 或 `dqmc_mcp_server.py` 运行时读取。
 - [x] `diagnostics_playbook.md` 当前只作为设计输入和人工知识来源；“手”层不自动执行 sign、Trotter、warmup、mu tuning、MaxEnt binning 等诊断判断。
@@ -94,7 +94,7 @@
   - [x] normalize `squeue --json` wrapped fields，例如 list `job_state` 和 dict `array_job_id`/`array_task_id`。
   - [x] 保持只读：不接入 `sbatch`、`scancel`、`scontrol update`。
   - [ ] 在 Sherlock login node 上做真实 `squeue --me` 集成验证。
-  - [ ] 周期性查询暂不做阻塞式 MCP watcher；agent 层后续按用户指定 interval 重复调用 `query_slurm(filters={"me": true})` 并逐次返回 snapshot。
+  - [x] 周期性查询暂不做阻塞式 MCP watcher；agent 层按用户指定 interval 重复调用 `query_slurm(filters={"me": true})`，用 `diff_slurm_snapshots` 比较 snapshots。
 
 - [ ] Sherlock 当前运行状态入口。
   - [ ] agent 层提供“当前我的 Sherlock 任务状态”工作流；对应 `sherlock-slurm-sdd` Phase L1。

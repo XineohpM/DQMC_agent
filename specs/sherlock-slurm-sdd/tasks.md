@@ -186,15 +186,15 @@
 
 ## Phase L6：周期性状态查询
 
-- [ ] 设计 agent 层轮询流程，不在 MCP hands 内做 daemon。
-- [ ] 写固定 snapshots 的 diff test：新增、消失、state 改变。
-- [ ] 写中断不留下后台进程的行为说明或测试。
-- [ ] 实现或文档化 agent workflow。
+- [x] 设计 agent 层轮询流程，不在 MCP hands 内做 daemon。
+- [x] 写固定 snapshots 的 diff test：新增、消失、state 改变。
+- [x] 写中断不留下后台进程的行为说明或测试。
+- [x] 实现或文档化 agent workflow。
 
 验收：
 
-- [ ] 轮询由 agent 层驱动。
-- [ ] MCP hands 无状态。
+- [x] 轮询由 agent 层驱动。
+- [x] MCP hands 无状态。
 
 ## Phase L7/R7：受限 `sbatch` 提交设计
 
