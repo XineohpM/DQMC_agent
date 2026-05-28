@@ -37,6 +37,17 @@ def test_sherlock_gateway_tool_set():
     }
 
 
+def test_sherlock_query_slurm_description_requires_formatted_summary():
+    async def run():
+        server = build_server()
+        return await server.list_tools()
+
+    descriptions = {tool.name: tool.description or "" for tool in _run(run())}
+
+    assert "formatted_summary" in descriptions["sherlock_query_slurm"]
+    assert "user-facing" in descriptions["sherlock_query_slurm"]
+
+
 def test_sherlock_gateway_data_reading_profile_exposes_summarize_run():
     async def run():
         server = build_server(profile="data-reading")
@@ -58,6 +69,7 @@ def test_sherlock_query_slurm_mcp_contract(monkeypatch):
             "ok": True,
             "remote": {"host": "sherlock", "tool": tool_name},
             "result": {"ok": True, "args": args},
+            "formatted_summary": "formatted table",
         }
 
     monkeypatch.setattr("dqmc_tools.remote_gateway.call_sherlock_tool", fake_call)
@@ -68,6 +80,7 @@ def test_sherlock_query_slurm_mcp_contract(monkeypatch):
         "ok": True,
         "remote": {"host": "sherlock", "tool": "query_slurm"},
         "result": {"ok": True, "args": {"filters": {"me": True}}},
+        "formatted_summary": "formatted table",
     }
 
 

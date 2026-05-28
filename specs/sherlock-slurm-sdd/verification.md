@@ -355,15 +355,31 @@ sacct --parsable2 --noheader --format=JobID,JobName,User,State,ExitCode,Elapsed,
   - warning count：0
   - path redaction check：`has_sensitive_path_keys=false`
 
+array parent/task job：
+
+- 2026-05-28 本地 gateway `sherlock_get_slurm_job_detail` 补充 smoke：
+  - running array parent id：返回 `match_count=96`、`multiple_matches=true`，符合 parent id 不猜唯一结果。
+  - running `parent_task` id：经 `squeue` 返回 `match_count=1`、`multiple_matches=false`。
+  - running task candidate：`source=squeue`，state/category 为 `RUNNING` / `running`。
+  - running task response path check：`sensitive_path_keys_present=[]`，`path_like_value_count=0`。
+
 历史 job：
 
-- job id：
-- command/source：
-- candidate count：
-- state：
-- exit code：
-- start/end：
-- work dir：默认响应应脱敏或不返回
+- 2026-05-28 本地 gateway `sherlock_get_slurm_job_detail` completed array parent smoke：
+  - command/source：先 `squeue`，job-specific lookup 返回 `tool_unavailable`，随后 fallback 到 `sacct`。
+  - `sacct` candidate count：1024。
+  - candidate state/category：`COMPLETED` / `completed`。
+  - exit code：`0:0`。
+  - path redaction check：`sensitive_path_keys_present=[]`，`path_like_value_count=0`。
+
+- 2026-05-28 本地 gateway `sherlock_get_slurm_job_detail` completed `parent_task` smoke：
+  - command/source：先 `squeue`，随后 fallback 到 `sacct`。
+  - candidate count：4。
+  - candidates：task 本体、`.batch`、`.extern`、`.0` step rows。
+  - state/category：全部为 `COMPLETED` / `completed`。
+  - exit code：全部为 `0:0`。
+  - interpretation：已结束 array task 在 `sacct` 中收敛到 task-level step group，不是单条 row；工具继续返回 candidates，不猜唯一 step。
+  - path redaction check：`sensitive_path_keys_present=[]`，`path_like_value_count=0`。
 
 验收：
 

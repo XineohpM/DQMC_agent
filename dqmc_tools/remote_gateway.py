@@ -11,6 +11,7 @@ from pathlib import PurePosixPath
 from typing import Any
 
 from dqmc_tools.errors import ConfigurationError, InvalidArgumentError, ScriptRegistryError, ToolUnavailableError
+from dqmc_tools.slurm_presenter import format_slurm_status_summary
 
 
 REMOTE_HOST_ENV = "DQMC_SHERLOCK_REMOTE_HOST"
@@ -174,7 +175,7 @@ def call_sherlock_tool(
     should_redact_paths = tool_name in STATUS_ONLY_TOOLS if redact_paths is None else redact_paths
     if should_redact_paths:
         result = _redact_path_fields(result)
-    return {
+    wrapped = {
         "ok": True,
         "remote": {
             "host": config.remote_host,
@@ -182,6 +183,9 @@ def call_sherlock_tool(
         },
         "result": result,
     }
+    if tool_name == "query_slurm":
+        wrapped["formatted_summary"] = format_slurm_status_summary(result)
+    return wrapped
 
 
 def _validate_tool_name(tool_name: str) -> None:

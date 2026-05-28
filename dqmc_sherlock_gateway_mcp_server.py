@@ -40,7 +40,10 @@ def build_server(profile: str | None = None) -> FastMCP:
             "Query Sherlock current SLURM status through a short-lived SSH "
             "remote_call. This is read-only and never submits, cancels, or "
             "mutates jobs. Parameters: optional filters with me, user, job_id, "
-            "state, or partition. Sherlock path fields are redacted."
+            "state, or partition. Sherlock path fields are redacted. The "
+            "response includes a top-level formatted_summary; for user-facing "
+            "status replies, output formatted_summary verbatim instead of "
+            "rewriting the table or running shell commands."
         ),
     )
     def sherlock_query_slurm(filters: dict[str, Any] | None = None) -> dict[str, Any]:

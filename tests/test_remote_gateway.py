@@ -101,6 +101,7 @@ def test_call_sherlock_tool_sends_json_stdin_and_wraps_result(monkeypatch):
             "tool": "query_slurm",
         },
         "result": {"ok": True, "source": "squeue_json"},
+        "formatted_summary": "No current SLURM jobs.",
     }
     assert captured["args"] == [
         "/usr/bin/ssh",
@@ -119,6 +120,69 @@ def test_call_sherlock_tool_sends_json_stdin_and_wraps_result(monkeypatch):
     }
     assert captured["kwargs"]["timeout"] == 60
     assert captured["kwargs"]["shell"] is False
+
+
+def test_call_sherlock_tool_adds_formatted_summary_for_query_slurm(monkeypatch):
+    monkeypatch.setattr("dqmc_tools.remote_gateway.shutil.which", lambda _name: "/usr/bin/ssh")
+
+    def fake_run(args, **_kwargs):
+        return subprocess.CompletedProcess(
+            args=args,
+            returncode=0,
+            stdout=json.dumps({
+                "ok": True,
+                "summary": {
+                    "total_jobs": 1,
+                    "category_counts": {"running": 1},
+                    "state_counts": {"RUNNING": 1},
+                    "job_name_count": 1,
+                    "array_job_count": 1,
+                },
+                "groups": {
+                    "by_job_name": [
+                        {
+                            "job_name": "scan",
+                            "total_jobs": 1,
+                            "state_counts": {"RUNNING": 1},
+                            "category_counts": {"running": 1},
+                            "array_job_count": 1,
+                            "array_jobs": [
+                                {
+                                    "array_job_id": "123",
+                                    "total_jobs": 1,
+                                    "state_counts": {"RUNNING": 1},
+                                    "category_counts": {"running": 1},
+                                    "array_task_ids": [],
+                                    "jobs": [],
+                                }
+                            ],
+                        }
+                    ],
+                },
+                "jobs": [],
+            }),
+            stderr="",
+        )
+
+    monkeypatch.setattr("dqmc_tools.remote_gateway.subprocess.run", fake_run)
+    config = SherlockGatewayConfig(
+        remote_host="sherlock",
+        allowed_hosts=["sherlock"],
+        remote_python=".venv/bin/python",
+        remote_cwd="/home/user/DQMC_agent",
+    )
+
+    result = call_sherlock_tool("query_slurm", {"filters": {"me": True}}, config=config)
+
+    assert result["formatted_summary"] == (
+        "```\n"
+        "Job Name  Array Job ID  Total  Pending  Running\n"
+        "scan      123           1      0        1\n"
+        "```\n"
+        "Total jobs: 1\n"
+        "Pending: 0\n"
+        "Running: 1"
+    )
 
 
 def test_call_sherlock_tool_can_send_remote_env_for_nondefault_profile(monkeypatch):

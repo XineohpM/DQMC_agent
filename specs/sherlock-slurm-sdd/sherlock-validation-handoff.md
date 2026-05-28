@@ -659,6 +659,7 @@ Sherlock 最后一公里完成时，应满足：
 - 本地 gateway 调 `sherlock_query_slurm` 返回 `ok=true`、`source=squeue_json`。
 - 本地 gateway 调 `sherlock_query_slurm_history(filters={"me": true, "max_rows": 5})` 返回 `ok=true`、`source=sacct_parsable2`。
 - 本地 gateway 调 `sherlock_get_slurm_job_detail` 查询一个临时 job id，返回 `match_count=1`、`multiple_matches=false`。
+- 补充 job detail smoke 已完成：running `parent_task` id 经 `squeue` 收敛到单个 `RUNNING` candidate；completed parent/task id 经 `sacct` 返回 `COMPLETED` rows，completed task 返回 task 本体及 `.batch`/`.extern`/`.0` step rows。
 - 三个 gateway status tools 的 path redaction check 均为 false；provenance 只含 host/tool，不含 remote cwd。
 - OpenACP backend 已加载本地 Codex MCP 配置；用户确认 Slack/OpenACP 新会话可正常查询 Sherlock SLURM 任务。
 - 端到端链路为 `Slack -> OpenACP -> 本地 Codex -> dqmc-sherlock-gateway -> 短 SSH -> Sherlock remote_call -> SLURM`；Sherlock 上没有常驻 agent。

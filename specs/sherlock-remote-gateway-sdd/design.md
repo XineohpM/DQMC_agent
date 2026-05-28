@@ -206,7 +206,7 @@ SherlockGatewayConfig(
 
 | MCP tool | Remote tool | 说明 |
 | --- | --- | --- |
-| `sherlock_query_slurm` | `query_slurm` | 当前队列，只读 |
+| `sherlock_query_slurm` | `query_slurm` | 当前队列，只读；gateway wrapper 增加 `formatted_summary` 作为默认用户展示文本 |
 | `sherlock_query_slurm_history` | `query_slurm_history` | 历史队列，只读 |
 | `sherlock_get_slurm_job_detail` | `get_slurm_job_detail` | job detail，只读 |
 | `sherlock_summarize_run` | `summarize_run` | 已实现，非默认 data-reading profile |

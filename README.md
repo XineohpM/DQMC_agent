@@ -122,6 +122,10 @@ DQMC_SHERLOCK_REMOTE_ENV_JSON = "{}"
 stdout/stderr path、run/output path 等字段，agent 可见结果中不返回 Sherlock
 实际数据路径或远端 repo cwd。
 
+`sherlock_query_slurm` 的 gateway wrapper 会返回顶层 `formatted_summary` 字段。
+Slack/OpenACP 面向用户展示当前 Sherlock 队列状态时，应直接输出该字段中的固定英文
+表格，不应自行改写摘要，也不应为了压缩输出改用 direct SSH、`squeue` 或 shell pipeline。
+
 `sherlock_summarize_run` 已实现，但只在非默认 `data-reading` profile 中暴露。启用
 该 profile 前需要重新审查 allowed roots、响应脱敏和用户审批边界；只有这个 profile
 才应考虑设置 `DQMC_SHERLOCK_REMOTE_ENV_JSON`。

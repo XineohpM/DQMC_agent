@@ -57,6 +57,8 @@
 
 - [x] 明确 presenter 输入为 `query_slurm` 返回 dict。
 - [x] 明确 presenter 输出为英文固定表格摘要。
+- [x] 将 presenter 接入 `dqmc-sherlock-gateway` 当前状态查询 wrapper，作为顶层 `formatted_summary` 返回。
+- [x] 明确 Slack/OpenACP 默认用户展示契约：直接输出 `formatted_summary`，不自行重写表格、不运行 direct SSH/shell 命令。
 - [x] 写空队列 fixture test。
 - [x] 写 running/pending/held_blocked/other fixture test。
 - [x] 写 array job 汇总 fixture test，默认以每个 top-level array job id 汇总。
@@ -100,8 +102,9 @@
 - [ ] 确认默认时间窗口；当前 smoke 使用 `max_rows` 限制，没有把默认窗口写死。
 - [x] 默认 gateway/status 查询不返回 `WorkDir`。
 - [ ] 如需验证 `WorkDir`，必须进入单独 path-discovery profile，并脱敏记录。
-- [ ] 验证 `JobID` 对 array parent/task 的格式。
-- [ ] 验证 `State` 和 `ExitCode` 对 completed/failed/timeout/OOM 的实际形态。
+- [x] 验证 `JobID` 对 array parent/task 的格式。
+- [x] 验证 `State` 和 `ExitCode` 对 completed/failed/timeout/OOM 的实际形态。
+  - 2026-05-28：completed array task smoke 中 `sacct` 返回 task 本体及 `.batch`/`.extern`/`.0` step rows，state 为 `COMPLETED`，exit code 为 `0:0`。
 - [ ] 验证字段是否全部为 `--parsable2` scalar；如果不是，记录 wrapped/multi-value 形态。
 - [ ] 把脱敏后的代表性输出补成本地 fixture。
 
@@ -128,8 +131,11 @@
 ## Phase L3 的 Sherlock 验证步骤
 
 - [x] 用一个当前队列 job id 验证 `squeue` detail path。
-- [ ] 用一个已结束 job id 验证 `sacct` detail path。
-- [ ] 验证 array parent 和具体 task id 的查询行为。
+- [x] 用一个已结束 job id 验证 `sacct` detail path。
+  - 2026-05-28：completed array parent id 先记录 `squeue` lookup failure，再 fallback 到 `sacct`，返回多候选 completed rows。
+- [x] 验证 array parent 和具体 task id 的查询行为。
+  - running array parent id 返回多候选；running `parent_task` id 经 `squeue` 收敛到单个 task candidate。
+  - completed `parent_task` id 经 `sacct` 收敛到该 task 的 step group，不猜测唯一 step row。
 - [x] 验证默认 Sherlock gateway/status response 不包含 `work_dir`、stdout/stderr path 或 raw path fields。
 
 ## Phase L4：Job 到 run/output path 关联

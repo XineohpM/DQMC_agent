@@ -109,6 +109,7 @@ Gateway helper 必须：
   - 远端调用 `query_slurm`。
   - 用于查询 Sherlock 当前队列。
   - 返回结果必须移除或脱敏真实 path fields。
+  - gateway wrapper 必须返回顶层 `formatted_summary`，由 `format_slurm_status_summary(result)` 生成。Slack/OpenACP 面向用户回复当前状态时必须直接输出该字段，不再自行重写摘要或运行 shell/SSH 压缩命令。
 
 - `sherlock_query_slurm_history(filters=None)`
   - 远端调用 `query_slurm_history`。

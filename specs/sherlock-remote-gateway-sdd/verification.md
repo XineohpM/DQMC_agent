@@ -190,7 +190,12 @@ sherlock_get_slurm_job_detail(job_id="REDACTED_JOB_ID")
 
 - `sherlock_query_slurm(filters={"me": true})`：`ok=true`、`source=squeue_json`；队列是 live 状态，连续调用时 total/running/pending 数量会变化。
 - `sherlock_query_slurm_history(filters={"me": true, "max_rows": 5})`：`ok=true`、`source=sacct_parsable2`，返回 5 条 completed rows。
-- `sherlock_get_slurm_job_detail(job_id="<REDACTED_JOB_ID>")`：`ok=true`，一个当前队列 job 返回单个 candidate；array parent 多候选收敛仍可作为后续补充 smoke。
+- `sherlock_get_slurm_job_detail(job_id="<REDACTED_JOB_ID>")`：`ok=true`，一个当前队列 job 返回单个 candidate。
+- 2026-05-28 补充 job detail smoke：
+  - running array parent id：`ok=true`，返回多候选；running `parent_task` id：经 `squeue` 收敛到单个 `RUNNING` candidate。
+  - completed array parent id：先记录 `squeue` job-specific lookup failure，再 fallback 到 `sacct`，返回 completed 多候选。
+  - completed `parent_task` id：fallback 到 `sacct` 后返回该 task 的 step group，包括 task 本体和 `.batch`/`.extern`/`.0` rows，state 为 `COMPLETED`、exit code 为 `0:0`。
+  - 补充 smoke 的 status-only response path check 均通过：无 sensitive path keys，无 path-like values。
 
 ### Slack/OpenACP End-to-End Smoke
 

@@ -48,7 +48,9 @@
 - `squeue --json` path 会 normalize SLURM wrapped fields，再用于 state/category 计数和 array job 分组。
 - 本地测试覆盖 `squeue` unavailable、unknown filter、JSON path、fallback path、`me` filter、array job grouping 和 wrapped JSON fields。
 - 本地 `dqmc-sherlock-gateway` status-only profile 已通过真实 Sherlock smoke：默认只暴露 `sherlock_query_slurm`、`sherlock_query_slurm_history`、`sherlock_get_slurm_job_detail`，返回 path-redacted payload。
+- `sherlock_query_slurm` gateway wrapper 返回顶层 `formatted_summary`，这是 Slack/OpenACP 默认用户展示契约；agent 不应自行重写当前状态摘要或运行 direct SSH/shell 命令压缩输出。
 - 真实 gateway smoke 确认 `query_slurm` 使用 `squeue_json`、`query_slurm_history` 使用 `sacct_parsable2`、`get_slurm_job_detail` 可从当前队列返回单个 candidate。
+- 2026-05-28 补充 smoke 确认：running `parent_task` id 可经 `squeue` 收敛到单个 candidate；completed parent/task id 可经 `sacct` 返回历史 detail，其中 completed task 返回 task-level step group，工具不猜唯一 step row。
 - Slack/OpenACP 新 session 已确认可通过本地 `dqmc-sherlock-gateway` 查询 Sherlock SLURM 状态；该事实验证部署链路，不把 Slack transport 逻辑纳入 MCP hands。
 
 ## 重要实现经验：SLURM JSON wrapped fields

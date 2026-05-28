@@ -186,6 +186,7 @@ adapter、artifact sync、run summary、path discovery 等非默认能力。
 
 - [x] 实现第一版本地 gateway MCP 工具面。
   - [x] `sherlock_query_slurm`：短 SSH 调用远端 `query_slurm`。
+    - [x] gateway wrapper 为当前队列查询生成顶层 `formatted_summary`；Slack/OpenACP 默认展示应直接使用该字段的固定英文表格，不再让 agent 自行重写摘要或请求 direct SSH/shell 压缩命令。
   - [x] `sherlock_query_slurm_history`：短 SSH 调用远端 `query_slurm_history`。
   - [x] `sherlock_get_slurm_job_detail`：短 SSH 调用远端 `get_slurm_job_detail`。
   - [x] `sherlock_summarize_run`：已实现 bounded summary，但不应作为默认 Sherlock/Slack status profile 暴露。
@@ -236,9 +237,11 @@ adapter、artifact sync、run summary、path discovery 等非默认能力。
     - 配置使用 status-only profile、Sherlock 端绝对 Python 路径和空远端 env JSON；本地配置中不设置数据读取/脚本执行相关 env。
     - 2026-05-28：本地配置解析、默认工具面枚举、真实 gateway 查询和 Slack/OpenACP 新会话查询均通过。
 
-- [ ] Sherlock 后续补充 smoke。
-  - [ ] 下一步优先做只读 job detail 补充 smoke：用明确 array task id 验证单 task 收敛，并用已结束 job id 验证 `sacct` detail path；每一步继续单独审批。
-  - [ ] 用明确 array task id 验证 `sherlock_get_slurm_job_detail` 可从 parent job 的多候选收敛到单个 task，同时确认响应不包含 work dir、stdout/stderr path 或 raw path fields。
+- [x] Sherlock 后续补充 smoke。
+  - [x] 只读 job detail 补充 smoke 已完成：用明确 running array task id 验证 `squeue` task 收敛，并用已结束 array parent/task id 验证 `sacct` detail path；每一步均单独审批。
+  - [x] running array parent id 返回多候选，符合“不猜唯一结果”；running `parent_task` id 可从 parent 多候选收敛到单个 `squeue` candidate。
+  - [x] completed array parent id 可 fallback 到 `sacct` 并返回多候选；completed `parent_task` id 收敛到该 task 的 `sacct` step group，而不是单条 row。
+  - [x] 所有补充 smoke 的 status-only gateway response 均确认不包含 work dir、stdout/stderr path、raw path fields 或 path-like values。
   - [ ] 默认不 smoke `sherlock_summarize_run`；如果需要验证，应作为 data-reading profile 的单独任务并先取得明确审批。
   - [ ] 不继续把完整 `dqmc-hands` 的非 SLURM tools 作为 Sherlock login node smoke 默认项；如需验证 HDF5/script/sync，应单独审批并记录原因。
   - [ ] 记录真实字段形态时必须先脱敏；fixture 不得包含真实 Sherlock path、用户名、project 名称或 job 输出路径。
@@ -281,7 +284,10 @@ adapter、artifact sync、run summary、path discovery 等非默认能力。
   - [x] 支持 array parent/task id。
   - [x] 多个匹配返回 candidates，不猜。
   - [x] Sherlock smoke 已确认 array parent id 会返回多候选，不猜唯一结果。
-  - [ ] 用明确 array task id 做 Sherlock smoke，验证具体 task 的详情查询路径，同时确认默认响应不暴露真实 path。
+  - [x] 用明确 array task id 做 Sherlock smoke，验证具体 task 的详情查询路径，同时确认默认响应不暴露真实 path。
+    - running `parent_task` id：`squeue` detail path 返回 `match_count=1`、`multiple_matches=false`，candidate 为 `RUNNING`/`running`。
+    - completed array parent id：`squeue` lookup 失败后 fallback 到 `sacct`，返回 task/step 多候选，state 为 `COMPLETED`、exit code 为 `0:0`。
+    - completed `parent_task` id：fallback 到 `sacct` 后返回该 task 的 step group，包括 task 本体和 `.batch`/`.extern`/`.0` rows；这是 `sacct` 语义，不是 path-redaction 问题。
   - [x] 默认 Sherlock gateway/status profile 应从 detail candidates 和 `raw` 中移除或脱敏 `work_dir`、`stdout_path`、`stderr_path`、`standard_output`、`standard_error`。
 
 - [x] Job 到 run/output path 候选关联。
