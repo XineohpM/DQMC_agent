@@ -6,6 +6,7 @@ outputs/
 pytest-cache-files-*/
 *.egg-info/
 .env
+.openacp/
 formal/.lake/
 .DS_Store
 *.log

@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+PROJECT_ROOT="${DQMC_AGENT_ROOT:-/Users/phoenixm/Desktop/DQMC_agent}"
+ENV_FILE="${OPENACP_ENV_FILE:-$HOME/.config/dqmc-agent/openacp-env}"
+API_PORT="${OPENACP_API_PORT:-21421}"
+INSTANCE_ROOT="${OPENACP_INSTANCE_ROOT:-$PROJECT_ROOT/.openacp}"
+OPENACP_BIN="${OPENACP_BIN:-$PROJECT_ROOT/.openacp/plugins/node_modules/.bin/openacp}"
+
+fail() {
+  echo "start-slackbot-backend: $*" >&2
+  exit 1
+}
+
+port_listening() {
+  command -v lsof >/dev/null 2>&1 || return 1
+  lsof -nP -iTCP:"$API_PORT" -sTCP:LISTEN >/dev/null 2>&1
+}
+
+if port_listening; then
+  echo "Slack bot backend appears to be running on 127.0.0.1:${API_PORT}."
+  exit 0
+fi
+
+[[ -d "$PROJECT_ROOT" ]] || fail "project root not found: $PROJECT_ROOT"
+[[ -r "$ENV_FILE" ]] || fail "env file not readable: $ENV_FILE"
+[[ -x "$OPENACP_BIN" ]] || fail "OpenACP executable not found: $OPENACP_BIN"
+
+set -a
+# shellcheck disable=SC1090
+. "$ENV_FILE"
+set +a
+
+export OPENACP_INSTANCE_ROOT="$INSTANCE_ROOT"
+export OPENACP_API_PORT="$API_PORT"
+export OPENACP_RUN_MODE="${OPENACP_RUN_MODE:-daemon}"
+
+cd "$PROJECT_ROOT"
+exec "$OPENACP_BIN" start --json --local

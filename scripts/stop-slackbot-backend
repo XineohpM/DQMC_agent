@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+PROJECT_ROOT="${DQMC_AGENT_ROOT:-/Users/phoenixm/Desktop/DQMC_agent}"
+API_PORT="${OPENACP_API_PORT:-21421}"
+INSTANCE_ROOT="${OPENACP_INSTANCE_ROOT:-$PROJECT_ROOT/.openacp}"
+OPENACP_BIN="${OPENACP_BIN:-$PROJECT_ROOT/.openacp/plugins/node_modules/.bin/openacp}"
+NO_RUNNING_MESSAGE="No slackbot backend is currently running. Start one with start-slackbot-backend before using this command to stop it."
+
+fail() {
+  echo "stop-slackbot-backend: $*" >&2
+  exit 1
+}
+
+port_pid() {
+  command -v lsof >/dev/null 2>&1 || return 1
+  lsof -tiTCP:"$API_PORT" -sTCP:LISTEN 2>/dev/null | head -n 1
+}
+
+PID_FILE="$INSTANCE_ROOT/openacp.pid"
+LISTENER_PID="$(port_pid || true)"
+
+if [[ ! -f "$PID_FILE" && -z "$LISTENER_PID" ]]; then
+  echo "$NO_RUNNING_MESSAGE"
+  exit 0
+fi
+
+[[ -d "$PROJECT_ROOT" ]] || fail "project root not found: $PROJECT_ROOT"
+[[ -x "$OPENACP_BIN" ]] || fail "OpenACP executable not found: $OPENACP_BIN"
+
+export OPENACP_INSTANCE_ROOT="$INSTANCE_ROOT"
+cd "$PROJECT_ROOT"
+
+STOP_OUTPUT="$("$OPENACP_BIN" stop --json --local 2>&1)" && {
+  printf '%s\n' "$STOP_OUTPUT"
+  exit 0
+}
+
+LISTENER_PID="$(port_pid || true)"
+if [[ -z "$LISTENER_PID" ]]; then
+  echo "$NO_RUNNING_MESSAGE"
+  exit 0
+fi
+
+LISTENER_CMD="$(ps -p "$LISTENER_PID" -o command= 2>/dev/null || true)"
+if [[ "$LISTENER_CMD" == *"/.openacp/"* || "$LISTENER_CMD" == *"@openacp/cli"* ]]; then
+  kill "$LISTENER_PID"
+  echo "{\"success\":true,\"data\":{\"stopped\":true,\"pid\":$LISTENER_PID,\"method\":\"kill\"}}"
+  exit 0
+fi
+
+printf '%s\n' "$STOP_OUTPUT" >&2
+fail "port $API_PORT is in use, but it does not look like this OpenACP backend"

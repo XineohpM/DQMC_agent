@@ -81,6 +81,34 @@ MCP 暴露 14 个工具：
 `sync_sherlock_artifacts` 是受限 rsync 同步入口：默认 dry-run，要求 remote
 host/path allowlist 和本地 output root，真实同步必须逐次审批并返回 manifest。
 
+## Slack/OpenACP 后端命令
+
+本项目可以通过 OpenACP Slack adapter 把本地 Codex session 暴露给 Slack。OpenACP
+运行状态、token、session history 和插件安装物都在本地 `.openacp/` 目录下；该目录
+只用于本机运行，已加入 `.gitignore`，不要提交到 git。
+
+如果希望在任意目录直接运行后端启停命令，可以把脚本链接到 PATH 中已有的目录，例如：
+
+```bash
+mkdir -p "$HOME/.local/bin"
+ln -sf /Users/phoenixm/Desktop/DQMC_agent/scripts/start-slackbot-backend "$HOME/.local/bin/start-slackbot-backend"
+ln -sf /Users/phoenixm/Desktop/DQMC_agent/scripts/stop-slackbot-backend "$HOME/.local/bin/stop-slackbot-backend"
+```
+
+确保 shell 配置里包含：
+
+```bash
+export PATH="$HOME/.local/bin:$PATH"
+```
+
+默认配置读取 `$HOME/.config/dqmc-agent/openacp-env`，其中应包含 Slack/OpenACP 所需
+token 和 allowlist 等本地私密配置。启动和停止：
+
+```bash
+start-slackbot-backend
+stop-slackbot-backend
+```
+
 ## Registry 和 HDF5
 
 registry 解析只使用真实字段：`id`、`aliases`、`code.generation.variable`。返回结果会附加运行期辅助字段 `entry_type` 和 `dataset_key`，但不会引入额外标识体系。
