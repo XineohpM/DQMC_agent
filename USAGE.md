@@ -139,6 +139,11 @@ run/output path。它只做只读查询，不提交、不取消、不修改任�
 执行一次白名单 `dqmc_tools.remote_call`，拿到 JSON 后断开。这样 Sherlock 上不需要
 长期挂 Codex 或 MCP server。
 
+2026-05-28 当前状态：本地 Codex/OpenACP 实际配置已经注册 `dqmc-sherlock-gateway`
+status-only profile；Slack/OpenACP 新会话已确认可以查询 Sherlock SLURM 状态。为了确保
+加载最新 MCP 配置，建议从 Slack app 发起一个新的 top-level 对话，而不是继续使用配置变更前
+已有的旧 session/thread。
+
 默认 gateway profile 是 status-only/path-redacted，支持：
 
 - 查询当前 Sherlock SLURM 队列。

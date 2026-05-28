@@ -13,6 +13,7 @@
 - [x] 本地 OpenACP backend helper scripts 已落地：`scripts/start-slackbot-backend`、`scripts/stop-slackbot-backend`、`scripts/test_slackbot_backend_commands.sh`。
 - [x] 最新产品形态决策：不把 Sherlock login node 上的长连接 MCP server 作为推荐最终方案；改为本地 `sherlock-remote-gateway` MCP 按需短 SSH 到 Sherlock，远端执行白名单短命 Python 调用后立即断开。
 - [x] Sherlock 默认安全边界更新：默认 Sherlock/Slack profile 只做 path-redacted SLURM status 查询，不让 agent 接触 Sherlock 上的实际 run/data path；`DQMC_DEV_ROOT`、`DQMC_ALLOWED_ROOTS`、`DQMC_OUTPUT_ROOT`、`DQMC_REGISTRY_PATH` 等数据/脚本相关环境变量默认只保留在本地完整工具环境，不在 Sherlock status-only profile 中设置。
+- [x] 2026-05-28：本地 Codex/OpenACP 实际配置已加入 `dqmc-sherlock-gateway` status-only profile，使用已验证的 Sherlock 端绝对 Python 路径，`DQMC_SHERLOCK_REMOTE_ENV_JSON="{}"`；OpenACP 新 Slack session 已能通过 gateway 查询 Sherlock SLURM 状态。
 - [x] 白名单 script adapter 当前只保留 `DQMC_DEV_ROOT/scripts/` 下的脚本；`util/` 路径脚本已经移出白名单。
 - [x] 当前白名单 adapter 数量为 20；其中 18 个 Python 脚本可静态读取 `argparse`，2 个 shell 脚本保留 raw args。
 
@@ -101,14 +102,25 @@
     - 真实 Sherlock 字段出现 wrapped shape：`job_state` 为 list，`array_job_id` / `array_task_id` 为 dict。
   - [x] 周期性查询暂不做阻塞式 MCP watcher；agent 层按用户指定 interval 重复调用 `query_slurm(filters={"me": true})`，用 `diff_slurm_snapshots` 比较 snapshots。
 
-- [ ] Sherlock 当前运行状态入口。
-  - [ ] agent 层提供“当前我的 Sherlock 任务状态”工作流；对应 `sherlock-slurm-sdd` Phase L1。
+- [x] Sherlock 当前运行状态入口。
+  - [x] agent 层提供“当前我的 Sherlock 任务状态”工作流；对应 `sherlock-slurm-sdd` Phase L1。
   - [x] 本地 gateway 已可调用 path-redacted `sherlock_query_slurm` 查询 Sherlock。
-  - [ ] 返回面向用户的简洁摘要，同时保留 redacted structured rows；不得返回 Sherlock 真实 run/data path。
+  - [x] 返回面向用户的简洁摘要，同时保留 redacted structured rows；不得返回 Sherlock 真实 run/data path。
+    - 2026-05-28：Slack/OpenACP 新会话中用户确认可正常查询 Sherlock SLURM 任务；该路径为 `Slack -> OpenACP -> 本地 Codex -> dqmc-sherlock-gateway -> 短 SSH -> Sherlock remote_call -> SLURM`。
 
-## P1：Sherlock 直接运行时的工具面限制
+## P1：Sherlock 直接运行时的工具面限制（高风险 fallback）
 
-目标：在 Sherlock login node 上直接运行 MCP server 时 fail closed，只暴露 path-redacted SLURM status 工具，避免 agent 看见或请求 HDF5 读取、script adapter、artifact sync、run summary、path discovery 等非默认能力。
+说明：这不是当前推荐产品路径，也不阻塞已跑通的 Slack/OpenACP -> 本地
+`dqmc-sherlock-gateway` -> 短 SSH 查询路径。当前推荐路径仍是本地 Codex 作为唯一
+agent 大脑，Sherlock 只执行短命 `remote_call`。
+
+风险判断：在 Sherlock login node 上直接运行 Codex 或 MCP server 是高风险行为，因为
+agent 进程会直接处在 Sherlock 文件系统、shell 环境和可能的真实路径上下文中。除非有明确
+运维/验证需要并经过单独审批，否则不要把 Sherlock 直接运行形态作为默认部署方式。
+
+目标：如果未来不得不在 Sherlock login node 上直接运行 MCP server，必须 fail closed：
+只暴露 path-redacted SLURM status 工具，避免 agent 看见或请求 HDF5 读取、script
+adapter、artifact sync、run summary、path discovery 等非默认能力。
 
 - [ ] 新增或启用 SLURM-only MCP server。
   - [ ] 只注册 path-redacted `query_slurm`、`query_slurm_history`、`get_slurm_job_detail`。
@@ -126,8 +138,8 @@
   - [ ] 评估是否改成“显式 `allowed_roots` 必须是本地环境 allowlist 的子集”，避免 approval 中临时扩大读取范围。
   - [ ] 该评估不应作为 Sherlock status-only profile 的前置条件；status-only profile 默认没有 allowed roots 和数据读取工具。
 - [ ] 文档化两种 Sherlock 使用方式的边界。
-  - [ ] 直接在 Sherlock 上跑：默认只用 path-redacted SLURM-only server。
-  - [ ] 本地访问 Sherlock：默认走 path-redacted `dqmc-sherlock-gateway` 短 SSH，不在 Sherlock 上常驻完整 MCP server。
+  - [ ] 直接在 Sherlock 上跑：高风险 fallback；默认只用 path-redacted SLURM-only server，且需要单独审批。
+  - [ ] 本地访问 Sherlock：当前推荐路径；默认走 path-redacted `dqmc-sherlock-gateway` 短 SSH，不在 Sherlock 上常驻完整 MCP server。
   - [ ] 不把 Sherlock 实际 repo cwd、run path、output path、allowed roots 写入 agent 可见响应；gateway provenance 默认只保留 host/tool/status，必要时用 redacted cwd。
 
 ## P1：Agent 层 Slack/OpenACP Bot IM 接入
@@ -138,14 +150,16 @@
   - [x] `start-slackbot-backend`：读取本地私密 env 文件并启动 OpenACP backend。
   - [x] `stop-slackbot-backend`：停止当前 backend。
   - [x] `test_slackbot_backend_commands.sh`：覆盖 helper script 行为。
-  - [ ] 在目标机器上完成真实 Slack/OpenACP token、allowlist 和 channel/thread smoke。
+  - [x] 在目标机器上完成真实 Slack/OpenACP token、allowlist 和 channel/thread smoke。
+    - 2026-05-28：OpenACP backend 成功监听本地 API 端口，Slack adapter 启动；Slack 新会话可创建并驱动本地 Codex 查询 Sherlock SLURM。
 
-- [ ] 完整接入 Slack bot 作为 agent 的 transport adapter。
+- [x] 完整接入 Slack bot 作为 agent 的 transport adapter。
   - 注意：Slack bot 不应接进 MCP tools；MCP tools 不应知道 Slack user/channel/thread。
-  - [ ] Slack Events API 或 Socket Mode 接收 IM/thread 消息。
-  - [ ] Slack message -> agent session/thread 映射。
-  - [ ] agent 决定调用哪些 MCP tools。
-  - [ ] agent 将结果组织成 Slack 回复。
+  - [x] Slack Events API 或 Socket Mode 接收 IM/thread 消息。
+  - [x] Slack message -> agent session/thread 映射。
+  - [x] agent 决定调用哪些 MCP tools。
+  - [x] agent 将结果组织成 Slack 回复。
+  - [x] 2026-05-28：已验证 Slack/OpenACP 新 session 能加载本地 Codex MCP 配置，并通过 status-only gateway 查询 Sherlock SLURM。
 
 - [ ] Slack 只读命令优先。
   - [ ] `dqmc status`：在本地/普通环境调用 `query_slurm`；查询 Sherlock 时调用 `sherlock_query_slurm` 并分类显示。
@@ -202,7 +216,7 @@
   - [x] JSON parse failure tests，防止 shell banner 或 `.bashrc` 输出污染协议。
   - [x] MCP contract tests。
 
-- [ ] Sherlock smoke。
+- [x] Sherlock status-only smoke。
   - [x] 先用 `specs/sherlock-slurm-sdd/sherlock-validation-handoff.md` 完成 SLURM 主线的部分环境验证。
     - 2026-05-28 smoke 已完成：`query_slurm(filters={"me": true})`、`query_slurm_history({"me": true, "start": "2026-05-21", "max_rows": 10})`、`list_script_adapters`、`get_slurm_job_detail(job_id="<REDACTED_ARRAY_PARENT_JOB_ID>")`、`infer_slurm_path_candidates`。
     - `query_slurm_history` 已确认 `sacct --parsable2 --noheader ... --starttime 2026-05-21` 可返回结果，并带 `Result truncated to max_rows=10` warning。
@@ -217,6 +231,11 @@
     - 2026-05-28 gateway smoke：`sherlock_query_slurm_history(filters={"me": true, "max_rows": 5})` 返回 `ok=true`、`source=sacct_parsable2`、5 条 completed rows。
     - 2026-05-28 gateway smoke：`sherlock_get_slurm_job_detail` 用临时脱敏 job id 返回 `match_count=1`、`multiple_matches=false`、candidate state/category 为 pending。
     - 三个 gateway status tools 的返回均检查 `has_sensitive_path_keys=false`；gateway provenance 只包含 host/tool，不包含 remote cwd。
+  - [x] 将 `dqmc-sherlock-gateway` 写入本地 Codex/OpenACP 实际配置并重启 OpenACP backend。
+    - 配置使用 status-only profile、Sherlock 端绝对 Python 路径和空远端 env JSON；本地配置中不设置数据读取/脚本执行相关 env。
+    - 2026-05-28：本地配置解析、默认工具面枚举、真实 gateway 查询和 Slack/OpenACP 新会话查询均通过。
+
+- [ ] Sherlock 后续补充 smoke。
   - [ ] 用明确 array task id 验证 `sherlock_get_slurm_job_detail` 可从 parent job 的多候选收敛到单个 task，同时确认响应不包含 work dir、stdout/stderr path 或 raw path fields。
   - [ ] 默认不 smoke `sherlock_summarize_run`；如果需要验证，应作为 data-reading profile 的单独任务并先取得明确审批。
   - [ ] 不继续把完整 `dqmc-hands` 的非 SLURM tools 作为 Sherlock login node smoke 默认项；如需验证 HDF5/script/sync，应单独审批并记录原因。

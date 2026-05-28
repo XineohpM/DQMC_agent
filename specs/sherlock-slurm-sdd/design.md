@@ -1,6 +1,6 @@
 # Sherlock SLURM SDD 技术设计
 
-状态：草案，本地优先开发，Sherlock 真实环境验证。
+状态：默认 status-only 查询链路已实现并通过真实 gateway/Slack smoke；后续仍需 fixture 回流和非默认 profile 验证。
 
 ## 设计原则
 
@@ -37,6 +37,7 @@ Sherlock 负责：
 - 对真实输出脱敏后回流为本地 fixture。
 - 本地 gateway 配置中，`DQMC_SHERLOCK_REMOTE_PYTHON` 使用 Sherlock 上 venv Python 的绝对路径；`DQMC_SHERLOCK_REMOTE_CWD` 只作为本地私有配置，不出现在 agent 可见响应中。
 - 2026-05-28 status-only gateway smoke 已验证：`query_slurm`、`query_slurm_history`、`get_slurm_job_detail` 均可通过短 SSH 返回 JSON，且返回 payload 不含敏感路径字段。
+- 2026-05-28 Slack/OpenACP 新 session 已验证可通过本地 gateway 查询 Sherlock SLURM 状态；这是 transport 层端到端验证，不改变 MCP hands 的模块边界。
 
 ## 模块边界
 

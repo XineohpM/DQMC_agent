@@ -1,6 +1,6 @@
 # Sherlock SLURM SDD 验证记录
 
-状态：部分执行。本文件记录本地验证命令、Sherlock smoke 命令和真实输出字段发现。
+状态：默认 status-only Sherlock 查询链路已完成真实 smoke；本文件记录本地验证命令、Sherlock smoke 命令、真实输出字段发现和不属于本 SDD 的 transport 观察。
 
 ## 本地验证
 
@@ -251,6 +251,13 @@ query_slurm(filters={"me": True})
   - 连续调用期间队列实时变化，pending/running counts 有小幅变化。
   - gateway provenance：只包含 `host` 和 `tool`，不包含 remote cwd。
   - path redaction check：`has_sensitive_path_keys=false`
+- 2026-05-28 本地 Codex/OpenACP 实际配置 smoke：
+  - `dqmc-sherlock-gateway` 已写入本地用户级 Codex 配置。
+  - profile：`status-only`
+  - 远端 env JSON：`{}`
+  - 默认工具面：`sherlock_query_slurm`、`sherlock_query_slurm_history`、`sherlock_get_slurm_job_detail`
+  - `sherlock_query_slurm(filters={"me": true})` 返回 `ok=true`、`source=squeue_json`；后续一次配置验证中 `summary.total_jobs` 为 1072，说明队列 live 状态在 smoke 期间正常变化。
+  - response path redaction check：`has_sensitive_path_keys=false`
 
 验收：
 
@@ -364,6 +371,19 @@ sacct --parsable2 --noheader --format=JobID,JobName,User,State,ExitCode,Elapsed,
 - 不做大目录扫描。
 - high-confidence candidate 有明确 evidence。
 - 多候选时不猜。
+
+## Slack/OpenACP Transport Observation
+
+本节记录产品链路观察，不改变本 SDD 的 MCP hands 范围；Slack transport 仍不接进
+`dqmc_tools.slurm`。
+
+2026-05-28：
+
+- OpenACP backend 已加载本地 Codex 配置中的 `dqmc-sherlock-gateway`。
+- Slack/OpenACP 新会话可正常查询 Sherlock SLURM 任务。
+- 端到端链路为 `Slack -> OpenACP -> 本地 Codex -> dqmc-sherlock-gateway -> 短 SSH -> Sherlock remote_call -> SLURM`。
+- Sherlock 上没有常驻 agent；查询期间只会出现短命 SSH/remote Python 调用。
+- 默认 status-only profile 不向远端注入 `DQMC_DEV_ROOT`、`DQMC_ALLOWED_ROOTS`、`DQMC_OUTPUT_ROOT` 或 `DQMC_REGISTRY_PATH`。
 
 ## 后处理脚本 Smoke
 

@@ -1,6 +1,6 @@
 # Sherlock Remote Gateway SDD 任务拆解
 
-状态：第一版开发。本地实现和 Sherlock smoke 分开执行。
+状态：第一版默认 status-only 路径已实现并完成真实 Sherlock/Slack smoke。非默认 data-reading、path-discovery、script 和 sync profile 仍需单独审批和单独验证。
 
 ## Phase G0：规格和边界冻结
 
@@ -107,23 +107,25 @@
 
 ## Phase R1：Sherlock smoke
 
-本阶段需要真实 Sherlock 访问，不在本地开发中强制执行。
+本阶段需要真实 Sherlock 访问，不在本地开发中强制执行。2026-05-28 已完成默认 status-only/path-redacted smoke。
 
-- [ ] 按 `specs/sherlock-slurm-sdd/sherlock-validation-handoff.md` 完成 Sherlock repo/venv/env 基线。
-- [ ] 在 Sherlock 上直接测试 `python -m dqmc_tools.remote_call`。
-- [ ] 从本地通过 gateway 调用 `sherlock_query_slurm(filters={"me": true})`。
-- [ ] 从本地通过 gateway 调用 `sherlock_query_slurm_history(filters={"me": true, "max_rows": 5})`。
-- [ ] 从本地通过 gateway 调用 `sherlock_get_slurm_job_detail(job_id)`。
-- [ ] 确认默认 gateway 响应不包含 `work_dir`、stdout/stderr path、真实 run path 或 raw path fields。
-- [ ] 不默认调用 `sherlock_summarize_run`；如需验证，必须作为 data-reading profile 单独审批。
-- [ ] 记录 stdout JSON、source、summary、字段形态和错误；所有真实路径先脱敏。
+- [x] 按 `specs/sherlock-slurm-sdd/sherlock-validation-handoff.md` 完成 Sherlock repo/venv/env 基线。
+- [x] 在 Sherlock 上直接测试 `python -m dqmc_tools.remote_call`。
+- [x] 从本地通过 gateway 调用 `sherlock_query_slurm(filters={"me": true})`。
+- [x] 从本地通过 gateway 调用 `sherlock_query_slurm_history(filters={"me": true, "max_rows": 5})`。
+- [x] 从本地通过 gateway 调用 `sherlock_get_slurm_job_detail(job_id)`。
+- [x] 确认默认 gateway 响应不包含 `work_dir`、stdout/stderr path、真实 run path 或 raw path fields。
+- [x] 不默认调用 `sherlock_summarize_run`；如需验证，必须作为 data-reading profile 单独审批。
+- [x] 记录 stdout JSON、source、summary、字段形态和错误；所有真实路径先脱敏。
+- [x] 将 `dqmc-sherlock-gateway` 写入本地 Codex/OpenACP 实际配置，使用 status-only profile、Sherlock 端绝对 Python 路径和空远端 env JSON。
+- [x] 通过 Slack/OpenACP 新会话验证 Codex 可查询 Sherlock SLURM 状态。
 
 验收：
 
-- [ ] Gateway 能在 60 秒内返回 JSON。
-- [ ] Sherlock 上无常驻进程。
-- [ ] 没有 submit/cancel/mutate 命令。
-- [ ] 默认 status smoke 不接触 Sherlock 实际 run/data path。
+- [x] Gateway 能在 60 秒内返回 JSON。
+- [x] Sherlock 上无常驻进程；每次访问都是短 SSH 触发的远端 `remote_call`。
+- [x] 没有 submit/cancel/mutate 命令。
+- [x] 默认 status smoke 不接触 Sherlock 实际 run/data path。
 
 ## 推荐执行顺序
 
@@ -133,4 +135,4 @@
 4. Phase G3：MCP server。
 5. Phase G4：文档。
 6. Phase G5：本地验证。
-7. Phase R1：真实 Sherlock smoke。
+7. Phase R1：真实 Sherlock smoke。默认 status-only 路径已完成；非默认 profile 后续单独执行。

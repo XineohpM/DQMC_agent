@@ -1,6 +1,6 @@
 # Sherlock Remote Gateway SDD 需求规格
 
-状态：第一版开发。目标是把本地 Slack/OpenACP -> 本地 Codex 链路安全接到 Sherlock 真实环境，同时避免 Sherlock login node 上长期运行 Codex 或长连接 MCP server。默认产品 profile 已收紧为 status-only/path-redacted：只查询 SLURM 状态，不让 agent 接触 Sherlock 上的真实 run/data path。
+状态：第一版默认 status-only 路径已实现并完成真实 Sherlock/Slack smoke。目标是把本地 Slack/OpenACP -> 本地 Codex 链路安全接到 Sherlock 真实环境，同时避免 Sherlock login node 上长期运行 Codex 或长连接 MCP server。默认产品 profile 已收紧为 status-only/path-redacted：只查询 SLURM 状态，不让 agent 接触 Sherlock 上的真实 run/data path。
 
 ## 背景
 
@@ -12,6 +12,8 @@
 缺口是：当本地 Codex 需要查询 Sherlock 真实 `squeue` / `sacct` 时，目前要么需要用户手工登录 Sherlock，要么需要在 Sherlock 上启动长期 MCP/Codex。最新目标形态是不采用长期远端进程，而是在本地新增一个 Sherlock gateway MCP：每次远端工具调用通过 SSH 启动一个短命 Python entrypoint，执行白名单 `dqmc_tools` 函数，输出 JSON 后立即退出。
 
 默认 gateway 不负责读取 Sherlock run summary、推断 run/output path、同步产物或执行脚本。这些能力如果后续需要，必须进入单独 data-reading/path-discovery profile，并重新审查审批、脱敏和路径边界。
+
+2026-05-28 当前进展：本地用户级 Codex 配置已注册 `dqmc-sherlock-gateway`，使用 status-only profile、Sherlock 端绝对 Python 路径和空远端 env JSON；OpenACP 新 Slack session 已确认可通过该 gateway 查询 Sherlock SLURM 状态。
 
 ## 总目标
 
@@ -166,10 +168,11 @@ Gateway helper 必须：
 
 ## 验收标准
 
-- 本地测试能验证 remote CLI 白名单、JSON stdin/stdout、structured error。
-- 本地测试能验证 SSH argv builder 不使用 shell string。
-- 本地测试能验证 SSH unavailable、timeout、nonzero exit、invalid JSON 输出。
-- MCP contract tests 覆盖默认 status tools，并保留已实现 `sherlock_summarize_run` 的非默认 contract。
-- Sherlock smoke 验证 status tools 返回 JSON 且不暴露真实 path fields。
-- README 或 usage 文档说明 gateway 与 Slack/OpenACP、本地 `dqmc-hands`、Sherlock handoff 的关系。
-- 不新增任何 submit/cancel/mutate SLURM 能力。
+- [x] 本地测试能验证 remote CLI 白名单、JSON stdin/stdout、structured error。
+- [x] 本地测试能验证 SSH argv builder 不使用 shell string。
+- [x] 本地测试能验证 SSH unavailable、timeout、nonzero exit、invalid JSON 输出。
+- [x] MCP contract tests 覆盖默认 status tools，并保留已实现 `sherlock_summarize_run` 的非默认 contract。
+- [x] Sherlock smoke 验证 status tools 返回 JSON 且不暴露真实 path fields。
+- [x] README 或 usage 文档说明 gateway 与 Slack/OpenACP、本地 `dqmc-hands`、Sherlock handoff 的关系。
+- [x] 不新增任何 submit/cancel/mutate SLURM 能力。
+- [x] Slack/OpenACP 新 session 端到端查询 Sherlock SLURM 状态通过。

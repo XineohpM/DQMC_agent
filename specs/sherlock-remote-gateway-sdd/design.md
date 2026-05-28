@@ -1,6 +1,6 @@
 # Sherlock Remote Gateway SDD 技术设计
 
-状态：第一版设计。本地优先开发，真实 Sherlock 只做 smoke 和字段确认。
+状态：第一版默认 status-only 设计已实现并通过本地测试、真实 Sherlock smoke 和 Slack/OpenACP 端到端 smoke。非默认 data-reading、path-discovery、script 和 sync profile 仍需单独设计/审批。
 
 ## 设计原则
 
@@ -26,6 +26,10 @@ Slack / OpenACP
   -> 本地 gateway 包装 redacted remote provenance
   -> Codex 回复 Slack
 ```
+
+2026-05-28 实际验证：本地 Codex/OpenACP 配置已注册 `dqmc-sherlock-gateway`
+status-only profile，Slack 新 session 可以通过该链路查询 Sherlock SLURM 状态。Sherlock
+端没有常驻 agent；每次查询只产生短 SSH 和短命远端 Python 调用。
 
 这条链路和 `dqmc-hands` 的关系：
 
@@ -281,6 +285,14 @@ Gateway 层 structured errors：
 4. 调 `sherlock_query_slurm_history` 和 `sherlock_get_slurm_job_detail`。
 5. 确认返回结果 path-redacted，不包含 `WorkDir`、stdout/stderr path、真实 run path 或 raw path fields。
 6. 记录 source、summary、字段形态和错误；所有真实路径、用户名、project 名称必须先脱敏。
+
+2026-05-28 默认 status-only smoke 已完成：
+
+- 手写 SSH + `remote_call` 的 `query_slurm(filters={"me": true})` 返回 `ok=true`。
+- 本地 gateway 的 `sherlock_query_slurm`、`sherlock_query_slurm_history`、`sherlock_get_slurm_job_detail` 均可在 60 秒内返回 JSON。
+- 三个默认 status tools 的 response path redaction check 通过。
+- 本地 Codex/OpenACP 实际配置使用 status-only profile 和空远端 env JSON。
+- Slack/OpenACP 新会话可查询 Sherlock SLURM 状态。
 
 ## Future Work
 

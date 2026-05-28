@@ -1,6 +1,6 @@
 # Sherlock Remote Gateway SDD 验证记录
 
-状态：本地开发中。本文记录本地验证命令和 Sherlock smoke 模板。
+状态：本地测试和默认 status-only Sherlock/Slack smoke 已完成。本文记录验证命令、真实 smoke 结果和后续非默认 profile 的边界。
 
 ## 本地验证计划
 
@@ -159,6 +159,15 @@ export DQMC_SHERLOCK_REMOTE_ENV_JSON='{}'
 
 2026-05-28 smoke 发现：`DQMC_SHERLOCK_REMOTE_PYTHON` 必须使用远端 venv Python 的绝对路径。相对 `.venv/bin/python` 会在远端 `--cwd` 生效前解析，可能导致 gateway SSH 子进程失败。
 
+2026-05-28 本地 Codex/OpenACP 实际配置状态：
+
+- `dqmc-sherlock-gateway` 已写入本地用户级 Codex 配置。
+- profile 为 `status-only`。
+- Sherlock 端 Python 使用已验证的绝对路径；真实路径不写入 repo 文档。
+- `DQMC_SHERLOCK_REMOTE_ENV_JSON` 为 `{}`。
+- 未设置 `DQMC_DEV_ROOT`、`DQMC_ALLOWED_ROOTS`、`DQMC_OUTPUT_ROOT`、`DQMC_REGISTRY_PATH` 等数据读取或脚本执行 env。
+- 默认工具面枚举结果为 `sherlock_query_slurm`、`sherlock_query_slurm_history`、`sherlock_get_slurm_job_detail`。
+
 MCP smoke：
 
 ```python
@@ -169,13 +178,30 @@ sherlock_get_slurm_job_detail(job_id="REDACTED_JOB_ID")
 
 记录：
 
-- 每次调用是否 60 秒内完成：
-- gateway `ok`：
-- remote tool `result.ok`：
+- 每次调用是否 60 秒内完成：是。
+- gateway `ok`：true。
+- remote tool `result.ok`：true。
 - stdout/stderr tail：
-- 字段形态是否需要补 fixture：
-- response 是否不含 `work_dir`、stdout/stderr path、真实 run path、output path 或 raw path fields：
-- gateway provenance 是否不暴露 Sherlock remote cwd：
+- 字段形态是否需要补 fixture：`squeue --json` wrapped fields 已记录；fixture 回流可后续补充。
+- response 是否不含 `work_dir`、stdout/stderr path、真实 run path、output path 或 raw path fields：是，三个默认 status tools 的 path redaction check 均通过。
+- gateway provenance 是否不暴露 Sherlock remote cwd：是，只包含 host/tool。
+
+真实结果摘录：
+
+- `sherlock_query_slurm(filters={"me": true})`：`ok=true`、`source=squeue_json`；队列是 live 状态，连续调用时 total/running/pending 数量会变化。
+- `sherlock_query_slurm_history(filters={"me": true, "max_rows": 5})`：`ok=true`、`source=sacct_parsable2`，返回 5 条 completed rows。
+- `sherlock_get_slurm_job_detail(job_id="<REDACTED_JOB_ID>")`：`ok=true`，一个当前队列 job 返回单个 candidate；array parent 多候选收敛仍可作为后续补充 smoke。
+
+### Slack/OpenACP End-to-End Smoke
+
+2026-05-28：
+
+- OpenACP backend 已用本地私密 Slack/OpenACP env 启动。
+- 本地 API 监听验证通过；Slack adapter 启动。
+- Slack 新 session 能加载 Codex 的本地 MCP 配置。
+- 用户确认通过 Slack/OpenACP 可正常查询 Sherlock SLURM 任务。
+- 端到端链路为 `Slack -> OpenACP -> 本地 Codex -> dqmc-sherlock-gateway -> 短 SSH -> Sherlock remote_call -> SLURM`。
+- Sherlock 上没有常驻 agent；查询只产生短命 SSH/remote Python 进程。
 
 `sherlock_summarize_run` 不属于默认 status-only smoke。如需验证，必须作为单独
 data-reading profile，先明确 allowed roots、审批文本和响应脱敏策略。
@@ -193,3 +219,5 @@ data-reading profile，先明确 allowed roots、审批文本和响应脱敏策�
 - [x] 远端 env 只允许明确白名单变量。
 - [x] 默认 status-only profile 不注入数据/脚本 env。
 - [x] 默认 status-only response 做 path redaction。
+- [x] 本地 Codex/OpenACP 实际配置使用 status-only profile 和空远端 env JSON。
+- [x] Slack/OpenACP 端到端 status 查询已通过，且不改变 MCP hands 的边界。

@@ -1,6 +1,6 @@
 # Sherlock SLURM SDD 任务拆解
 
-状态：进行中。本地开发任务和 Sherlock 验证任务分开执行。
+状态：进行中。默认 status-only Sherlock 查询链路已通过真实 gateway 和 Slack/OpenACP smoke；Sherlock 上 pytest、fixture 回流和非默认 profile 验证仍分开执行。
 
 ## Phase L0：本地基线和契约冻结
 
@@ -41,7 +41,8 @@
 - [ ] 确认 array job 的 `job_id`、`array_job_id`、`array_task_id` 形态。
 - [ ] 如果 `squeue --json` 可用，记录 `job_state`、`state_reason`、`array_job_id`、`array_task_id`、`nodes` 等字段是否为 list/dict/scalar。
 - [ ] 对 list/dict wrapped fields 脱敏保存一份最小 fixture。
-- [ ] 补充 Sherlock-specific smoke 说明，不把真实集群状态写死进单元测试。
+- [x] 补充 Sherlock-specific smoke 说明，不把真实集群状态写死进单元测试。
+  - 2026-05-28：gateway 和 Slack/OpenACP smoke 已记录在 `verification.md`；真实队列数量只作为观察记录，不写入单元测试断言。
 
 验收：
 
@@ -64,7 +65,8 @@
 验收：
 
 - [x] presenter fixture tests 通过。
-- [ ] 真实 Sherlock payload 能生成可读摘要。
+- [x] 真实 Sherlock payload 能生成可读摘要。
+  - 2026-05-28：Slack/OpenACP 新会话已能基于 status-only gateway 查询并回复 Sherlock SLURM 状态；Slack transport 本身仍不属于本 SDD 的 MCP hands。
 - [x] 不新增 Slack 依赖。
 
 ## Phase L2：`sacct` 历史查询工具
@@ -219,7 +221,7 @@
 1. Phase L0：本地基线和契约冻结。
 2. Phase R0：Sherlock status-only 环境基线。已完成 repo/venv/import/gateway tool-surface smoke；Sherlock 上 pytest 仍可单独补跑。
 3. Phase R1：真实验证 `query_slurm(filters={"me": true})`，并收集 wrapped JSON fields fixture。已完成 gateway smoke；fixture 回流仍可补充。
-4. Phase L1：本地实现非 Slack 的状态摘要 presenter。
+4. Phase L1：本地实现非 Slack 的状态摘要 presenter。真实 Sherlock payload 已经通过 gateway/Slack 路径生成用户可读状态回复；纯 presenter fixture 仍是本 SDD 的本地验证基线。
 5. Phase L2：本地实现 `sacct` 历史查询，使用 fixture 测试。
 6. Phase L2 的 Sherlock 验证步骤：用真实 `sacct` 输出补 fixture 和兼容修正。
 7. Phase L3：本地实现 job 详情入口。

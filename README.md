@@ -102,6 +102,7 @@ DQMC_SHERLOCK_REMOTE_PYTHON = "/absolute/path/to/DQMC_agent/on/sherlock/.venv/bi
 DQMC_SHERLOCK_REMOTE_CWD = "/absolute/path/to/DQMC_agent/on/sherlock"
 DQMC_SHERLOCK_TIMEOUT_SECONDS = "60"
 DQMC_SHERLOCK_GATEWAY_PROFILE = "status-only"
+DQMC_SHERLOCK_REMOTE_ENV_JSON = "{}"
 ```
 
 启动命令：
@@ -126,6 +127,9 @@ stdout/stderr path、run/output path 等字段，agent 可见结果中不返回 
 才应考虑设置 `DQMC_SHERLOCK_REMOTE_ENV_JSON`。
 
 gateway 不暴露任意 shell，不提交或取消 SLURM job，不做真实远端脚本执行。
+
+2026-05-28 状态：本地 Codex/OpenACP 实际配置已使用 status-only profile 跑通
+Slack/OpenACP -> 本地 Codex -> `dqmc-sherlock-gateway` -> Sherlock SLURM 查询链路。
 
 ## Slack/OpenACP 后端命令
 

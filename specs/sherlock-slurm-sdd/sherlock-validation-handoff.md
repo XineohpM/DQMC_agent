@@ -1,6 +1,6 @@
 # Sherlock Validation Handoff
 
-状态：交接/runbook。面向即将在 Sherlock 工作区 repo 中启动的 Codex 实例。
+状态：交接/runbook。默认 status-only gateway 和 Slack/OpenACP 端到端查询已通过；本文仍作为后续 Sherlock 字段确认、fixture 回流和非默认 profile 验证的安全 runbook。
 
 本文目标是给 Sherlock 上的新 Codex 提供足够上下文：项目是什么、已经演进到哪里、哪些能力已经本地实现、Sherlock 最后一公里要完成什么、如何验证、哪些安全边界绝不能越过、遇到常见错误时如何处理。
 
@@ -653,11 +653,14 @@ Sherlock 最后一公里完成时，应满足：
 
 - 本机 `ssh -o BatchMode=yes sherlock hostname` 可非交互返回。
 - Sherlock 端 repo 同步后，远端 `.venv` 可 `import dqmc_tools.remote_call`。
+- 本地用户级 Codex 配置已注册 `dqmc-sherlock-gateway`，使用 status-only profile、Sherlock 端绝对 Python 路径和空远端 env JSON；真实路径不写入 repo 文档。
 - 手写 SSH + `remote_call` 的 `query_slurm(filters={"me": true})` 返回 `ok=true`、`source=squeue_json`。
 - 本地 gateway 调 `sherlock_query_slurm` 返回 `ok=true`、`source=squeue_json`。
 - 本地 gateway 调 `sherlock_query_slurm_history(filters={"me": true, "max_rows": 5})` 返回 `ok=true`、`source=sacct_parsable2`。
 - 本地 gateway 调 `sherlock_get_slurm_job_detail` 查询一个临时 job id，返回 `match_count=1`、`multiple_matches=false`。
 - 三个 gateway status tools 的 path redaction check 均为 false；provenance 只含 host/tool，不含 remote cwd。
+- OpenACP backend 已加载本地 Codex MCP 配置；用户确认 Slack/OpenACP 新会话可正常查询 Sherlock SLURM 任务。
+- 端到端链路为 `Slack -> OpenACP -> 本地 Codex -> dqmc-sherlock-gateway -> 短 SSH -> Sherlock remote_call -> SLURM`；Sherlock 上没有常驻 agent。
 - 未默认调用 `sherlock_summarize_run`、`infer_slurm_path_candidates`、script adapter 或 sync。
 
 ## 给 Sherlock Codex 的建议开场提示

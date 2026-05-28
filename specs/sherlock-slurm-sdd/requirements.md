@@ -1,6 +1,6 @@
 # Sherlock SLURM SDD 需求规格
 
-状态：本地优先开发，Sherlock 真实环境验证。Slack bot 相关内容全部排除。
+状态：默认 status-only Sherlock 查询链路已通过真实 gateway 和 Slack/OpenACP smoke。Slack bot transport 设计仍排除在本 SDD 之外；这里只记录它作为端到端产品验证的观察结果。
 
 ## 背景
 
@@ -49,6 +49,7 @@
 - 本地测试覆盖 `squeue` unavailable、unknown filter、JSON path、fallback path、`me` filter、array job grouping 和 wrapped JSON fields。
 - 本地 `dqmc-sherlock-gateway` status-only profile 已通过真实 Sherlock smoke：默认只暴露 `sherlock_query_slurm`、`sherlock_query_slurm_history`、`sherlock_get_slurm_job_detail`，返回 path-redacted payload。
 - 真实 gateway smoke 确认 `query_slurm` 使用 `squeue_json`、`query_slurm_history` 使用 `sacct_parsable2`、`get_slurm_job_detail` 可从当前队列返回单个 candidate。
+- Slack/OpenACP 新 session 已确认可通过本地 `dqmc-sherlock-gateway` 查询 Sherlock SLURM 状态；该事实验证部署链路，不把 Slack transport 逻辑纳入 MCP hands。
 
 ## 重要实现经验：SLURM JSON wrapped fields
 
