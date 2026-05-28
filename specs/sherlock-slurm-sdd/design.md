@@ -161,7 +161,9 @@ candidate schema：
 
 ## 产物同步
 
-同步能力需要单独 design doc 后再实现。
+同步能力需要单独 design doc 后再实现。当前设计文档：
+
+- `artifact-sync-design.md`
 
 原则：
 

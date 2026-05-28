@@ -129,6 +129,20 @@ DQMC_DEV_ROOT=/Users/phoenixm/Desktop/dqmc-dev .venv/bin/python -m pytest
 - accessible candidate 可作为 `summarize_run(max_files=1)` 输入做 bounded 验证。
 - MCP tool set 和 success contract。
 
+## Phase L5/R5 Artifact Sync Design
+
+文档：
+
+- `specs/sherlock-slurm-sdd/artifact-sync-design.md`
+
+覆盖：
+
+- sync 仅用于本地 agent 需要读取 Sherlock 远端产物的场景。
+- 如果 MCP hands 在 Sherlock 上，优先直接读远端文件，不走同步。
+- 第一版建议新增 `sync_sherlock_artifacts`，但当前尚未实现。
+- 明确 remote host/path allowlist、本地 output root、dry-run、审批、manifest schema 和错误模型。
+- 明确实现前测试计划，真实 Sherlock 验证必须先 dry-run 小目录。
+
 ## Sherlock 环境基线
 
 记录项：

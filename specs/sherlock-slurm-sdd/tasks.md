@@ -154,7 +154,7 @@
 
 ## Phase L5/R5：Sherlock 产物同步
 
-- [ ] 先写单独 design doc。
+- [x] 先写单独 design doc：`artifact-sync-design.md`。
 - [ ] 明确远端路径 allowlist。
 - [ ] 明确本地目标 output root。
 - [ ] 写 dry-run 不写文件 test。
