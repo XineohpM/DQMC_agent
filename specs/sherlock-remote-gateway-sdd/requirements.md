@@ -60,7 +60,7 @@
 
 - `DQMC_SHERLOCK_REMOTE_HOST`：默认远端 host，例如 `sherlock`。
 - `DQMC_SHERLOCK_ALLOWED_HOSTS`：允许的 SSH host allowlist，path separator 分隔。
-- `DQMC_SHERLOCK_REMOTE_PYTHON`：远端 Python 可执行文件，默认 `.venv/bin/python`。
+- `DQMC_SHERLOCK_REMOTE_PYTHON`：远端 Python 可执行文件。真实 Sherlock gateway 配置应使用绝对路径，例如 `<REDACTED_DQMC_AGENT_ON_SHERLOCK>/.venv/bin/python`；相对 `.venv/bin/python` 会在远端 `--cwd` 生效前解析，不能作为可靠配置。
 - `DQMC_SHERLOCK_REMOTE_CWD`：远端 repo 工作目录，必须是绝对 POSIX 路径。
 - `DQMC_SHERLOCK_TIMEOUT_SECONDS`：每次 SSH 调用 timeout，默认 60。
 - `DQMC_SHERLOCK_REMOTE_ENV_JSON`：可选 JSON object，注入远端 entrypoint 环境。默认 status-only profile 应为空或省略；`DQMC_ALLOWED_ROOTS`、`DQMC_OUTPUT_ROOT`、`DQMC_DEV_ROOT`、`DQMC_REGISTRY_PATH` 只允许在单独 data/script profile 中使用。

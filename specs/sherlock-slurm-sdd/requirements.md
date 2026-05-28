@@ -47,6 +47,8 @@
 - 返回 `summary`、`groups.by_job_name` 和原始 `jobs`
 - `squeue --json` path 会 normalize SLURM wrapped fields，再用于 state/category 计数和 array job 分组。
 - 本地测试覆盖 `squeue` unavailable、unknown filter、JSON path、fallback path、`me` filter、array job grouping 和 wrapped JSON fields。
+- 本地 `dqmc-sherlock-gateway` status-only profile 已通过真实 Sherlock smoke：默认只暴露 `sherlock_query_slurm`、`sherlock_query_slurm_history`、`sherlock_get_slurm_job_detail`，返回 path-redacted payload。
+- 真实 gateway smoke 确认 `query_slurm` 使用 `squeue_json`、`query_slurm_history` 使用 `sacct_parsable2`、`get_slurm_job_detail` 可从当前队列返回单个 candidate。
 
 ## 重要实现经验：SLURM JSON wrapped fields
 
@@ -69,6 +71,7 @@
 - 真实 SLURM 输出暴露的新字段形态必须先变成脱敏 fixture，再补 parser 兼容。
 - Sherlock 默认只负责真实 `squeue`/`sacct` smoke、字段确认和 status-only 部署验证。
 - 任何路径验证、数据读取、同步或脚本执行都必须作为单独 profile，并先确认脱敏和审批边界。
+- 本地 gateway 连接 Sherlock 时，`DQMC_SHERLOCK_REMOTE_PYTHON` 应使用 Sherlock 上 venv Python 的绝对路径。相对 `.venv/bin/python` 会在远端 `--cwd` 生效前解析，不作为可靠配置。
 
 ### R2 只读安全边界
 
@@ -161,8 +164,9 @@
 
 - 本地 `query_slurm` 相关测试通过。
 - MCP contract tests 通过。
-- Sherlock `query_slurm(filters={"me": true})` smoke 返回 `ok=true`。
-- `sacct` 可用时能查询 completed/failed/timeout/OOM 任务；不可用时返回 structured `tool_unavailable`。
+- Sherlock `query_slurm(filters={"me": true})` smoke 返回 `ok=true`。2026-05-28 已通过本地 gateway smoke。
+- `sacct` 可用时能查询 completed/failed/timeout/OOM 任务；不可用时返回 structured `tool_unavailable`。2026-05-28 已通过 completed rows 的 gateway smoke。
 - wrapped JSON fields 不会破坏 state/category 计数或 array job 分组。
 - 任意新增 SLURM 命令都只生成 argv list，不使用 shell string。
 - 不存在 submit/cancel/mutate SLURM 工具，除非后续单独 spec 明确引入。
+- 默认 Sherlock gateway/status response 不包含真实 `WorkDir`、stdout/stderr path、run/output path、remote repo cwd 或 raw path fields。2026-05-28 gateway smoke 中三个 status tools 的 path redaction check 均通过。

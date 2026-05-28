@@ -146,7 +146,7 @@ value 或本地私有日志。
 SherlockGatewayConfig(
     remote_host="sherlock",
     allowed_hosts=["sherlock"],
-    remote_python=".venv/bin/python",
+    remote_python="<REDACTED_DQMC_AGENT_ON_SHERLOCK>/.venv/bin/python",
     remote_cwd="/home/user/DQMC_agent",
     timeout_seconds=60,
     remote_env={},
@@ -166,7 +166,7 @@ SherlockGatewayConfig(
 
 - host 默认 `sherlock`。
 - allowed hosts 默认只包含 host。
-- remote python 默认 `.venv/bin/python`。
+- remote python 在真实 Sherlock gateway 配置中使用绝对路径；不要依赖相对 `.venv/bin/python`。
 - timeout 默认 60。
 - remote cwd 必须显式配置；缺失返回 `configuration_error`。
 - remote env 默认空；数据读取、script adapter、artifact sync 相关 env 不属于 status-only profile。
@@ -179,7 +179,7 @@ SherlockGatewayConfig(
 [
     "/usr/bin/ssh",
     "sherlock",
-    ".venv/bin/python",
+    "<REDACTED_DQMC_AGENT_ON_SHERLOCK>/.venv/bin/python",
     "-m",
     "dqmc_tools.remote_call",
     "--cwd",

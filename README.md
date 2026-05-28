@@ -98,7 +98,7 @@ args = ["/Users/phoenixm/Desktop/DQMC_agent/dqmc_sherlock_gateway_mcp_server.py"
 [mcp_servers.dqmc-sherlock-gateway.env]
 DQMC_SHERLOCK_REMOTE_HOST = "sherlock"
 DQMC_SHERLOCK_ALLOWED_HOSTS = "sherlock"
-DQMC_SHERLOCK_REMOTE_PYTHON = ".venv/bin/python"
+DQMC_SHERLOCK_REMOTE_PYTHON = "/absolute/path/to/DQMC_agent/on/sherlock/.venv/bin/python"
 DQMC_SHERLOCK_REMOTE_CWD = "/absolute/path/to/DQMC_agent/on/sherlock"
 DQMC_SHERLOCK_TIMEOUT_SECONDS = "60"
 DQMC_SHERLOCK_GATEWAY_PROFILE = "status-only"

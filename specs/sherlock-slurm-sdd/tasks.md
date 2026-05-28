@@ -1,12 +1,12 @@
 # Sherlock SLURM SDD 任务拆解
 
-状态：草案。本地开发任务和 Sherlock 验证任务分开执行。
+状态：进行中。本地开发任务和 Sherlock 验证任务分开执行。
 
 ## Phase L0：本地基线和契约冻结
 
 - [x] 运行 `tests/test_slurm.py`。
 - [x] 运行 `query_slurm` MCP success/error contract tests。
-- [x] 运行 MCP tool set test，确认当前暴露 10 个 tools。
+- [x] 运行 MCP tool set test，确认当前完整 `dqmc-hands` 暴露 14 个 tools；默认 Sherlock status profile 只暴露 3 个 path-redacted status tools。
 - [x] 运行 wrapped SLURM JSON fields 测试，确认 `job_state` list、`array_job_id` dict、`array_task_id set=false` 都被正确 normalize。
 - [x] 记录 `query_slurm` 当前 schema：`ok`、`source`、`command`、`commands_attempted`、`jobs`、`summary`、`groups`、JSON path 的 `raw`。
 
@@ -19,24 +19,24 @@
 
 ## Phase R0：Sherlock 环境基线
 
-- [ ] 克隆或同步当前仓库到 Sherlock。
-- [ ] 创建 `.venv`，安装 `.[mcp,test]`。
-- [ ] 默认 status-only 验证不设置 `DQMC_DEV_ROOT`、`DQMC_ALLOWED_ROOTS`、`DQMC_OUTPUT_ROOT`、`DQMC_REGISTRY_PATH`。
+- [x] 克隆或同步当前仓库到 Sherlock。
+- [x] 创建 `.venv`，并确认可 import `dqmc_tools.remote_call`。
+- [x] 默认 status-only 验证不设置 `DQMC_DEV_ROOT`、`DQMC_ALLOWED_ROOTS`、`DQMC_OUTPUT_ROOT`、`DQMC_REGISTRY_PATH`。
 - [ ] 运行 SLURM/status 相关测试；完整 HDF5/script 测试只在本地或单独 data/script profile 中运行。
-- [ ] 启动或调用 path-redacted SLURM-only tool surface，确认默认只暴露 status 查询相关工具。
+- [x] 调用 path-redacted gateway status-only tool surface，确认默认只暴露 status 查询相关工具。
 
 验收：
 
 - [ ] `.venv/bin/python -m pytest tests/test_package_import.py tests/test_slurm.py tests/test_slurm_presenter.py tests/test_slurm_monitor.py -q` 通过。
-- [ ] `dqmc_tools` 可 import。
-- [ ] 默认 status-only tool surface 不暴露 HDF5、script adapter、sync、run summary 或 path discovery。
+- [x] `dqmc_tools` 可 import。
+- [x] 默认 status-only tool surface 不暴露 HDF5、script adapter、sync、run summary 或 path discovery。
 - [ ] 未配置 allowed roots 时，原始数据读取继续 fail closed。
 
 ## Phase R1：真实 `squeue --me` 验证
 
-- [ ] 直接运行 `squeue --me`，记录输出形态。
-- [ ] 运行 `query_slurm(filters={"me": true})`。
-- [ ] 判断 Sherlock 是否支持 `squeue --json`。
+- [x] 直接或经 `remote_call` 运行 `squeue --me` 路径，记录输出形态。
+- [x] 运行 `query_slurm(filters={"me": true})`。
+- [x] 判断 Sherlock 是否支持 `squeue --json`。
 - [ ] 如果 `--json` 不可用，确认 fallback parser 的字段足够。
 - [ ] 确认 array job 的 `job_id`、`array_job_id`、`array_task_id` 形态。
 - [ ] 如果 `squeue --json` 可用，记录 `job_state`、`state_reason`、`array_job_id`、`array_task_id`、`nodes` 等字段是否为 list/dict/scalar。
@@ -45,11 +45,11 @@
 
 验收：
 
-- [ ] `query_slurm(filters={"me": true})` 返回 `ok=true`。
-- [ ] 返回包含 `summary.total_jobs`、`summary.state_counts`、`summary.category_counts`。
-- [ ] 对 array job，`groups.by_job_name[*].array_jobs` 能分组。
-- [ ] wrapped JSON fields 被 normalize 后再进入 `summary` 和 `groups`。
-- [ ] 没有任何 submit/cancel/mutate 命令。
+- [x] `query_slurm(filters={"me": true})` 返回 `ok=true`。
+- [x] 返回包含 `summary.total_jobs`、`summary.state_counts`、`summary.category_counts`。
+- [x] 对 array job，`groups.by_job_name[*].array_jobs` 能分组。
+- [x] wrapped JSON fields 被 normalize 后再进入 `summary` 和 `groups`。
+- [x] 没有任何 submit/cancel/mutate 命令。
 
 ## Phase L1：非 Slack 的“我的任务状态”presenter
 
@@ -84,16 +84,16 @@
 
 验收：
 
-- [ ] 查询最近 N 天当前用户任务可成功。
+- [x] 查询最近 N 天当前用户任务可成功。
 - [x] 对 failed/timeout/completed 任务能返回 state 和 exit code。
 - [x] `sacct` 不可用时返回 structured `tool_unavailable`。
 - [x] 不调用任何修改任务状态的 SLURM 命令。
 
 ## Phase L2 的 Sherlock 验证步骤
 
-- [ ] 运行 `which sacct`。
-- [ ] 运行最近 N 天当前用户查询，确认默认时间窗口。
-- [ ] 默认 status 查询不请求或返回 `WorkDir`。
+- [x] 运行 `sacct` 路径的最近任务查询，确认可返回当前用户历史任务。
+- [ ] 确认默认时间窗口；当前 smoke 使用 `max_rows` 限制，没有把默认窗口写死。
+- [x] 默认 gateway/status 查询不返回 `WorkDir`。
 - [ ] 如需验证 `WorkDir`，必须进入单独 path-discovery profile，并脱敏记录。
 - [ ] 验证 `JobID` 对 array parent/task 的格式。
 - [ ] 验证 `State` 和 `ExitCode` 对 completed/failed/timeout/OOM 的实际形态。
@@ -122,10 +122,10 @@
 
 ## Phase L3 的 Sherlock 验证步骤
 
-- [ ] 用一个当前队列 job id 验证 `squeue` detail path。
+- [x] 用一个当前队列 job id 验证 `squeue` detail path。
 - [ ] 用一个已结束 job id 验证 `sacct` detail path。
 - [ ] 验证 array parent 和具体 task id 的查询行为。
-- [ ] 验证默认 Sherlock gateway/status response 不包含 `work_dir`、stdout/stderr path 或 raw path fields。
+- [x] 验证默认 Sherlock gateway/status response 不包含 `work_dir`、stdout/stderr path 或 raw path fields。
 
 ## Phase L4：Job 到 run/output path 关联
 
@@ -136,7 +136,7 @@
 - [x] 写越过 allowed roots 的路径拒绝或不可访问 test。
 - [x] 实现纯推断 helper。
 - [x] 对候选 run path 可调用现有 `summarize_run` 做 bounded 验证。
-- [ ] 标记为非默认 path-discovery profile；普通 Sherlock/Slack status 查询不调用该工具。
+- [x] 标记为非默认 path-discovery profile；普通 Sherlock/Slack status 查询不调用该工具。
 
 验收：
 
@@ -217,8 +217,8 @@
 ## 推荐执行顺序
 
 1. Phase L0：本地基线和契约冻结。
-2. Phase R0：Sherlock status-only 环境基线。
-3. Phase R1：真实验证 `query_slurm(filters={"me": true})`，并收集 wrapped JSON fields fixture。
+2. Phase R0：Sherlock status-only 环境基线。已完成 repo/venv/import/gateway tool-surface smoke；Sherlock 上 pytest 仍可单独补跑。
+3. Phase R1：真实验证 `query_slurm(filters={"me": true})`，并收集 wrapped JSON fields fixture。已完成 gateway smoke；fixture 回流仍可补充。
 4. Phase L1：本地实现非 Slack 的状态摘要 presenter。
 5. Phase L2：本地实现 `sacct` 历史查询，使用 fixture 测试。
 6. Phase L2 的 Sherlock 验证步骤：用真实 `sacct` 输出补 fixture 和兼容修正。

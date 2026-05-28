@@ -151,11 +151,13 @@ printf '%s\n' '{"tool":"query_slurm","args":{"filters":{"me":true}},"env":{}}' \
 ```bash
 export DQMC_SHERLOCK_REMOTE_HOST="sherlock"
 export DQMC_SHERLOCK_ALLOWED_HOSTS="sherlock"
-export DQMC_SHERLOCK_REMOTE_PYTHON=".venv/bin/python"
-export DQMC_SHERLOCK_REMOTE_CWD="/absolute/path/to/DQMC_agent"
+export DQMC_SHERLOCK_REMOTE_PYTHON="<REDACTED_DQMC_AGENT_ON_SHERLOCK>/.venv/bin/python"
+export DQMC_SHERLOCK_REMOTE_CWD="<REDACTED_DQMC_AGENT_ON_SHERLOCK>"
 export DQMC_SHERLOCK_TIMEOUT_SECONDS="60"
 export DQMC_SHERLOCK_REMOTE_ENV_JSON='{}'
 ```
+
+2026-05-28 smoke 发现：`DQMC_SHERLOCK_REMOTE_PYTHON` 必须使用远端 venv Python 的绝对路径。相对 `.venv/bin/python` 会在远端 `--cwd` 生效前解析，可能导致 gateway SSH 子进程失败。
 
 MCP smoke：
 

@@ -270,6 +270,25 @@ export DQMC_ALLOWED_ROOTS="/path/to/one/safe/run/root:/path/to/another/safe/root
 不要指向完整 `dqmc_mcp_server.py`。如果当前还没有 SLURM-only server，只做 Python API
 smoke，不把完整 MCP server 作为默认产品形态。
 
+如果使用本地 `dqmc-sherlock-gateway` 访问 Sherlock，gateway 相关 `DQMC_SHERLOCK_*`
+变量只在本地配置。`DQMC_SHERLOCK_REMOTE_CWD` 指 Sherlock 上的 `DQMC_agent`
+checkout；真实值不得写入 agent 可见响应或长期记录。`DQMC_SHERLOCK_REMOTE_PYTHON`
+应使用该 checkout 下 venv Python 的绝对路径，例如：
+
+```bash
+export DQMC_SHERLOCK_REMOTE_HOST="sherlock"
+export DQMC_SHERLOCK_ALLOWED_HOSTS="sherlock"
+export DQMC_SHERLOCK_REMOTE_PYTHON="<REDACTED_DQMC_AGENT_ON_SHERLOCK>/.venv/bin/python"
+export DQMC_SHERLOCK_REMOTE_CWD="<REDACTED_DQMC_AGENT_ON_SHERLOCK>"
+export DQMC_SHERLOCK_TIMEOUT_SECONDS="60"
+export DQMC_SHERLOCK_GATEWAY_PROFILE="status-only"
+export DQMC_SHERLOCK_REMOTE_ENV_JSON="{}"
+```
+
+不要把 `DQMC_SHERLOCK_REMOTE_PYTHON` 配成相对 `.venv/bin/python`。gateway 会先启动
+远端 Python，再把 `--cwd` 传给 `remote_call`，所以相对 Python 路径会在远端 cwd
+切换前解析，容易失败。
+
 非默认完整 MCP server 配置位置通常是 `~/.codex/config.toml`：
 
 ```toml
@@ -301,7 +320,7 @@ DQMC_DEV_ROOT="$DQMC_DEV_ROOT" .venv/bin/python -m pytest
 本地最近通过记录是：
 
 ```text
-116 passed in 13.13s
+140 passed in 13.14s
 ```
 
 Sherlock 上时间可能不同。关键是 0 failures。
@@ -629,6 +648,17 @@ Sherlock 最后一公里完成时，应满足：
 - `infer_slurm_path_candidates`、`summarize_run(max_files=1)`、`scripts/audit_script_adapters.py` 只在单独 profile 中验收。
 - 所有真实输出脱敏后写入 verification/observation 文档。
 - 没有任何 `/scratch` 重要目录被删除、移动、覆盖或递归写入。
+
+2026-05-28 已完成的 status-only gateway smoke：
+
+- 本机 `ssh -o BatchMode=yes sherlock hostname` 可非交互返回。
+- Sherlock 端 repo 同步后，远端 `.venv` 可 `import dqmc_tools.remote_call`。
+- 手写 SSH + `remote_call` 的 `query_slurm(filters={"me": true})` 返回 `ok=true`、`source=squeue_json`。
+- 本地 gateway 调 `sherlock_query_slurm` 返回 `ok=true`、`source=squeue_json`。
+- 本地 gateway 调 `sherlock_query_slurm_history(filters={"me": true, "max_rows": 5})` 返回 `ok=true`、`source=sacct_parsable2`。
+- 本地 gateway 调 `sherlock_get_slurm_job_detail` 查询一个临时 job id，返回 `match_count=1`、`multiple_matches=false`。
+- 三个 gateway status tools 的 path redaction check 均为 false；provenance 只含 host/tool，不含 remote cwd。
+- 未默认调用 `sherlock_summarize_run`、`infer_slurm_path_candidates`、script adapter 或 sync。
 
 ## 给 Sherlock Codex 的建议开场提示
 

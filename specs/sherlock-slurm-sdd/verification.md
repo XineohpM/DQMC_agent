@@ -1,6 +1,6 @@
 # Sherlock SLURM SDD 验证记录
 
-状态：待执行。本文件记录本地验证命令、Sherlock smoke 命令和真实输出字段发现。
+状态：部分执行。本文件记录本地验证命令、Sherlock smoke 命令和真实输出字段发现。
 
 ## 本地验证
 
@@ -41,7 +41,8 @@ DQMC_DEV_ROOT=/Users/phoenixm/Desktop/dqmc-dev .venv/bin/python -m pytest
 
 结果：
 
-- `116 passed in 13.13s`
+- 旧记录：`116 passed in 13.13s`
+- 2026-05-28 更新：`140 passed in 13.14s`
 
 ## Phase L1 本地 Presenter
 
@@ -206,7 +207,12 @@ DQMC_DEV_ROOT=/Users/phoenixm/Desktop/dqmc-dev .venv/bin/python -m pytest
 
 结果：
 
-- 待记录。
+- 2026-05-28 status-only gateway smoke 前置检查：
+  - 本机 `ssh -o BatchMode=yes sherlock hostname` 可非交互返回。
+  - Sherlock 端 repo 同步后，远端 `.venv` 可 `import dqmc_tools.remote_call`。
+  - 默认 status-only smoke 未向远端注入 `DQMC_DEV_ROOT`、`DQMC_ALLOWED_ROOTS`、`DQMC_OUTPUT_ROOT`、`DQMC_REGISTRY_PATH`。
+  - 真实 Sherlock repo 路径不写入本文件；统一记为 `<REDACTED_DQMC_AGENT_ON_SHERLOCK>`。
+  - 发现：本地 gateway 的 `DQMC_SHERLOCK_REMOTE_PYTHON` 应配置为 Sherlock 上 venv Python 的绝对路径，例如 `<REDACTED_DQMC_AGENT_ON_SHERLOCK>/.venv/bin/python`。相对 `.venv/bin/python` 会在远端 `--cwd` 生效前解析，可能失败。
 
 ## Sherlock `squeue --me` smoke
 
@@ -231,12 +237,20 @@ query_slurm(filters={"me": True})
 
 记录：
 
-- `ok`：
-- `source`：`squeue_json` 或 `squeue_fallback`
-- `summary.total_jobs`：
-- `summary.state_counts`：
-- `summary.category_counts`：
-- `groups.by_job_name` 是否可读：
+- 2026-05-28 手写 SSH + `remote_call` smoke：
+  - `ok`：true
+  - `source`：`squeue_json`
+  - `summary.total_jobs`：1077
+  - `summary.state_counts`：`PENDING` 和 `RUNNING`
+  - `summary.category_counts`：`pending` 和 `running`
+  - `groups.by_job_name` 是否可读：是
+- 2026-05-28 本地 `dqmc-sherlock-gateway` smoke：
+  - `ok`：true
+  - `source`：`squeue_json`
+  - `summary.total_jobs`：1077
+  - 连续调用期间队列实时变化，pending/running counts 有小幅变化。
+  - gateway provenance：只包含 `host` 和 `tool`，不包含 remote cwd。
+  - path redaction check：`has_sensitive_path_keys=false`
 
 验收：
 
@@ -286,13 +300,15 @@ sacct --parsable2 --noheader --format=JobID,JobName,User,State,ExitCode,Elapsed,
 
 记录：
 
-- `sacct` 是否存在：
-- 默认时间窗口是否足够：
-- 是否需要显式 `--starttime`：
-- `WorkDir` 是否开放：仅在 path-discovery profile 中记录，status-only profile 不返回该字段
-- `JobID` 对 array parent/task 的格式：
-- `State` 和 `ExitCode` 对 completed/failed/timeout/OOM 的实际形态：
-- 字段是否全部为 scalar：
+- 2026-05-28 本地 gateway `sherlock_query_slurm_history(filters={"me": true, "max_rows": 5})` smoke：
+  - `ok`：true
+  - `source`：`sacct_parsable2`
+  - `job_count`：5
+  - `summary.state_counts`：`COMPLETED=5`
+  - `summary.exit_code_counts`：`0:0=5`
+  - `WorkDir` 是否开放：默认 status-only response 不返回该字段。
+  - path redaction check：`has_sensitive_path_keys=false`
+- 默认时间窗口是否足够：仍需单独确认；当前 smoke 使用 `max_rows` 限制，没有把默认窗口写死。
 
 验收：
 
@@ -304,12 +320,15 @@ sacct --parsable2 --noheader --format=JobID,JobName,User,State,ExitCode,Elapsed,
 
 当前队列 job：
 
-- job id：
-- command/source：
-- candidate count：
-- state：
-- partition：
-- node/reason：
+- 2026-05-28 本地 gateway `sherlock_get_slurm_job_detail` smoke：
+  - job id：使用临时真实 job id 查询，但不记录。
+  - command/source：`squeue`
+  - `match_count`：1
+  - `multiple_matches`：false
+  - candidate count：1
+  - state/category：`PENDING` / `pending`
+  - warning count：0
+  - path redaction check：`has_sensitive_path_keys=false`
 
 历史 job：
 
@@ -323,7 +342,7 @@ sacct --parsable2 --noheader --format=JobID,JobName,User,State,ExitCode,Elapsed,
 
 验收：
 
-- running job 从 `squeue` 返回详情。
+- 当前队列 job 从 `squeue` 返回详情。
 - completed/failed job 从 `sacct` 返回详情。
 - array parent 和 task id 行为明确。
 - 查不到 job 时返回稳定空结构。
