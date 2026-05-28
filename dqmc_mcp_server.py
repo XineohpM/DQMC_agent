@@ -20,6 +20,7 @@ from dqmc_tools.slurm import get_slurm_job_detail as dqmc_get_slurm_job_detail
 from dqmc_tools.slurm import query_slurm as dqmc_query_slurm
 from dqmc_tools.slurm import query_slurm_history as dqmc_query_slurm_history
 from dqmc_tools.slurm_paths import infer_slurm_path_candidates as dqmc_infer_slurm_path_candidates
+from dqmc_tools.sync import sync_sherlock_artifacts as dqmc_sync_sherlock_artifacts
 
 
 SERVER_INSTRUCTIONS = (
@@ -336,6 +337,48 @@ def build_server() -> FastMCP:
                 job_detail,
                 allowed_roots=allowed_roots,
                 user_path=user_path,
+            )
+        except Exception as exc:
+            return error_dict(exc)
+
+    @server.tool(
+        name="sync_sherlock_artifacts",
+        description=(
+            "Dry-run or execute restricted rsync of Sherlock artifacts into the "
+            "local output root. This requires remote host/path allowlists, uses "
+            "argv lists only, returns a manifest, and requires explicit approval "
+            "for dry-run=false. Parameters: remote_host, remote_path, "
+            "remote_allowed_hosts, remote_allowed_roots, optional local_subdir, "
+            "output_root, dry_run, user_confirmation, include_patterns, "
+            "exclude_patterns, timeout_seconds."
+        ),
+    )
+    def sync_sherlock_artifacts(
+        remote_host: str,
+        remote_path: str,
+        remote_allowed_hosts: list[str],
+        remote_allowed_roots: list[str],
+        local_subdir: str | None = None,
+        output_root: str | None = None,
+        dry_run: bool = True,
+        user_confirmation: dict[str, Any] | None = None,
+        include_patterns: list[str] | None = None,
+        exclude_patterns: list[str] | None = None,
+        timeout_seconds: int | None = None,
+    ) -> dict[str, Any]:
+        try:
+            return dqmc_sync_sherlock_artifacts(
+                remote_host=remote_host,
+                remote_path=remote_path,
+                remote_allowed_hosts=remote_allowed_hosts,
+                remote_allowed_roots=remote_allowed_roots,
+                local_subdir=local_subdir,
+                output_root=output_root,
+                dry_run=dry_run,
+                user_confirmation=user_confirmation,
+                include_patterns=include_patterns,
+                exclude_patterns=exclude_patterns,
+                timeout_seconds=timeout_seconds,
             )
         except Exception as exc:
             return error_dict(exc)

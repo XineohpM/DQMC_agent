@@ -63,6 +63,7 @@ from dqmc_tools.scripts import (
 from dqmc_tools.slurm import get_slurm_job_detail, query_slurm, query_slurm_history
 from dqmc_tools.slurm_paths import infer_slurm_path_candidates
 from dqmc_tools.slurm_presenter import format_slurm_status_summary
+from dqmc_tools.sync import sync_sherlock_artifacts
 
 __version__ = "0.1.0"
 
@@ -103,6 +104,7 @@ __all__ = [
     "query_slurm",
     "query_slurm_history",
     "format_slurm_status_summary",
+    "sync_sherlock_artifacts",
     "ConfigurationError",
     "DQMCError",
     "HDF5ReadError",

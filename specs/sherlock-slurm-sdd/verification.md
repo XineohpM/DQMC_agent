@@ -38,7 +38,7 @@ DQMC_DEV_ROOT=/Users/phoenixm/Desktop/dqmc-dev .venv/bin/python -m pytest
 
 结果：
 
-- `103 passed in 13.05s`
+- `113 passed in 13.47s`
 
 ## Phase L1 本地 Presenter
 
@@ -142,6 +142,28 @@ DQMC_DEV_ROOT=/Users/phoenixm/Desktop/dqmc-dev .venv/bin/python -m pytest
 - 第一版建议新增 `sync_sherlock_artifacts`，但当前尚未实现。
 - 明确 remote host/path allowlist、本地 output root、dry-run、审批、manifest schema 和错误模型。
 - 明确实现前测试计划，真实 Sherlock 验证必须先 dry-run 小目录。
+
+## Phase L5 本地 Artifact Sync
+
+命令：
+
+```bash
+.venv/bin/python -m pytest tests/test_sync.py tests/test_mcp_contracts.py::test_sync_sherlock_artifacts_mcp_success_contract tests/test_mcp_contracts.py::test_sync_sherlock_artifacts_mcp_approval_error_contract tests/test_mcp_server.py::test_mcp_tool_set_has_current_hands_surface tests/test_mcp_server.py::test_mcp_descriptions_match_current_registry_and_run_rules -q
+```
+
+结果：
+
+- `12 passed`
+
+覆盖：
+
+- dry-run command builder 使用 argv list，并包含 `--dry-run`。
+- remote host allowlist、remote path allowlist 和 unsafe remote path rejection。
+- local destination 必须在 output root 内。
+- `dry_run=false` 无审批返回 `user_approval_required`。
+- 已审批同步命令不带 `--dry-run`，并返回 manifest。
+- `rsync` unavailable 返回 structured `tool_unavailable`。
+- MCP success/error contract 和 tool set。
 
 ## Sherlock 环境基线
 

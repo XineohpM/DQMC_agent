@@ -461,3 +461,67 @@ def test_infer_slurm_path_candidates_mcp_success_contract(tmp_path: Path):
         }
     ]
     assert payload["warnings"] == []
+
+
+def test_sync_sherlock_artifacts_mcp_success_contract(monkeypatch, tmp_path: Path):
+    monkeypatch.setattr("dqmc_tools.sync.shutil.which", lambda _name: "rsync")
+
+    def fake_run(args, **_kwargs):
+        return subprocess.CompletedProcess(
+            args=args,
+            returncode=0,
+            stdout=">f+++++++++ result.h5\n",
+            stderr="",
+        )
+
+    monkeypatch.setattr("dqmc_tools.sync.subprocess.run", fake_run)
+
+    payload = _run(_call_tool(
+        "sync_sherlock_artifacts",
+        {
+            "remote_host": "sherlock",
+            "remote_path": "/oak/user/run1",
+            "remote_allowed_hosts": ["sherlock"],
+            "remote_allowed_roots": ["/oak/user"],
+            "local_subdir": "run1",
+            "output_root": str(tmp_path),
+            "dry_run": True,
+        },
+    ))
+
+    assert set(payload) == {
+        "ok",
+        "dry_run",
+        "command",
+        "remote",
+        "destination",
+        "user_confirmation",
+        "manifest",
+        "stdout_tail",
+        "stderr_tail",
+        "warnings",
+    }
+    assert payload["ok"] is True
+    assert payload["dry_run"] is True
+    assert payload["manifest"]["created"] == [
+        {"path": "result.h5", "change": "created", "itemize": ">f+++++++++"}
+    ]
+
+
+def test_sync_sherlock_artifacts_mcp_approval_error_contract(tmp_path: Path):
+    payload = _run(_call_tool(
+        "sync_sherlock_artifacts",
+        {
+            "remote_host": "sherlock",
+            "remote_path": "/oak/user/run1",
+            "remote_allowed_hosts": ["sherlock"],
+            "remote_allowed_roots": ["/oak/user"],
+            "output_root": str(tmp_path),
+            "dry_run": False,
+        },
+    ))
+
+    assert set(payload) == {"ok", "error_type", "message", "details"}
+    assert payload["ok"] is False
+    assert payload["error_type"] == "user_approval_required"
+    assert payload["details"] == {"operation": "sync_sherlock_artifacts"}

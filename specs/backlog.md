@@ -4,8 +4,8 @@
 
 ## 当前基线
 
-- [x] “手”层已经有第一版 MCP tools：`summarize_run`、`inspect_hdf5`、`read_dataset`、`resolve_registry_entry`、`read_registered_quantity`、`estimate_registered_observable`、`list_script_adapters`、`describe_script_adapter`、`run_script_adapter`、`query_slurm`、`query_slurm_history`、`get_slurm_job_detail`、`infer_slurm_path_candidates`。
-- [x] 当前测试可通过：`103 passed`。
+- [x] “手”层已经有第一版 MCP tools：`summarize_run`、`inspect_hdf5`、`read_dataset`、`resolve_registry_entry`、`read_registered_quantity`、`estimate_registered_observable`、`list_script_adapters`、`describe_script_adapter`、`run_script_adapter`、`query_slurm`、`query_slurm_history`、`get_slurm_job_detail`、`infer_slurm_path_candidates`、`sync_sherlock_artifacts`。
+- [x] 当前测试可通过：`113 passed`。
 - [x] `registry.yaml` 是当前“手”层唯一被运行时代码真正读取的三份“眼睛”文件之一。
 - [x] `code_map.md` 和 `diagnostics_playbook.md` 目前没有被 `dqmc_tools/` 或 `dqmc_mcp_server.py` 运行时读取。
 - [x] `diagnostics_playbook.md` 当前只作为设计输入和人工知识来源；“手”层不自动执行 sign、Trotter、warmup、mu tuning、MaxEnt binning 等诊断判断。
@@ -21,7 +21,7 @@
   - 建议拆分：
     - [x] Contract tests：固定核心 MCP tools 输入输出 schema，避免 agent/Slack 层依赖字段漂移。
       - 覆盖文件：`tests/test_mcp_contracts.py`。
-      - 成功路径：`summarize_run`、`read_dataset`、`inspect_hdf5`、`read_registered_quantity`、`estimate_registered_observable`、`list_script_adapters`、`describe_script_adapter`、`run_script_adapter(dry_run=true)`、`query_slurm`、`query_slurm_history`、`get_slurm_job_detail`、`infer_slurm_path_candidates`。
+      - 成功路径：`summarize_run`、`read_dataset`、`inspect_hdf5`、`read_registered_quantity`、`estimate_registered_observable`、`list_script_adapters`、`describe_script_adapter`、`run_script_adapter(dry_run=true)`、`query_slurm`、`query_slurm_history`、`get_slurm_job_detail`、`infer_slurm_path_candidates`、`sync_sherlock_artifacts(dry_run=true)`。
       - 错误路径：`path_not_allowed`、`user_approval_required`、`tool_unavailable`、`invalid_argument` 的 MCP 层 JSON-safe error contract。
       - 记录 MCP 层细节：顶层 list 返回在 `FastMCP.call_tool` structured content 中表现为 `{"result": [...]}`。
     - [x] Adapter contract tests：固定真实 catalog 中 `run_maxent_anneal` argparse schema、shell raw args、approval 字段等关键契约。
@@ -126,12 +126,13 @@
 
 ## P1/P2：同步 SLURM 产物到本地
 
-- [ ] 设计 rsync/同步能力。
+- [x] 设计并实现本地受限 rsync/同步能力。
   - 对应 `sherlock-slurm-sdd` Phase L5/R5。
-  - [ ] 先做 dry-run。
-  - [ ] 明确远端 allowlist、目标本地 output root、覆盖策略。
-  - [ ] 返回同步 manifest：新增文件、更新文件、跳过文件、大小、mtime。
+  - [x] 先做 dry-run。
+  - [x] 明确远端 allowlist、目标本地 output root、覆盖策略。
+  - [x] 返回同步 manifest：新增文件、更新文件、跳过文件、unknown。
   - [ ] 同步完成后可衔接本地 HDF5/analysis tools。
+  - [ ] 真实 Sherlock 小目录 dry-run 验证。
 
 - [ ] 接入 Sherlock 产物同步工作流。
   - [ ] agent 根据 job/run path 提示同步命令。

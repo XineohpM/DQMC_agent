@@ -25,6 +25,7 @@ def sync_sherlock_artifacts(
     *,
     remote_host: str,
     remote_path: str,
+    remote_allowed_hosts: list[str],
     remote_allowed_roots: list[str],
     local_subdir: str | None = None,
     output_root: str | None = None,
@@ -39,7 +40,7 @@ def sync_sherlock_artifacts(
 
 参数约束：
 
-- `remote_host` 必须是 exact allowlist value；第一版不从用户输入拼接 SSH options。
+- `remote_host` 必须是 `remote_allowed_hosts` 中的 exact allowlist value；第一版不从用户输入拼接 SSH options。
 - `remote_path` 是远端 POSIX 绝对路径，必须落在 `remote_allowed_roots` 之一下面。
 - `remote_path` 和 `remote_allowed_roots` 用 `PurePosixPath` 做 lexical normalization；拒绝空路径、相对路径、`..` segment、NUL 字符和明显 shell metacharacter。
 - `local_subdir` 是相对路径；最终 destination 必须在 `output_root` 内。

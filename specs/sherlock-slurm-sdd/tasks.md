@@ -155,20 +155,20 @@
 ## Phase L5/R5：Sherlock 产物同步
 
 - [x] 先写单独 design doc：`artifact-sync-design.md`。
-- [ ] 明确远端路径 allowlist。
-- [ ] 明确本地目标 output root。
-- [ ] 写 dry-run 不写文件 test。
-- [ ] 写 output root 外目标拒绝 test。
-- [ ] 写 allowlist 外远端路径拒绝 test。
-- [ ] 写 manifest schema test。
+- [x] 明确远端路径 allowlist。
+- [x] 明确本地目标 output root。
+- [x] 写 dry-run 不写文件 test。
+- [x] 写 output root 外目标拒绝 test。
+- [x] 写 allowlist 外远端路径拒绝 test。
+- [x] 写 manifest schema test。
 - [ ] 对小型测试目录运行 dry-run。
-- [ ] 经用户审批后运行真实同步，并记录 manifest。
+- [x] 写经用户审批后运行同步命令并记录 manifest 的本地 mock test。
 
 验收：
 
-- [ ] 真实同步返回 manifest。
+- [x] 本地 mock 同步返回 manifest。
 - [ ] 同步后可调用 `summarize_run` 或 HDF5 工具。
-- [ ] 未审批时不写本地文件。
+- [x] 未审批时不写本地文件。
 
 ## Phase R6：Sherlock 上的后处理脚本执行
 
