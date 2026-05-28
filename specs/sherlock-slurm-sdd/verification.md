@@ -50,20 +50,23 @@ DQMC_DEV_ROOT=/Users/phoenixm/Desktop/dqmc-dev .venv/bin/python -m pytest
 
 ```bash
 .venv/bin/python -m pytest tests/test_slurm_presenter.py -q
-.venv/bin/python -m pytest tests/test_slurm_presenter.py tests/test_package_import.py tests/test_slurm.py tests/test_mcp_contracts.py::test_query_slurm_mcp_success_contract tests/test_mcp_contracts.py::test_query_slurm_mcp_error_contract tests/test_mcp_server.py::test_mcp_tool_set_has_current_hands_surface tests/test_mcp_server.py::test_mcp_descriptions_match_current_registry_and_run_rules -q
+.venv/bin/python -m pytest tests/test_slurm_presenter.py tests/test_slurm_monitor.py -q
+.venv/bin/python -m pytest tests/test_package_import.py tests/test_slurm.py tests/test_slurm_presenter.py tests/test_slurm_monitor.py -q
 ```
 
 结果：
 
-- `tests/test_slurm_presenter.py -q`：`3 passed`
-- presenter/import/SLURM/MCP targeted suite：`15 passed`
+- `tests/test_slurm_presenter.py -q`：`5 passed`
+- presenter/monitor targeted suite：`8 passed`
+- package/import/SLURM/presenter/monitor targeted suite：`29 passed`
 
 覆盖：
 
-- 空队列输出 `当前没有任务。`
-- running/pending/held_blocked/other 计数。
-- array job 汇总保持紧凑，不逐条刷屏。
-- pending reason 或 node 信息保留在示例行。
+- 空队列输出 `No current SLURM jobs.`
+- error 输出 `SLURM status query failed: ...`
+- 按 `Job Name`、`Array Job ID`、`Total`、`Pending`、`Running` 生成英文固定表格。
+- 非 array job 的 `Array Job ID` 显示自身 job id。
+- `CG`、`CF`、`COMPLETING`、`CONFIGURING` 计入 `Running`。
 - 不新增 Slack 依赖。
 
 ## Phase L2 本地 `sacct` 历史查询
@@ -184,8 +187,8 @@ DQMC_DEV_ROOT=/Users/phoenixm/Desktop/dqmc-dev .venv/bin/python -m pytest
 覆盖：
 
 - 固定 snapshots diff：新增、消失、state 改变和 unchanged count。
-- snapshot diff 文本摘要。
-- 无变化时输出稳定摘要。
+- snapshot diff 文本摘要使用英文。
+- 无变化时输出 `No SLURM job status changes.`
 - workflow 文档：`polling-workflow.md`，说明轮询由 agent 层驱动，MCP hands 不启动后台进程。
 
 ## Sherlock 环境基线
@@ -201,7 +204,16 @@ DQMC_DEV_ROOT=/Users/phoenixm/Desktop/dqmc-dev .venv/bin/python -m pytest
 命令：
 
 ```bash
-.venv/bin/python -m pytest tests/test_package_import.py tests/test_slurm.py tests/test_slurm_presenter.py tests/test_slurm_monitor.py -q
+env -u DQMC_DEV_ROOT -u DQMC_ALLOWED_ROOTS -u DQMC_OUTPUT_ROOT -u DQMC_REGISTRY_PATH \
+  PYTHONDONTWRITEBYTECODE=1 \
+  PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 \
+  .venv/bin/python -m pytest \
+    -p no:cacheprovider \
+    tests/test_package_import.py \
+    tests/test_slurm.py \
+    tests/test_slurm_presenter.py \
+    tests/test_slurm_monitor.py \
+    -q
 .venv/bin/python -c "import dqmc_tools; print(dqmc_tools.__version__)"
 ```
 
@@ -213,6 +225,12 @@ DQMC_DEV_ROOT=/Users/phoenixm/Desktop/dqmc-dev .venv/bin/python -m pytest
   - 默认 status-only smoke 未向远端注入 `DQMC_DEV_ROOT`、`DQMC_ALLOWED_ROOTS`、`DQMC_OUTPUT_ROOT`、`DQMC_REGISTRY_PATH`。
   - 真实 Sherlock repo 路径不写入本文件；统一记为 `<REDACTED_DQMC_AGENT_ON_SHERLOCK>`。
   - 发现：本地 gateway 的 `DQMC_SHERLOCK_REMOTE_PYTHON` 应配置为 Sherlock 上 venv Python 的绝对路径，例如 `<REDACTED_DQMC_AGENT_ON_SHERLOCK>/.venv/bin/python`。相对 `.venv/bin/python` 会在远端 `--cwd` 生效前解析，可能失败。
+- 2026-05-28 Sherlock status-only pytest：
+  - 执行前先做本地只读 preflight，确认目标测试文件没有显式写 repo、scratch 或 output root。
+  - 命令使用 `PYTHONDONTWRITEBYTECODE=1`、`PYTEST_DISABLE_PLUGIN_AUTOLOAD=1` 和 `-p no:cacheprovider`，避免 Python bytecode 和 pytest cache 写入。
+  - 运行时显式 unset `DQMC_DEV_ROOT`、`DQMC_ALLOWED_ROOTS`、`DQMC_OUTPUT_ROOT`、`DQMC_REGISTRY_PATH`。
+  - 结果：`27 passed`。
+  - 未运行 HDF5、script adapter、sync、path-discovery 或 data-reading tests。
 
 ## Sherlock `squeue --me` smoke
 

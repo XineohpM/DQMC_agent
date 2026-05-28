@@ -94,8 +94,10 @@
 ### R4 非 Slack 状态摘要
 
 - 提供 agent 层可复用 presenter 或 workflow helper。
-- 输入为 `query_slurm` 返回 dict，输出为纯文本摘要。
-- 摘要包含总任务数、running/pending/held_blocked/other 数量、主要 job name 分组、pending reason 或节点信息、array job 汇总。
+- 输入为 `query_slurm` 返回 dict，输出为英文纯文本摘要。
+- 完整队列摘要使用固定表格：`Job Name`、`Array Job ID`、`Total`、`Pending`、`Running`。
+- `Array Job ID` 对 array job 显示 top-level array job id；非 array job 显示自身 job id。
+- 表格后输出 `Total jobs`、`Pending`、`Running` 汇总；`CG`、`CF`、`COMPLETING`、`CONFIGURING` 计入 `Running`。
 - MCP hands 继续只返回事实，不判断“是否正常”。
 
 ### R5 `sacct` 历史任务查询

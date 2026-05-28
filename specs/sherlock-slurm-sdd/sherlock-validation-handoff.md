@@ -654,6 +654,7 @@ Sherlock 最后一公里完成时，应满足：
 - 本机 `ssh -o BatchMode=yes sherlock hostname` 可非交互返回。
 - Sherlock 端 repo 同步后，远端 `.venv` 可 `import dqmc_tools.remote_call`。
 - 本地用户级 Codex 配置已注册 `dqmc-sherlock-gateway`，使用 status-only profile、Sherlock 端绝对 Python 路径和空远端 env JSON；真实路径不写入 repo 文档。
+- Sherlock 上 status-only pytest 已通过：`tests/test_package_import.py`、`tests/test_slurm.py`、`tests/test_slurm_presenter.py`、`tests/test_slurm_monitor.py` 共 `27 passed`；运行时禁用 bytecode 和 pytest cache，并 unset 数据/脚本相关 env。
 - 手写 SSH + `remote_call` 的 `query_slurm(filters={"me": true})` 返回 `ok=true`、`source=squeue_json`。
 - 本地 gateway 调 `sherlock_query_slurm` 返回 `ok=true`、`source=squeue_json`。
 - 本地 gateway 调 `sherlock_query_slurm_history(filters={"me": true, "max_rows": 5})` 返回 `ok=true`、`source=sacct_parsable2`。

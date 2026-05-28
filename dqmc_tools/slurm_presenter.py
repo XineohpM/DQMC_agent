@@ -5,8 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 
-CATEGORY_ORDER = ("running", "pending", "held_blocked", "other")
-DEFAULT_MAX_GROUPS = 6
+DEFAULT_MAX_GROUPS = 0
 DEFAULT_MAX_EXAMPLES_PER_ARRAY = 3
 
 
@@ -16,95 +15,131 @@ def format_slurm_status_summary(
     max_groups: int = DEFAULT_MAX_GROUPS,
     max_examples_per_array: int = DEFAULT_MAX_EXAMPLES_PER_ARRAY,
 ) -> str:
-    """Format a query_slurm payload as a compact user-facing summary."""
+    """Format a query_slurm payload as a compact table summary."""
 
     if payload.get("ok") is False:
         message = _text(payload.get("message")) or "unknown error"
-        return f"SLURM 状态查询失败：{message}"
+        return f"SLURM status query failed: {message}"
 
     summary = payload.get("summary") or {}
     total_jobs = int(summary.get("total_jobs") or 0)
     if total_jobs == 0:
-        return "当前没有任务。"
+        return "No current SLURM jobs."
 
+    rows = _table_rows((payload.get("groups") or {}).get("by_job_name") or [])
+    if max_groups:
+        rows = rows[:max_groups]
+    table_lines = _format_table(rows)
+    category_counts = summary.get("category_counts") or {}
+    return "\n".join(
+        [
+            "```",
+            *table_lines,
+            "```",
+            f"Total jobs: {total_jobs}",
+            f"Pending: {_pending_count(category_counts, summary.get('state_counts') or {})}",
+            f"Running: {_running_count(category_counts, summary.get('state_counts') or {})}",
+        ]
+    )
+
+
+def _table_rows(groups: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    rows = []
+    for group in groups:
+        job_name = _text(group.get("job_name")) or "(unnamed)"
+        array_jobs = group.get("array_jobs") or []
+        if not array_jobs:
+            rows.append(
+                {
+                    "job_name": job_name,
+                    "array_job_id": _fallback_job_id(group),
+                    "total": int(group.get("total_jobs") or 0),
+                    "pending": _pending_count(group.get("category_counts") or {}, group.get("state_counts") or {}),
+                    "running": _running_count(group.get("category_counts") or {}, group.get("state_counts") or {}),
+                }
+            )
+            continue
+        for array_group in array_jobs:
+            rows.append(
+                {
+                    "job_name": job_name,
+                    "array_job_id": _array_group_id(array_group),
+                    "total": int(array_group.get("total_jobs") or 0),
+                    "pending": _pending_count(
+                        array_group.get("category_counts") or {},
+                        array_group.get("state_counts") or {},
+                    ),
+                    "running": _running_count(
+                        array_group.get("category_counts") or {},
+                        array_group.get("state_counts") or {},
+                    ),
+                }
+            )
+    return rows
+
+
+def _format_table(rows: list[dict[str, Any]]) -> list[str]:
+    headers = {
+        "job_name": "Job Name",
+        "array_job_id": "Array Job ID",
+        "total": "Total",
+        "pending": "Pending",
+        "running": "Running",
+    }
+    widths = {
+        key: max(len(headers[key]), *(len(str(row[key])) for row in rows))
+        for key in headers
+    }
     lines = [
-        f"当前共有 {total_jobs} 个任务：{_format_category_counts(summary.get('category_counts') or {})}。"
+        (
+            f"{headers['job_name']:<{widths['job_name']}}  "
+            f"{headers['array_job_id']:<{widths['array_job_id']}}  "
+            f"{headers['total']:<{widths['total']}}  "
+            f"{headers['pending']:<{widths['pending']}}  "
+            f"{headers['running']:<{widths['running']}}"
+        ),
+        *[
+            (
+                f"{row['job_name']:<{widths['job_name']}}  "
+                f"{row['array_job_id']:<{widths['array_job_id']}}  "
+                f"{row['total']:<{widths['total']}}  "
+                f"{row['pending']:<{widths['pending']}}  "
+                f"{row['running']:<{widths['running']}}"
+            )
+            for row in rows
+        ],
     ]
-
-    groups = (payload.get("groups") or {}).get("by_job_name") or []
-    for group in groups[:max_groups]:
-        lines.append(_format_job_name_group(group, max_examples_per_array=max_examples_per_array))
-
-    remaining = len(groups) - max_groups
-    if remaining > 0:
-        lines.append(f"另有 {remaining} 个 job name 分组未展开。")
-
-    return "\n".join(lines)
+    return [line.rstrip() for line in lines]
 
 
-def _format_category_counts(counts: dict[str, Any]) -> str:
-    return ", ".join(f"{name}={int(counts.get(name) or 0)}" for name in CATEGORY_ORDER)
+def _array_group_id(array_group: dict[str, Any]) -> str:
+    array_job_id = _text(array_group.get("array_job_id"))
+    if array_job_id:
+        return array_job_id
+    return _fallback_job_id(array_group)
 
 
-def _format_job_name_group(group: dict[str, Any], *, max_examples_per_array: int) -> str:
-    name = _text(group.get("job_name")) or "(unnamed)"
-    total = int(group.get("total_jobs") or 0)
-    state_counts = _format_counts(group.get("state_counts") or {})
-    array_jobs = group.get("array_jobs") or []
-    array_parts = [_format_array_group(array_group) for array_group in array_jobs]
-    line = f"{name}: {total} 个任务"
-    if state_counts:
-        line += f"，{state_counts}"
-    if array_parts:
-        line += f"；{'; '.join(array_parts)}"
-    line += "。"
-
-    examples = _job_examples(array_jobs, max_examples_per_array=max_examples_per_array)
-    if examples:
-        line += f"\n  示例：{'; '.join(examples)}"
-    return line
+def _fallback_job_id(group: dict[str, Any]) -> str:
+    for job in group.get("jobs") or []:
+        job_id = _text(job.get("job_id") or job.get("id"))
+        if job_id:
+            return job_id
+    return "unknown"
 
 
-def _format_array_group(array_group: dict[str, Any]) -> str:
-    array_id = _text(array_group.get("array_job_id")) or "unknown"
-    total = int(array_group.get("total_jobs") or 0)
-    part = f"array {array_id}: {total} 个任务"
-    task_span = _format_task_span(array_group.get("array_task_ids") or [])
-    if task_span:
-        part += f"，tasks {task_span}"
-    return part
+def _pending_count(category_counts: dict[str, Any], state_counts: dict[str, Any]) -> int:
+    if "pending" in category_counts:
+        return int(category_counts.get("pending") or 0)
+    return int(state_counts.get("PENDING") or state_counts.get("PD") or 0)
 
 
-def _format_counts(counts: dict[str, Any]) -> str:
-    return ", ".join(f"{key}={int(counts[key])}" for key in sorted(counts))
-
-
-def _format_task_span(task_ids: list[Any]) -> str:
-    values = [_text(value) for value in task_ids if _text(value) != ""]
-    if not values:
-        return ""
-    numeric_values = [int(value) for value in values if value.isdigit()]
-    if len(numeric_values) == len(values):
-        numeric_values.sort()
-        if numeric_values == list(range(numeric_values[0], numeric_values[-1] + 1)):
-            return f"{numeric_values[0]}-{numeric_values[-1]}"
-    return ",".join(values)
-
-
-def _job_examples(array_jobs: list[dict[str, Any]], *, max_examples_per_array: int) -> list[str]:
-    examples: list[str] = []
-    for array_group in array_jobs:
-        for job in (array_group.get("jobs") or [])[:max_examples_per_array]:
-            examples.append(_format_job_example(job))
-    return [example for example in examples if example]
-
-
-def _format_job_example(job: dict[str, Any]) -> str:
-    job_id = _text(job.get("job_id") or job.get("id"))
-    state = _text(job.get("job_state") or job.get("state") or job.get("state_description")).upper()
-    reason = _text(job.get("state_reason") or job.get("reason") or job.get("nodes"))
-    parts = [job_id, state, reason]
-    return " ".join(part for part in parts if part)
+def _running_count(category_counts: dict[str, Any], state_counts: dict[str, Any]) -> int:
+    if "running" in category_counts:
+        return int(category_counts.get("running") or 0)
+    return sum(
+        int(state_counts.get(state) or 0)
+        for state in ("RUNNING", "R", "COMPLETING", "CG", "CONFIGURING", "CF", "RESIZING", "RS")
+    )
 
 
 def _text(value: Any) -> str:

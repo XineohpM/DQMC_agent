@@ -54,13 +54,13 @@ def test_format_slurm_snapshot_diff_reports_changes():
     }
 
     assert format_slurm_snapshot_diff(diff) == (
-        "新增 1 个任务：103 new PENDING。\n"
-        "消失 1 个任务：100 old RUNNING。\n"
-        "状态变化 1 个任务：101 scan PENDING -> RUNNING。"
+        "Added 1 job(s): 103 new PENDING.\n"
+        "Removed 1 job(s): 100 old RUNNING.\n"
+        "State changed for 1 job(s): 101 scan PENDING -> RUNNING."
     )
 
 
 def test_format_slurm_snapshot_diff_reports_no_changes():
     diff = {"ok": True, "added": [], "removed": [], "state_changed": [], "unchanged_count": 3}
 
-    assert format_slurm_snapshot_diff(diff) == "没有任务状态变化。"
+    assert format_slurm_snapshot_diff(diff) == "No SLURM job status changes."

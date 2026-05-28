@@ -1,6 +1,6 @@
 # Sherlock SLURM SDD 任务拆解
 
-状态：进行中。默认 status-only Sherlock 查询链路已通过真实 gateway 和 Slack/OpenACP smoke；Sherlock 上 pytest、fixture 回流和非默认 profile 验证仍分开执行。
+状态：进行中。默认 status-only Sherlock 查询链路已通过真实 gateway、Slack/OpenACP smoke 和 Sherlock status-only pytest；fixture 回流和非默认 profile 验证仍分开执行。
 
 ## Phase L0：本地基线和契约冻结
 
@@ -22,12 +22,13 @@
 - [x] 克隆或同步当前仓库到 Sherlock。
 - [x] 创建 `.venv`，并确认可 import `dqmc_tools.remote_call`。
 - [x] 默认 status-only 验证不设置 `DQMC_DEV_ROOT`、`DQMC_ALLOWED_ROOTS`、`DQMC_OUTPUT_ROOT`、`DQMC_REGISTRY_PATH`。
-- [ ] 运行 SLURM/status 相关测试；完整 HDF5/script 测试只在本地或单独 data/script profile 中运行。
+- [x] 运行 SLURM/status 相关测试；完整 HDF5/script 测试只在本地或单独 data/script profile 中运行。
+  - 2026-05-28：Sherlock 上运行 status-only pytest，`27 passed`；命令禁用 bytecode 写入和 pytest cache。
 - [x] 调用 path-redacted gateway status-only tool surface，确认默认只暴露 status 查询相关工具。
 
 验收：
 
-- [ ] `.venv/bin/python -m pytest tests/test_package_import.py tests/test_slurm.py tests/test_slurm_presenter.py tests/test_slurm_monitor.py -q` 通过。
+- [x] `.venv/bin/python -m pytest tests/test_package_import.py tests/test_slurm.py tests/test_slurm_presenter.py tests/test_slurm_monitor.py -q` 通过。
 - [x] `dqmc_tools` 可 import。
 - [x] 默认 status-only tool surface 不暴露 HDF5、script adapter、sync、run summary 或 path discovery。
 - [ ] 未配置 allowed roots 时，原始数据读取继续 fail closed。
@@ -55,10 +56,12 @@
 ## Phase L1：非 Slack 的“我的任务状态”presenter
 
 - [x] 明确 presenter 输入为 `query_slurm` 返回 dict。
-- [x] 明确 presenter 输出为纯文本摘要。
+- [x] 明确 presenter 输出为英文固定表格摘要。
 - [x] 写空队列 fixture test。
 - [x] 写 running/pending/held_blocked/other fixture test。
-- [x] 写 array job 汇总 fixture test，默认不逐条刷屏。
+- [x] 写 array job 汇总 fixture test，默认以每个 top-level array job id 汇总。
+- [x] 写 `CG`/`CF`/`COMPLETING`/`CONFIGURING` 计入 `Running` 的 fixture test。
+- [x] 写 SLURM presenter/monitor 用户可见消息保持英文的 fixture test。
 - [x] 实现 pure function，不新增服务。
 - [x] 保证原始 rows 仍可供 agent 展开查看。
 
@@ -219,7 +222,7 @@
 ## 推荐执行顺序
 
 1. Phase L0：本地基线和契约冻结。
-2. Phase R0：Sherlock status-only 环境基线。已完成 repo/venv/import/gateway tool-surface smoke；Sherlock 上 pytest 仍可单独补跑。
+2. Phase R0：Sherlock status-only 环境基线。已完成 repo/venv/import/gateway tool-surface smoke 和 Sherlock status-only pytest。
 3. Phase R1：真实验证 `query_slurm(filters={"me": true})`，并收集 wrapped JSON fields fixture。已完成 gateway smoke；fixture 回流仍可补充。
 4. Phase L1：本地实现非 Slack 的状态摘要 presenter。真实 Sherlock payload 已经通过 gateway/Slack 路径生成用户可读状态回复；纯 presenter fixture 仍是本 SDD 的本地验证基线。
 5. Phase L2：本地实现 `sacct` 历史查询，使用 fixture 测试。

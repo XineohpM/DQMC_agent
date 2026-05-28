@@ -21,7 +21,7 @@
 - command builder、parser、normalization helper。
 - fixture-based unit tests。
 - MCP contract tests。
-- agent/status presenter pure function。
+- agent/status presenter pure function；默认给用户的 SLURM 状态摘要必须使用英文固定表格格式。
 
 每次真实 Sherlock 输出暴露新字段形态时，先脱敏保存成 fixture，再补本地测试和 parser 兼容。
 
@@ -50,9 +50,9 @@ Sherlock 负责：
 后续建议新增或扩展：
 
 - `dqmc_tools/slurm.py`：继续承载 `query_slurm_history`、共享 normalization/fact helper、`get_slurm_job_detail` 的底层逻辑，直到文件明显过大再拆。
-- `dqmc_tools/slurm_presenter.py`：纯 presenter，输入 normalized `query_slurm` payload，输出短文本摘要。
+- `dqmc_tools/slurm_presenter.py`：纯 presenter，输入 normalized `query_slurm` payload，输出英文固定表格摘要。表格列为 `Job Name`、`Array Job ID`、`Total`、`Pending`、`Running`；非 array job 的 `Array Job ID` 显示其自身 job id。
 - `tests/test_slurm_history.py` 或继续扩展 `tests/test_slurm.py`：覆盖 `sacct` command builder、parser、unavailable、timeout、bad filter。
-- `tests/test_slurm_presenter.py`：覆盖空队列、running/pending/held_blocked、array summary。
+- `tests/test_slurm_presenter.py`：覆盖空队列、error、running/pending/held_blocked、array summary，以及 `CG`/`CF` 计入 `Running`。
 - `tests/test_mcp_contracts.py`：新增 MCP success/error contract。
 
 ## SLURM 字段 normalization
@@ -75,6 +75,7 @@ Sherlock 负责：
 - `get_slurm_job_detail` 基于 normalized facts 构造 candidates。
 - presenter 不直接解释 raw rows；raw rows 只作为 provenance。
 - 不在多个位置重复 `str(value)` 解析 SLURM 字段。
+- 用户可见 SLURM presenter/monitor 文本保持英文，避免 Slack/OpenACP 真实用户场景里返回中文状态消息。
 
 ## `query_slurm_history`
 

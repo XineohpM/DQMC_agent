@@ -226,6 +226,7 @@ adapter、artifact sync、run summary、path discovery 等非默认能力。
     - 2026-05-28：Sherlock repo 同步后，远端 `.venv` 可 `import dqmc_tools.remote_call`。
     - 2026-05-28：`ssh -o BatchMode=yes sherlock hostname` 可非交互返回，说明本地短 SSH 认证链路可用。
     - 发现：gateway 中 `DQMC_SHERLOCK_REMOTE_PYTHON` 应使用 Sherlock 上 venv 的绝对路径；相对 `.venv/bin/python` 会在远端 `--cwd` 生效前解析，可能失败。
+    - 2026-05-28：Sherlock 上 status-only pytest 通过，`27 passed`；运行时禁用 bytecode 和 pytest cache，未设置数据/脚本相关 env。
   - [x] 从本地 gateway 调 path-redacted `sherlock_query_slurm`、`sherlock_query_slurm_history`、`sherlock_get_slurm_job_detail`，确认短 SSH 60 秒内返回 JSON。
     - 2026-05-28 gateway smoke：`sherlock_query_slurm(filters={"me": true})` 返回 `ok=true`、`source=squeue_json`，总任务数约 1077；队列 live 变化导致 pending/running counts 在连续调用间有小幅变化。
     - 2026-05-28 gateway smoke：`sherlock_query_slurm_history(filters={"me": true, "max_rows": 5})` 返回 `ok=true`、`source=sacct_parsable2`、5 条 completed rows。
@@ -236,6 +237,7 @@ adapter、artifact sync、run summary、path discovery 等非默认能力。
     - 2026-05-28：本地配置解析、默认工具面枚举、真实 gateway 查询和 Slack/OpenACP 新会话查询均通过。
 
 - [ ] Sherlock 后续补充 smoke。
+  - [ ] 下一步优先做只读 job detail 补充 smoke：用明确 array task id 验证单 task 收敛，并用已结束 job id 验证 `sacct` detail path；每一步继续单独审批。
   - [ ] 用明确 array task id 验证 `sherlock_get_slurm_job_detail` 可从 parent job 的多候选收敛到单个 task，同时确认响应不包含 work dir、stdout/stderr path 或 raw path fields。
   - [ ] 默认不 smoke `sherlock_summarize_run`；如果需要验证，应作为 data-reading profile 的单独任务并先取得明确审批。
   - [ ] 不继续把完整 `dqmc-hands` 的非 SLURM tools 作为 Sherlock login node smoke 默认项；如需验证 HDF5/script/sync，应单独审批并记录原因。

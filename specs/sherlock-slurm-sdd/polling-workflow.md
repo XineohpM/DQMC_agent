@@ -29,7 +29,7 @@
 - 消失 jobs。
 - state 改变 jobs。
 
-如果没有变化，输出“没有任务状态变化。”，避免重复刷完整队列。用户需要完整状态时，agent 可再次调用 `query_slurm` 并使用 presenter 展开当前 snapshot。
+如果没有变化，输出 `No SLURM job status changes.`，避免重复刷完整队列。用户需要完整状态时，agent 可再次调用 `query_slurm` 并使用 presenter 展开当前 snapshot。真实 Slack/OpenACP 用户场景里的 SLURM 状态消息保持英文。
 
 ## 边界
 

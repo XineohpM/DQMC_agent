@@ -46,15 +46,15 @@ def format_slurm_snapshot_diff(diff: dict[str, Any]) -> str:
     removed = diff.get("removed") or []
     changed = diff.get("state_changed") or []
     if not added and not removed and not changed:
-        return "没有任务状态变化。"
+        return "No SLURM job status changes."
 
     lines = []
     if added:
-        lines.append(f"新增 {len(added)} 个任务：{_format_job_summaries(added)}。")
+        lines.append(f"Added {len(added)} job(s): {_format_job_summaries(added)}.")
     if removed:
-        lines.append(f"消失 {len(removed)} 个任务：{_format_job_summaries(removed)}。")
+        lines.append(f"Removed {len(removed)} job(s): {_format_job_summaries(removed)}.")
     if changed:
-        lines.append(f"状态变化 {len(changed)} 个任务：{_format_state_changes(changed)}。")
+        lines.append(f"State changed for {len(changed)} job(s): {_format_state_changes(changed)}.")
     return "\n".join(lines)
 
 
