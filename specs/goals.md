@@ -11,7 +11,9 @@ DQMC agent 的最终目标是成为一个面向 DQMC 工作流的可靠研究助
 - “眼睛”层负责知识和上下文：`registry.yaml`、`code_map.md`、`diagnostics_playbook.md`、dqmc-dev 代码地图、语义索引、运行经验。
 - “手”层负责安全、可测试的动作：HDF5 读取、registry resolve、script adapter、SLURM 队列状态查询、产物同步、未来提交任务。
 - agent 编排层负责理解用户意图、选择工具、组织回复、执行审批流程、维护会话上下文。
-- Slack bot 作为 agent 的入口和交互 transport 接入。
+- Slack/OpenACP bot 作为 agent 的入口和交互 transport 接入；本地后端负责接收 Slack 消息并连接本地 Codex session。
+
+最新产品形态补充：Sherlock 相关能力不应依赖 login node 上长期运行的远端 Codex 或长连接 MCP server。更推荐的目标形态是本地 Codex 保持唯一 agent 大脑，本地挂载一个 `sherlock-remote-gateway` MCP；当用户请求 Sherlock 状态、远端 run 或远端脚本信息时，这个 gateway 才按需通过 SSH 启动一个短命远端 Python 调用，执行白名单 `dqmc_tools` 函数，返回 JSON 后立即断开。Sherlock 侧进程必须有短超时、窄 allowed roots、明确 output root，且不在 `/scratch` 现有目录中做破坏性操作。
 
 ## 分层目标
 
@@ -41,20 +43,38 @@ MCP hands 要提供稳定、低层、事实型能力：
 agent 层的目标是把用户请求转化成安全工作流：
 
 - 判断什么时候读 registry，什么时候读 HDF5，什么时候调用脚本。
+- 判断什么时候使用本地 MCP hands，什么时候通过 Sherlock remote gateway 做短命远端只读查询。
 - 在执行高风险动作前先 dry-run。
 - 向用户展示命令、cwd、输入、输出、preflight。
 - 获取明确审批后再执行真实动作。
 - 把工具事实和诊断知识合并成清晰回复，并标注哪些是代码事实、哪些是经验判断。
 
-### Slack Bot
+### Sherlock Remote Gateway
 
-Slack bot 是 agent 的交互入口：
+Sherlock remote gateway 是最终产品中连接 Slack/本地 Codex 和 Sherlock 真实环境的推荐桥接层。它运行在本地，作为普通 MCP server 暴露少量远端工具；每次工具调用内部通过 SSH 到 Sherlock，执行一个短命、白名单、JSON 输入输出的远端 Python entrypoint，然后断开连接。
 
-- 接收 Slack IM/thread 消息。
+设计目标：
+
+- Sherlock 上默认没有长期驻留进程。
+- 不需要在 Sherlock 上运行 Slack/OpenACP。
+- 不启动第二个远端 Codex；上下文和决策留在本地 Codex。
+- 每次远端调用有硬超时，例如 60 秒。
+- 远端只执行白名单函数，例如 SLURM 查询、job detail、bounded run summary、script adapter dry-run。
+- 不提供任意 shell，不支持任意 SSH 命令。
+- 对 `/scratch` 保持 fail-closed：只允许用户明确配置的窄路径根目录。
+- 重活、长时间任务或真实写入仍必须走 Slurm allocation、dry-run 和逐次审批。
+
+### Slack / OpenACP Bot
+
+Slack/OpenACP bot 是 agent 的交互入口：
+
+- 在本地运行 OpenACP backend，接收 Slack IM/thread 消息。
 - 维护 Slack thread 与 agent session 的映射。
 - 把 agent 回复发送回 Slack。
 - 用 Slack interactive UI 承载审批流程。
 - 将 Slack 用户、频道、thread、审批记录传递给 agent 编排层。
+
+当前 repo 已有本地 OpenACP backend 启停脚本；最终产品还需要把该 transport 与 agent 工具选择、审批 UI、Sherlock remote gateway 工作流稳定串起来。
 
 ## 最终能力目标
 
@@ -68,6 +88,8 @@ Slack bot 是 agent 的交互入口：
 - 某个 run 目录有哪些 HDF5 文件、metadata、log completion facts。
 - 某个 observable/parameter 在 registry 里如何定义，HDF5 dataset key 是什么。
 - 某组 HDF5 文件的 observable mean/error 是多少。
+
+这些 Sherlock 查询在最终产品中应优先通过本地 `sherlock-remote-gateway` 按需短 SSH 完成，而不是要求用户手动登录 Sherlock 启动一个长期 agent。
 
 ### 安全执行
 
@@ -122,7 +144,8 @@ Slack bot 是 agent 的交互入口：
 这个项目达到目标时，应满足：
 
 - 用户可以从 Slack 或本地 agent 发起常见 DQMC 工作流。
-- 用户可以通过 agent 完成集群状态查询。
+- 用户可以通过 agent 完成集群状态查询，且 Sherlock 侧不需要长期运行 Codex 或长连接 MCP server。
+- 本地 Codex 可以通过 remote gateway 按需短 SSH 调用 Sherlock 上的受控工具函数。
 - 同步远端产物后，可以直接进入本地分析工具链。
 - 高风险动作全部经过明确审批。
 - 工具层稳定、可测试、可审计。

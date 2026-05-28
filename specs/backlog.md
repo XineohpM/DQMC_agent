@@ -10,6 +10,8 @@
 - [x] `code_map.md` 和 `diagnostics_playbook.md` 目前没有被 `dqmc_tools/` 或 `dqmc_mcp_server.py` 运行时读取。
 - [x] `diagnostics_playbook.md` 当前只作为设计输入和人工知识来源；“手”层不自动执行 sign、Trotter、warmup、mu tuning、MaxEnt binning 等诊断判断。
 - [x] Slack bot 接入对象是 agent 整体，不是 MCP tools。
+- [x] 本地 OpenACP backend helper scripts 已落地：`scripts/start-slackbot-backend`、`scripts/stop-slackbot-backend`、`scripts/test_slackbot_backend_commands.sh`。
+- [x] 最新产品形态决策：不把 Sherlock login node 上的长连接 MCP server 作为推荐最终方案；改为本地 `sherlock-remote-gateway` MCP 按需短 SSH 到 Sherlock，远端执行白名单短命 Python 调用后立即断开。
 - [x] 白名单 script adapter 当前只保留 `DQMC_DEV_ROOT/scripts/` 下的脚本；`util/` 路径脚本已经移出白名单。
 - [x] 当前白名单 adapter 数量为 20；其中 18 个 Python 脚本可静态读取 `argparse`，2 个 shell 脚本保留 raw args。
 
@@ -101,11 +103,17 @@
   - [ ] 底层仍调用 MCP `query_slurm`。
   - [ ] 返回面向用户的简洁摘要，同时保留原始 structured rows。
 
-## P1：Agent 层 Slack Bot IM 接入
+## P1：Agent 层 Slack/OpenACP Bot IM 接入
 
 说明：本节是独立 transport backlog，不属于 `specs/sherlock-slurm-sdd/` 范围；Sherlock SLURM SDD 只定义 MCP hands 和非 Slack agent workflow。
 
-- [ ] 接入 Slack bot 作为 agent 的 transport adapter。
+- [x] 本地 OpenACP backend 启停脚本。
+  - [x] `start-slackbot-backend`：读取本地私密 env 文件并启动 OpenACP backend。
+  - [x] `stop-slackbot-backend`：停止当前 backend。
+  - [x] `test_slackbot_backend_commands.sh`：覆盖 helper script 行为。
+  - [ ] 在目标机器上完成真实 Slack/OpenACP token、allowlist 和 channel/thread smoke。
+
+- [ ] 完整接入 Slack bot 作为 agent 的 transport adapter。
   - 注意：Slack bot 不应接进 MCP tools；MCP tools 不应知道 Slack user/channel/thread。
   - [ ] Slack Events API 或 Socket Mode 接收 IM/thread 消息。
   - [ ] Slack message -> agent session/thread 映射。
@@ -123,6 +131,48 @@
   - [ ] 用 Slack interactive button/modal 收集本次显式确认。
   - [ ] 确认后由 agent 调用 MCP tool，传入 `user_confirmation`。
   - [ ] 记录审批人、Slack thread、命令、参数、输出 manifest。
+
+## P1：Sherlock Remote Gateway
+
+目标：把 Slack/OpenACP -> 本地 Codex 的入口和 Sherlock 真实环境能力连起来，但不在 Sherlock login node 上长期运行 Codex 或长连接 MCP server。
+
+- [ ] 新增独立规格：`specs/sherlock-remote-gateway-sdd/`。
+  - [ ] 明确推荐架构：本地 Codex 是唯一 agent 大脑，本地 gateway MCP 按需 SSH 到 Sherlock。
+  - [ ] 明确非目标：不启动远端 Codex，不提供任意 shell，不实现 `sbatch`，不在 Sherlock 上常驻 daemon。
+  - [ ] 明确安全边界：远端短命进程、硬 timeout、窄 allowed roots、专用 output root、`/scratch` fail-closed。
+
+- [ ] 设计本地 gateway MCP 工具面。
+  - [ ] `sherlock_query_slurm`：短 SSH 调用远端 `query_slurm`。
+  - [ ] `sherlock_query_slurm_history`：短 SSH 调用远端 `query_slurm_history`。
+  - [ ] `sherlock_get_slurm_job_detail`：短 SSH 调用远端 `get_slurm_job_detail`。
+  - [ ] `sherlock_infer_path_candidates`：本地或远端均可；第一版明确数据流。
+  - [ ] `sherlock_summarize_run`：只允许 bounded summary，例如 `max_files` 默认很小。
+  - [ ] 第一版只做只读查询和 dry-run，不做真实 script execution。
+
+- [ ] 设计远端短命 Python entrypoint。
+  - [ ] 形式建议：`.venv/bin/python -m dqmc_tools.remote_call <tool_name> <json_args>`。
+  - [ ] stdin/stdout 只传 JSON，不输出杂音。
+  - [ ] 只允许白名单 tool name。
+  - [ ] 返回 JSON-safe structured result 或 structured error。
+  - [ ] 远端进程受 `timeout 60s` 或 Python timeout 双层保护。
+
+- [ ] 设计 SSH 调用安全策略。
+  - [ ] 本地 subprocess 使用 argv list，不拼 shell string。
+  - [ ] SSH target 使用 allowlist，例如只允许 `sherlock`。
+  - [ ] 远端 repo path、`DQMC_DEV_ROOT`、`DQMC_ALLOWED_ROOTS`、`DQMC_OUTPUT_ROOT` 来自配置，不从用户消息直接拼接。
+  - [ ] 拒绝需要交互输入的 SSH 会话；失败时返回 structured error。
+
+- [ ] 实现前测试计划。
+  - [ ] 本地 gateway command builder test。
+  - [ ] remote_call whitelist/error contract tests。
+  - [ ] SSH unavailable / timeout / nonzero exit tests。
+  - [ ] JSON parse failure tests，防止 shell banner 或 `.bashrc` 输出污染协议。
+  - [ ] MCP contract tests。
+
+- [ ] Sherlock smoke。
+  - [ ] 先用 `specs/sherlock-slurm-sdd/sherlock-validation-handoff.md` 完成环境基线验证。
+  - [ ] 再用 gateway 调 `sherlock_query_slurm` 和 `sherlock_query_slurm_history`。
+  - [ ] 记录真实字段形态，必要时补脱敏 fixture。
 
 ## P1/P2：同步 SLURM 产物到本地
 
