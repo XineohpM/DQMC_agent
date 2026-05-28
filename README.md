@@ -101,7 +101,7 @@ DQMC_SHERLOCK_ALLOWED_HOSTS = "sherlock"
 DQMC_SHERLOCK_REMOTE_PYTHON = ".venv/bin/python"
 DQMC_SHERLOCK_REMOTE_CWD = "/absolute/path/to/DQMC_agent/on/sherlock"
 DQMC_SHERLOCK_TIMEOUT_SECONDS = "60"
-DQMC_SHERLOCK_REMOTE_ENV_JSON = "{\"DQMC_ALLOWED_ROOTS\":\"/one/explicit/run/root\",\"DQMC_OUTPUT_ROOT\":\"/absolute/path/to/DQMC_agent/on/sherlock/outputs/sherlock-gateway\",\"DQMC_REGISTRY_PATH\":\"/absolute/path/to/DQMC_agent/on/sherlock/registry.yaml\",\"DQMC_DEV_ROOT\":\"/absolute/path/to/dqmc-dev\"}"
+DQMC_SHERLOCK_GATEWAY_PROFILE = "status-only"
 ```
 
 启动命令：
@@ -110,15 +110,22 @@ DQMC_SHERLOCK_REMOTE_ENV_JSON = "{\"DQMC_ALLOWED_ROOTS\":\"/one/explicit/run/roo
 .venv/bin/python dqmc_sherlock_gateway_mcp_server.py
 ```
 
-第一版 gateway 暴露 4 个只读工具：
+默认 gateway profile 是 status-only/path-redacted，只暴露 3 个只读状态工具：
 
 - `sherlock_query_slurm`
 - `sherlock_query_slurm_history`
 - `sherlock_get_slurm_job_detail`
-- `sherlock_summarize_run`
 
-gateway 不暴露任意 shell，不提交或取消 SLURM job，不做真实远端脚本执行。远端 run
-读取仍受 Sherlock 端 `DQMC_ALLOWED_ROOTS` 限制。
+默认 profile 不向 Sherlock 远端进程注入 `DQMC_DEV_ROOT`、`DQMC_ALLOWED_ROOTS`、
+`DQMC_OUTPUT_ROOT` 或 `DQMC_REGISTRY_PATH`。状态响应会移除 `WorkDir`、
+stdout/stderr path、run/output path 等字段，agent 可见结果中不返回 Sherlock
+实际数据路径或远端 repo cwd。
+
+`sherlock_summarize_run` 已实现，但只在非默认 `data-reading` profile 中暴露。启用
+该 profile 前需要重新审查 allowed roots、响应脱敏和用户审批边界；只有这个 profile
+才应考虑设置 `DQMC_SHERLOCK_REMOTE_ENV_JSON`。
+
+gateway 不暴露任意 shell，不提交或取消 SLURM job，不做真实远端脚本执行。
 
 ## Slack/OpenACP 后端命令
 

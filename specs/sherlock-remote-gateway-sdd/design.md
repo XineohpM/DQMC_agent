@@ -8,8 +8,9 @@
 2. Sherlock 上不常驻 MCP server；每次远端工具调用都是短命 SSH + Python。
 3. 本地 gateway 和远端 entrypoint 都只提供白名单函数，不提供任意 shell。
 4. 远端 stdin/stdout 协议只传 JSON；stdout 不允许混入 banner、debug log 或 traceback。
-5. 所有路径边界继续复用现有 `dqmc_tools` 的 allowed roots / output root 机制。
-6. 第一版只读，避免把远端执行和 `sbatch`、sync、真实脚本执行混在一起。
+5. 默认 profile 是 status-only/path-redacted：只查 SLURM 状态，不返回 Sherlock 上的真实 run/data path。
+6. `DQMC_DEV_ROOT`、`DQMC_ALLOWED_ROOTS`、`DQMC_OUTPUT_ROOT`、`DQMC_REGISTRY_PATH` 不注入默认 status-only profile；只在单独 data/script profile 中使用。
+7. 第一版只读，避免把远端执行和 `sbatch`、sync、真实脚本执行混在一起。
 
 ## 总体架构
 
@@ -22,7 +23,7 @@ Slack / OpenACP
   -> Sherlock: python -m dqmc_tools.remote_call --cwd /absolute/path/to/DQMC_agent
   -> remote_call 调用白名单 dqmc_tools 函数
   -> JSON stdout
-  -> 本地 gateway 包装 remote provenance
+  -> 本地 gateway 包装 redacted remote provenance
   -> Codex 回复 Slack
 ```
 
@@ -85,14 +86,13 @@ Slack / OpenACP
   "args": {
     "filters": {"me": true}
   },
-  "env": {
-    "DQMC_ALLOWED_ROOTS": "/oak/users/example/run",
-    "DQMC_OUTPUT_ROOT": "/home/example/DQMC_agent/outputs/sherlock-gateway",
-    "DQMC_REGISTRY_PATH": "/home/example/DQMC_agent/registry.yaml",
-    "DQMC_DEV_ROOT": "/home/example/dqmc-dev"
-  }
+  "env": {}
 }
 ```
+
+默认 status-only profile 的 `env` 必须为空或只包含非数据读取所需的安全变量。不得注入
+`DQMC_DEV_ROOT`、`DQMC_ALLOWED_ROOTS`、`DQMC_OUTPUT_ROOT`、`DQMC_REGISTRY_PATH`。
+这些变量只允许出现在单独审批的 data-reading/script profile 中。
 
 远端 stdout：
 
@@ -124,7 +124,6 @@ Slack / OpenACP
   "ok": true,
   "remote": {
     "host": "sherlock",
-    "cwd": "/home/example/DQMC_agent",
     "tool": "query_slurm"
   },
   "result": {
@@ -133,6 +132,9 @@ Slack / OpenACP
   }
 }
 ```
+
+默认 agent 可见响应不包含 Sherlock 远端 repo cwd。需要调试 cwd 时，使用 redacted
+value 或本地私有日志。
 
 如果 SSH/gateway 层失败，直接返回 gateway error，不伪装成远端 tool result。
 
@@ -147,12 +149,7 @@ SherlockGatewayConfig(
     remote_python=".venv/bin/python",
     remote_cwd="/home/user/DQMC_agent",
     timeout_seconds=60,
-    remote_env={
-        "DQMC_ALLOWED_ROOTS": "/oak/user/run",
-        "DQMC_OUTPUT_ROOT": "/home/user/DQMC_agent/outputs/sherlock-gateway",
-        "DQMC_REGISTRY_PATH": "/home/user/DQMC_agent/registry.yaml",
-        "DQMC_DEV_ROOT": "/home/user/dqmc-dev",
-    },
+    remote_env={},
 )
 ```
 
@@ -172,6 +169,7 @@ SherlockGatewayConfig(
 - remote python 默认 `.venv/bin/python`。
 - timeout 默认 60。
 - remote cwd 必须显式配置；缺失返回 `configuration_error`。
+- remote env 默认空；数据读取、script adapter、artifact sync 相关 env 不属于 status-only profile。
 
 ## SSH 命令设计
 
@@ -207,9 +205,35 @@ SherlockGatewayConfig(
 | `sherlock_query_slurm` | `query_slurm` | 当前队列，只读 |
 | `sherlock_query_slurm_history` | `query_slurm_history` | 历史队列，只读 |
 | `sherlock_get_slurm_job_detail` | `get_slurm_job_detail` | job detail，只读 |
-| `sherlock_summarize_run` | `summarize_run` | bounded run summary，只读 |
+| `sherlock_summarize_run` | `summarize_run` | 已实现，非默认 data-reading profile |
 
-`infer_slurm_path_candidates` 第一版暂不暴露成 remote MCP tool。原因：它是纯推断函数，本地已有工具可用；如果后续需要远端路径存在性或 allowed roots 语义完全由 Sherlock 判断，再补 `sherlock_infer_path_candidates`。
+默认 status-only profile 只暴露前三个 status tools。`sherlock_summarize_run` 已经实现，
+但不作为默认 Sherlock/Slack status profile 暴露。
+
+`infer_slurm_path_candidates` 第一版暂不暴露成 remote MCP tool。它会处理并返回 Sherlock
+真实路径候选，因此只能放入单独 path-discovery profile；默认 status 查询不启用。
+
+## Path Redaction
+
+默认 gateway status response 必须移除或脱敏以下字段，无论它们位于顶层 row、
+detail candidate 还是 `raw` 中：
+
+- `work_dir`
+- `stdout_path`
+- `stderr_path`
+- `standard_output`
+- `standard_error`
+- `standard_input`
+- `current_working_directory`
+- `std_out`
+- `std_err`
+- `submit_line`
+- raw SLURM `command` / batch script fields that may carry submit script paths
+- `WorkDir`
+- 任何明显的 stdout/stderr/run/output path 等同字段
+
+redaction 后的 payload 仍应保留 job id、job name、state、partition、elapsed、time limit、
+node/reason、summary 和 grouping，足够回答 Slack 中的状态问题。
 
 ## 错误模型
 
@@ -254,15 +278,18 @@ Gateway 层 structured errors：
 1. 按 handoff 配置 Sherlock repo 和 `.venv`。
 2. 直接在 Sherlock 上运行 `python -m dqmc_tools.remote_call` 的 stdin JSON smoke。
 3. 从本地 gateway 调 `sherlock_query_slurm(filters={"me": true})`。
-4. 记录 source、summary、字段形态和错误。
+4. 调 `sherlock_query_slurm_history` 和 `sherlock_get_slurm_job_detail`。
+5. 确认返回结果 path-redacted，不包含 `WorkDir`、stdout/stderr path、真实 run path 或 raw path fields。
+6. 记录 source、summary、字段形态和错误；所有真实路径、用户名、project 名称必须先脱敏。
 
 ## Future Work
 
 后续可以单独扩展：
 
 - `sherlock_healthcheck`：返回 remote commit、Python、env、tool version。
-- `sherlock_infer_path_candidates`：在远端判断路径可访问性。
+- `sherlock_infer_path_candidates`：仅在单独 path-discovery profile 中判断路径可访问性。
 - `sherlock_describe_script_adapter`：远端 dry-run 前查看 script schema。
 - `sherlock_run_script_adapter_dry_run`：只做 dry-run/preflight。
+- `sherlock_summarize_run` data-reading profile：默认关闭，必须单独审批和记录。
 - 真实远端 script execution：必须另起 SDD，带审批和 provenance。
 - 受限 `sbatch`：必须另起高风险 SDD。

@@ -30,6 +30,29 @@ GATEWAY_ALLOWED_TOOLS = {
     "query_slurm_history",
     "summarize_run",
 }
+STATUS_ONLY_TOOLS = {
+    "get_slurm_job_detail",
+    "query_slurm",
+    "query_slurm_history",
+}
+PATH_FIELD_NAMES = {
+    "batchscript",
+    "command",
+    "currentworkingdirectory",
+    "currentworkdir",
+    "stderr",
+    "stderrpath",
+    "stdin",
+    "stdinpath",
+    "stdout",
+    "stdoutpath",
+    "standarderror",
+    "standardinput",
+    "standardoutput",
+    "stdinput",
+    "submitline",
+    "workdir",
+}
 REMOTE_ENV_ALLOWLIST = {
     "DQMC_ALLOWED_ROOTS",
     "DQMC_OUTPUT_ROOT",
@@ -94,6 +117,8 @@ def call_sherlock_tool(
     args: dict[str, Any] | None = None,
     *,
     config: SherlockGatewayConfig | None = None,
+    include_remote_env: bool = False,
+    redact_paths: bool | None = None,
 ) -> dict[str, Any]:
     """Call one allowlisted Sherlock tool through a short SSH process."""
 
@@ -109,7 +134,7 @@ def call_sherlock_tool(
         {
             "tool": tool_name,
             "args": args or {},
-            "env": _allowed_remote_env(config.remote_env),
+            "env": _allowed_remote_env(config.remote_env) if include_remote_env else {},
         },
         sort_keys=True,
     )
@@ -142,11 +167,13 @@ def call_sherlock_tool(
             "Sherlock remote call JSON result must be an object.",
             details={"command": command, "result_type": type(result).__name__},
         )
+    should_redact_paths = tool_name in STATUS_ONLY_TOOLS if redact_paths is None else redact_paths
+    if should_redact_paths:
+        result = _redact_path_fields(result)
     return {
         "ok": True,
         "remote": {
             "host": config.remote_host,
-            "cwd": config.remote_cwd,
             "tool": tool_name,
         },
         "result": result,
@@ -275,6 +302,23 @@ def _parse_remote_env(raw_value: str) -> dict[str, str]:
 
 def _allowed_remote_env(env: dict[str, Any]) -> dict[str, str]:
     return {str(key): str(value) for key, value in env.items() if str(key) in REMOTE_ENV_ALLOWLIST}
+
+
+def _redact_path_fields(value: Any) -> Any:
+    if isinstance(value, dict):
+        return {
+            key: _redact_path_fields(item)
+            for key, item in value.items()
+            if not _is_path_field_name(key)
+        }
+    if isinstance(value, list):
+        return [_redact_path_fields(item) for item in value]
+    return value
+
+
+def _is_path_field_name(key: Any) -> bool:
+    normalized = "".join(char for char in str(key).lower() if char.isalnum())
+    return normalized in PATH_FIELD_NAMES
 
 
 def _split_env_list(value: str) -> list[str]:

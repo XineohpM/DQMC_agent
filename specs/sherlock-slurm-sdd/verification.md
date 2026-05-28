@@ -32,6 +32,9 @@
 
 ### 共享契约变更后
 
+本节是本地完整工具环境验证记录，不代表 Sherlock status-only profile 需要设置
+`DQMC_DEV_ROOT`。
+
 ```bash
 DQMC_DEV_ROOT=/Users/phoenixm/Desktop/dqmc-dev .venv/bin/python -m pytest
 ```
@@ -137,9 +140,9 @@ DQMC_DEV_ROOT=/Users/phoenixm/Desktop/dqmc-dev .venv/bin/python -m pytest
 
 覆盖：
 
-- sync 仅用于本地 agent 需要读取 Sherlock 远端产物的场景。
-- 如果 MCP hands 在 Sherlock 上，优先直接读远端文件，不走同步。
-- 第一版建议新增 `sync_sherlock_artifacts`，但当前尚未实现。
+- sync 仅用于用户明确要求读取 Sherlock 远端产物的非默认 data-transfer profile。
+- 默认 Sherlock/Slack status profile 不进入同步，也不主动提示真实 run/output path。
+- 已实现 `sync_sherlock_artifacts`，但不属于默认 status workflow。
 - 明确 remote host/path allowlist、本地 output root、dry-run、审批、manifest schema 和错误模型。
 - 明确实现前测试计划，真实 Sherlock 验证必须先 dry-run 小目录。
 
@@ -192,15 +195,12 @@ DQMC_DEV_ROOT=/Users/phoenixm/Desktop/dqmc-dev .venv/bin/python -m pytest
 - commit：
 - Python 版本：
 - `.venv` 路径：
-- `DQMC_DEV_ROOT`：
-- `DQMC_ALLOWED_ROOTS`：
-- `DQMC_OUTPUT_ROOT`：
-- `DQMC_REGISTRY_PATH`：
+- status-only env：确认未设置 `DQMC_DEV_ROOT`、`DQMC_ALLOWED_ROOTS`、`DQMC_OUTPUT_ROOT`、`DQMC_REGISTRY_PATH`
 
 命令：
 
 ```bash
-.venv/bin/python -m pytest
+.venv/bin/python -m pytest tests/test_package_import.py tests/test_slurm.py tests/test_slurm_presenter.py tests/test_slurm_monitor.py -q
 .venv/bin/python -c "import dqmc_tools; print(dqmc_tools.__version__)"
 ```
 
@@ -281,7 +281,7 @@ query_slurm(filters={"me": True})
 
 ```bash
 which sacct
-sacct --parsable2 --noheader --format=JobID,JobName,User,State,ExitCode,Elapsed,Timelimit,Submit,Start,End,Partition,NodeList,WorkDir
+sacct --parsable2 --noheader --format=JobID,JobName,User,State,ExitCode,Elapsed,Timelimit,Submit,Start,End,Partition,NodeList
 ```
 
 记录：
@@ -289,7 +289,7 @@ sacct --parsable2 --noheader --format=JobID,JobName,User,State,ExitCode,Elapsed,
 - `sacct` 是否存在：
 - 默认时间窗口是否足够：
 - 是否需要显式 `--starttime`：
-- `WorkDir` 是否开放：
+- `WorkDir` 是否开放：仅在 path-discovery profile 中记录，status-only profile 不返回该字段
 - `JobID` 对 array parent/task 的格式：
 - `State` 和 `ExitCode` 对 completed/failed/timeout/OOM 的实际形态：
 - 字段是否全部为 scalar：
@@ -319,7 +319,7 @@ sacct --parsable2 --noheader --format=JobID,JobName,User,State,ExitCode,Elapsed,
 - state：
 - exit code：
 - start/end：
-- work dir：
+- work dir：默认响应应脱敏或不返回
 
 验收：
 
@@ -327,8 +327,11 @@ sacct --parsable2 --noheader --format=JobID,JobName,User,State,ExitCode,Elapsed,
 - completed/failed job 从 `sacct` 返回详情。
 - array parent 和 task id 行为明确。
 - 查不到 job 时返回稳定空结构。
+- 默认 Sherlock gateway/status response 不含 `work_dir`、stdout/stderr path 或 raw path fields。
 
 ## Path Association Smoke
+
+本节不属于默认 Sherlock/Slack status profile。只有用户明确批准 path-discovery profile 时执行。
 
 记录：
 
@@ -344,6 +347,8 @@ sacct --parsable2 --noheader --format=JobID,JobName,User,State,ExitCode,Elapsed,
 - 多候选时不猜。
 
 ## 后处理脚本 Smoke
+
+本节不属于默认 Sherlock/Slack status profile。只有用户明确批准 script profile 时执行。
 
 命令：
 

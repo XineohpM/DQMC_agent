@@ -4,7 +4,7 @@
 
 ## 背景
 
-当前 DQMC MCP hands 已经有第一版只读 SLURM 队列查询：`query_slurm`。后续需要围绕 Sherlock 环境补齐更完整的只读任务状态能力，包括当前队列、历史任务、job 详情、job 到 run/output path 的关联，以及可选的远端产物同步。
+当前 DQMC MCP hands 已经有第一版只读 SLURM 队列查询：`query_slurm`。后续需要围绕 Sherlock 环境补齐更完整的只读任务状态能力，包括当前队列、历史任务和 job 详情。job 到 run/output path 的关联、远端产物同步和脚本执行属于非默认 profile，不能混入默认 Sherlock/Slack status 查询。
 
 这个 spec 不要求所有代码都在 Sherlock 上开发。除真实 `squeue`、`sacct`、Sherlock 文件系统和 MCP 环境验证外，代码应优先在本地用 fixture、unit tests 和 MCP contract tests 开发。
 
@@ -12,18 +12,19 @@
 
 - 本地实现可测试、只读、结构化的 SLURM 状态工具。
 - 在 Sherlock 上验证真实命令输出和字段形态，并把发现反馈为脱敏 fixture。
-- 让 agent 能回答“我当前 Sherlock 任务怎么样”“某个 job 详情是什么”“这个 job 可能对应哪个 run/output path”。
+- 让 agent 能回答“我当前 Sherlock 任务怎么样”“某个 job 详情是什么”，且默认不暴露 Sherlock 实际 run/data path。
 - 保持 MCP hands 的边界：返回事实、schema、provenance，不做物理可靠性判断，不接 Slack transport。
 
 ## In Scope
 
 - 本地开发非 Slack 的 agent/status 工作流，让用户能询问当前 Sherlock 任务状态。
 - 本地实现只读历史状态查询，优先使用 `sacct`。
-- 本地实现 job id 详情查询，并尽量关联 run/output path。
+- 本地实现 job id 详情查询。
+- 本地保留 job 到 run/output path 候选关联能力，但它不属于默认 Sherlock/Slack status profile。
 - 在 Sherlock 上真实验证当前 `query_slurm(filters={"me": true})`。
-- 在 Sherlock 上验证 `sacct` 可用性、字段格式、job array 形态和路径信息。
-- 设计并实现可选的 Sherlock 产物同步能力。
-- 允许在 Sherlock 上通过现有 `run_script_adapter` 执行受控后处理脚本。
+- 在 Sherlock 上验证 `sacct` 可用性、字段格式和 job array 形态；真实路径信息只允许脱敏记录。
+- 设计并实现可选的 Sherlock 产物同步能力，但只作为单独 data-transfer profile。
+- 允许在 Sherlock 上通过现有 `run_script_adapter` 执行受控后处理脚本，但只作为单独 script profile。
 - 后期再单独设计受限 `sbatch` 提交能力。
 
 ## Out of Scope
@@ -33,6 +34,8 @@
 - 第一轮实现中的 `sbatch` 提交。
 - 任意 shell 命令执行入口。
 - MCP hands 返回 sign quality、warmup 质量、Trotter 误差等物理可靠性结论。
+- 默认 Sherlock/Slack status profile 中的 path discovery、run summary、artifact sync 和 script adapter。
+- 默认 status response 中的真实 `WorkDir`、stdout/stderr path、run path、output path 或 raw path fields。
 
 ## 当前已实现能力
 
@@ -64,7 +67,8 @@
 
 - 命令构造、parser、schema、MCP contract、structured error handling 应在本地用 fixture 测试覆盖。
 - 真实 SLURM 输出暴露的新字段形态必须先变成脱敏 fixture，再补 parser 兼容。
-- Sherlock 只负责真实 `squeue`/`sacct` smoke、字段确认、部署配置和路径验证。
+- Sherlock 默认只负责真实 `squeue`/`sacct` smoke、字段确认和 status-only 部署验证。
+- 任何路径验证、数据读取、同步或脚本执行都必须作为单独 profile，并先确认脱敏和审批边界。
 
 ### R2 只读安全边界
 
@@ -72,6 +76,8 @@
 - 子进程调用必须使用 argv list，不使用 shell string。
 - 不接入 `scancel`、`scontrol update` 或任何 mutating SLURM 命令。
 - 同步、脚本执行、未来提交任务都必须先 dry-run，再由用户逐次审批。
+- 默认 Sherlock status 工具不得返回真实 path。`work_dir`、`stdout_path`、`stderr_path`、`standard_output`、`standard_error` 和 `raw` 中同类字段必须移除或脱敏。
+- 默认 Sherlock status 环境不设置 `DQMC_DEV_ROOT`、`DQMC_ALLOWED_ROOTS`、`DQMC_OUTPUT_ROOT`、`DQMC_REGISTRY_PATH`。
 
 ### R3 `query_slurm` 当前队列查询
 
@@ -96,6 +102,7 @@
 - 支持 filters：`me`、`user`、`job_id`、`state`、`start`、`end`、`partition`、`max_rows`。
 - 返回 `ok`、`source`、`command`、`jobs`、`summary.state_counts`、`summary.exit_code_counts`、`warnings`。
 - `sacct` 不可用时返回 structured `tool_unavailable`。
+- 默认 Sherlock gateway/status profile 必须从返回 rows 和 `raw` 中移除或脱敏 `WorkDir`/`work_dir`。
 
 ### R6 Job 详情入口
 
@@ -105,18 +112,22 @@
 - 对 array job 支持 `12345` 和 `12345_7` 两种输入。
 - 多个 matching rows 返回 candidates，不猜。
 - raw rows 只作为 provenance 返回；展示和摘要应基于 normalized facts。
+- 默认 Sherlock gateway/status profile 必须从 candidates 和 `raw` 中移除或脱敏 path fields。
 
 ### R7 Job 到 run/output path 关联
 
+- 该能力不属于默认 Sherlock/Slack status profile，只能作为单独 path-discovery profile。
 - 第一版不要自动扫描大目录。
 - 新增纯推断 helper：输入 job detail 和可选 allowed roots，输出候选 path 与 evidence。
 - evidence 必须说明来源，例如 `sacct.WorkDir`、`stdout_path_parent`、`user_provided_path`。
 - 只检查 allowed roots 内的候选路径。
 - 候选不唯一时返回 candidates，让 agent 询问用户。
+- 在 Sherlock 场景启用前必须逐次审批，并确保 agent 不在普通 status 查询中看到实际路径。
 
 ### R8 Sherlock 产物同步
 
-- 如果 agent 和 MCP hands 都跑在 Sherlock，第一版可以不做同步，直接读远端文件。
+- 不属于默认 Sherlock/Slack status profile。
+- 如果 agent 和 MCP hands 都跑在 Sherlock，第一版也不应默认直接读远端文件；只有用户明确要求数据读取时才进入 data-reading profile。
 - 如果本地 agent 需要读取远端产物，则需要 rsync 同步能力。
 - 所有同步先 dry-run。
 - 远端路径必须在 allowlist 内，本地目标必须在 output root 内。
@@ -125,6 +136,7 @@
 
 ### R9 Sherlock 后处理脚本
 
+- 不属于默认 Sherlock/Slack status profile。
 - 在 Sherlock 上复用现有 `run_script_adapter`。
 - `DQMC_DEV_ROOT` 必须指向 Sherlock 上正确的 `dqmc-dev` checkout。
 - 真实执行必须传入 `user_confirmation={"approved": true, "text": "..."}`。

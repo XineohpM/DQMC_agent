@@ -98,7 +98,6 @@ def test_call_sherlock_tool_sends_json_stdin_and_wraps_result(monkeypatch):
         "ok": True,
         "remote": {
             "host": "sherlock",
-            "cwd": "/home/user/DQMC_agent",
             "tool": "query_slurm",
         },
         "result": {"ok": True, "source": "squeue_json"},
@@ -116,10 +115,102 @@ def test_call_sherlock_tool_sends_json_stdin_and_wraps_result(monkeypatch):
     assert sent == {
         "tool": "query_slurm",
         "args": {"filters": {"me": True}},
-        "env": {"DQMC_ALLOWED_ROOTS": "/oak/user/run"},
+        "env": {},
     }
     assert captured["kwargs"]["timeout"] == 60
     assert captured["kwargs"]["shell"] is False
+
+
+def test_call_sherlock_tool_can_send_remote_env_for_nondefault_profile(monkeypatch):
+    monkeypatch.setattr("dqmc_tools.remote_gateway.shutil.which", lambda _name: "/usr/bin/ssh")
+    captured = {}
+
+    def fake_run(args, **kwargs):
+        captured["kwargs"] = kwargs
+        return subprocess.CompletedProcess(
+            args=args,
+            returncode=0,
+            stdout='{"ok": true, "path": "/oak/user/run"}',
+            stderr="",
+        )
+
+    monkeypatch.setattr("dqmc_tools.remote_gateway.subprocess.run", fake_run)
+    config = SherlockGatewayConfig(
+        remote_host="sherlock",
+        allowed_hosts=["sherlock"],
+        remote_python=".venv/bin/python",
+        remote_cwd="/home/user/DQMC_agent",
+        remote_env={"DQMC_ALLOWED_ROOTS": "/oak/user/run"},
+    )
+
+    result = call_sherlock_tool(
+        "summarize_run",
+        {"path": "/oak/user/run"},
+        config=config,
+        include_remote_env=True,
+        redact_paths=False,
+    )
+
+    sent = json.loads(captured["kwargs"]["input"])
+    assert sent["env"] == {"DQMC_ALLOWED_ROOTS": "/oak/user/run"}
+    assert result["remote"] == {"host": "sherlock", "tool": "summarize_run"}
+    assert result["result"]["path"] == "/oak/user/run"
+
+
+def test_call_sherlock_tool_redacts_status_paths(monkeypatch):
+    monkeypatch.setattr("dqmc_tools.remote_gateway.shutil.which", lambda _name: "/usr/bin/ssh")
+
+    def fake_run(args, **_kwargs):
+        return subprocess.CompletedProcess(
+            args=args,
+            returncode=0,
+            stdout=json.dumps({
+                "ok": True,
+                "command": ["/usr/bin/sacct", "--jobs", "123"],
+                "jobs": [
+                    {
+                        "job_id": "123",
+                        "work_dir": "/scratch/user/run",
+                        "standard_output": "/scratch/user/run/slurm.out",
+                        "standard_input": "/scratch/user/run/slurm.in",
+                        "current_working_directory": "/scratch/user/run",
+                        "submit_line": "sbatch /scratch/user/run/job.slurm",
+                        "raw": {
+                            "WorkDir": "/scratch/user/run",
+                            "standard_error": "/scratch/user/run/slurm.err",
+                            "std_out": "/scratch/user/run/slurm.out",
+                            "std_err": "/scratch/user/run/slurm.err",
+                            "state": "COMPLETED",
+                        },
+                    }
+                ],
+                "candidates": [
+                    {
+                        "job_id": "123",
+                        "stdout_path": "/scratch/user/run/slurm.out",
+                        "stderr_path": "/scratch/user/run/slurm.err",
+                    }
+                ],
+            }),
+            stderr="",
+        )
+
+    monkeypatch.setattr("dqmc_tools.remote_gateway.subprocess.run", fake_run)
+    config = SherlockGatewayConfig(
+        remote_host="sherlock",
+        allowed_hosts=["sherlock"],
+        remote_python=".venv/bin/python",
+        remote_cwd="/home/user/DQMC_agent",
+    )
+
+    result = call_sherlock_tool("get_slurm_job_detail", {"job_id": "123"}, config=config)
+
+    assert result["remote"] == {"host": "sherlock", "tool": "get_slurm_job_detail"}
+    assert result["result"] == {
+        "ok": True,
+        "jobs": [{"job_id": "123", "raw": {"state": "COMPLETED"}}],
+        "candidates": [{"job_id": "123"}],
+    }
 
 
 def test_call_sherlock_tool_rejects_host_outside_allowlist(monkeypatch):

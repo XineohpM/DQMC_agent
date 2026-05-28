@@ -4,7 +4,9 @@
 
 ## 目标
 
-在本地 agent 需要读取 Sherlock 上的 run/output 产物时，提供一个受限同步能力，把用户明确指定的远端路径同步到本地 `DQMC_OUTPUT_ROOT` 下，并返回 dry-run 或真实同步 manifest。若 agent 和 MCP hands 都运行在 Sherlock 上，应优先直接使用远端文件工具，不走同步。
+在本地 agent 需要读取 Sherlock 上的 run/output 产物时，提供一个受限同步能力，把用户明确指定的远端路径同步到本地 `DQMC_OUTPUT_ROOT` 下，并返回 dry-run 或真实同步 manifest。
+
+本设计不属于默认 Sherlock/Slack status profile。默认 status 查询只返回 path-redacted SLURM 状态，不主动发现、展示或同步 Sherlock 实际 run/output path。只有用户明确要求处理具体远端产物时，才进入本 data-transfer profile。
 
 ## 非目标
 
@@ -13,6 +15,8 @@
 - 不自动扫描 Sherlock 大目录寻找候选 run。
 - 不绕过 `infer_slurm_path_candidates`、用户显式路径或 allowed roots 边界。
 - 不把同步和 `sbatch` 提交混在同一个工具里。
+- 不作为 `dqmc status` / `dqmc jobs` / 默认 Sherlock job detail 的自动后续动作。
+- 不把真实 remote path 写入 agent 可见长期记录；需要记录时先脱敏。
 
 ## 工具边界
 
@@ -127,10 +131,10 @@ Manifest items：
 推荐 agent workflow：
 
 1. 用户询问 job 或 run 产物。
-2. 调用 `get_slurm_job_detail(job_id)` 获取 candidates。
-3. 调用 `infer_slurm_path_candidates(job_detail, allowed_roots=...)` 推断远端 run/output path candidates。
-4. 若 MCP hands 在 Sherlock 上，直接对 candidate path 调用 `summarize_run`。
-5. 若 MCP hands 在本地且用户需要读取远端产物，先调用 `sync_sherlock_artifacts(..., dry_run=True)`。
+2. 如果用户只问任务状态，停留在 path-redacted status workflow，不进入同步。
+3. 如果用户明确要求处理具体产物，可在单独 path-discovery/data-transfer profile 中调用 `get_slurm_job_detail(job_id)` 获取 candidates。
+4. 在用户批准 path discovery 后，调用 `infer_slurm_path_candidates(job_detail, allowed_roots=...)` 推断远端 run/output path candidates。
+5. 用户确认具体远端路径后，先调用 `sync_sherlock_artifacts(..., dry_run=True)`。
 6. 展示 dry-run manifest，用户逐次审批。
 7. 审批后调用真实同步。
 8. 对本地 destination 调用 `summarize_run` 或 HDF5 tools。
@@ -149,4 +153,4 @@ Manifest items：
 - MCP contract：固定 success/error JSON schema。
 - small fixture dry-run：用 monkeypatched subprocess 输出，不依赖真实 Sherlock 网络。
 
-真实 Sherlock 验证只在本地测试通过后做，并且只对小目录先 dry-run。
+真实 Sherlock 验证只在本地测试通过、用户明确进入 data-transfer profile 后做，并且只对小目录先 dry-run。

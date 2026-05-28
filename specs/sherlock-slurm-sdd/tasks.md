@@ -21,19 +21,15 @@
 
 - [ ] 克隆或同步当前仓库到 Sherlock。
 - [ ] 创建 `.venv`，安装 `.[mcp,test]`。
-- [ ] 在 Sherlock 的 Codex 用户级 `~/.codex/config.toml` 中为 `dqmc-hands` MCP server 设置 `DQMC_DEV_ROOT`。
-- [ ] 如果 `DQMC_DEV_ROOT` 缺失、为空或路径不存在，先修复配置，不要启动 MCP server。
-- [ ] 配置 `DQMC_ALLOWED_ROOTS`。
-- [ ] 配置 `DQMC_OUTPUT_ROOT`。
-- [ ] 配置 `DQMC_REGISTRY_PATH`，默认使用当前仓库 `registry.yaml`。
-- [ ] 运行完整测试。
-- [ ] 启动 `dqmc_mcp_server.py`，确认 MCP tools 可枚举。
+- [ ] 默认 status-only 验证不设置 `DQMC_DEV_ROOT`、`DQMC_ALLOWED_ROOTS`、`DQMC_OUTPUT_ROOT`、`DQMC_REGISTRY_PATH`。
+- [ ] 运行 SLURM/status 相关测试；完整 HDF5/script 测试只在本地或单独 data/script profile 中运行。
+- [ ] 启动或调用 path-redacted SLURM-only tool surface，确认默认只暴露 status 查询相关工具。
 
 验收：
 
-- [ ] `.venv/bin/python -m pytest` 通过。
+- [ ] `.venv/bin/python -m pytest tests/test_package_import.py tests/test_slurm.py tests/test_slurm_presenter.py tests/test_slurm_monitor.py -q` 通过。
 - [ ] `dqmc_tools` 可 import。
-- [ ] MCP server 暴露现有 tools。
+- [ ] 默认 status-only tool surface 不暴露 HDF5、script adapter、sync、run summary 或 path discovery。
 - [ ] 未配置 allowed roots 时，原始数据读取继续 fail closed。
 
 ## Phase R1：真实 `squeue --me` 验证
@@ -97,7 +93,8 @@
 
 - [ ] 运行 `which sacct`。
 - [ ] 运行最近 N 天当前用户查询，确认默认时间窗口。
-- [ ] 验证 `WorkDir` 是否开放。
+- [ ] 默认 status 查询不请求或返回 `WorkDir`。
+- [ ] 如需验证 `WorkDir`，必须进入单独 path-discovery profile，并脱敏记录。
 - [ ] 验证 `JobID` 对 array parent/task 的格式。
 - [ ] 验证 `State` 和 `ExitCode` 对 completed/failed/timeout/OOM 的实际形态。
 - [ ] 验证字段是否全部为 `--parsable2` scalar；如果不是，记录 wrapped/multi-value 形态。
@@ -128,6 +125,7 @@
 - [ ] 用一个当前队列 job id 验证 `squeue` detail path。
 - [ ] 用一个已结束 job id 验证 `sacct` detail path。
 - [ ] 验证 array parent 和具体 task id 的查询行为。
+- [ ] 验证默认 Sherlock gateway/status response 不包含 `work_dir`、stdout/stderr path 或 raw path fields。
 
 ## Phase L4：Job 到 run/output path 关联
 
@@ -138,6 +136,7 @@
 - [x] 写越过 allowed roots 的路径拒绝或不可访问 test。
 - [x] 实现纯推断 helper。
 - [x] 对候选 run path 可调用现有 `summarize_run` 做 bounded 验证。
+- [ ] 标记为非默认 path-discovery profile；普通 Sherlock/Slack status 查询不调用该工具。
 
 验收：
 
@@ -148,13 +147,15 @@
 
 ## Phase L4 的 Sherlock 验证步骤
 
-- [ ] 验证 `sacct WorkDir` 是否能直接指向 run/output。
-- [ ] 验证 stdout/stderr 路径是否可从实际 job detail 推断。
-- [ ] 验证 allowed roots 配置能覆盖目标 run/output。
+- [ ] 仅在用户明确批准 path-discovery profile 时验证 `sacct WorkDir` 是否能直接指向 run/output。
+- [ ] 仅在 path-discovery profile 中验证 stdout/stderr 路径是否可从实际 job detail 推断。
+- [ ] 仅在 path-discovery profile 中验证 allowed roots 配置能覆盖目标 run/output。
+- [ ] 所有真实路径必须脱敏记录；默认 status profile 不执行本阶段 Sherlock path smoke。
 
 ## Phase L5/R5：Sherlock 产物同步
 
 - [x] 先写单独 design doc：`artifact-sync-design.md`。
+- [ ] 明确该能力不属于默认 Sherlock/Slack status profile。
 - [x] 明确远端路径 allowlist。
 - [x] 明确本地目标 output root。
 - [x] 写 dry-run 不写文件 test。
@@ -172,6 +173,7 @@
 
 ## Phase R6：Sherlock 上的后处理脚本执行
 
+- [ ] 明确该能力不属于默认 Sherlock/Slack status profile。
 - [ ] 确认 `DQMC_DEV_ROOT` 在 Sherlock 上指向正确的 `dqmc-dev` checkout。
 - [ ] 运行 `scripts/audit_script_adapters.py`，确认白名单脚本存在且 argparse schema 可同步。
 - [ ] 对需要派生产物的脚本，先用 `describe_script_adapter` 和 dry-run 检查 preflight。
@@ -215,15 +217,15 @@
 ## 推荐执行顺序
 
 1. Phase L0：本地基线和契约冻结。
-2. Phase R0：Sherlock 环境基线。
+2. Phase R0：Sherlock status-only 环境基线。
 3. Phase R1：真实验证 `query_slurm(filters={"me": true})`，并收集 wrapped JSON fields fixture。
 4. Phase L1：本地实现非 Slack 的状态摘要 presenter。
 5. Phase L2：本地实现 `sacct` 历史查询，使用 fixture 测试。
 6. Phase L2 的 Sherlock 验证步骤：用真实 `sacct` 输出补 fixture 和兼容修正。
 7. Phase L3：本地实现 job 详情入口。
-8. Phase L4：本地实现 job 到 run/output path 的候选关联。
-9. Phase R6：验证 Sherlock 上的后处理脚本 adapter。
-10. Phase L5/R5：只有确实需要本地读取远端产物时再做同步。
+8. Phase L4：本地实现 job 到 run/output path 的候选关联；Sherlock 默认不启用。
+9. Phase R6：只有明确进入 script profile 时验证 Sherlock 上的后处理脚本 adapter。
+10. Phase L5/R5：只有确实需要本地读取远端产物且用户审批时再做同步。
 11. Phase L6：按需做短期轮询。
 12. Phase L7/R7：最后单独设计和实现受限 `sbatch`。
 

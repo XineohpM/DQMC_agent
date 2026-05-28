@@ -23,10 +23,14 @@ Slack / OpenACP
 
 - 它仍然有用，但不再是“最终长连接 Sherlock MCP 部署说明”。
 - 它现在是 Sherlock 环境验收、真实字段观察、远端短命调用前置验证的 runbook。
-- 文中提到的“在 Sherlock 上启动 Codex/MCP”只作为人工验证形态，用于确认 repo、`.venv`、`squeue`、`sacct`、`DQMC_DEV_ROOT`、allowed roots、script adapters 是否可用。
+- 文中提到的“在 Sherlock 上启动 Codex/MCP”只作为人工验证形态。默认验证只确认 repo、`.venv`、`squeue`、`sacct` 和 status-only 工具面可用。
 - 产品化落地应另写 `sherlock-remote-gateway` spec：本地 MCP gateway 按需 SSH，远端进程必须短命、受 timeout 限制、只执行白名单 Python entrypoint。
 
-后续 Sherlock 验证仍应按本文的安全规则执行，因为远端短命调用同样依赖这些前置条件：Sherlock repo 必须能跑、环境变量必须正确、路径边界必须 fail closed、`/scratch` 下现有文件绝不能被破坏。
+后续 Sherlock 验证仍应按本文的安全规则执行。默认 Sherlock/Slack profile 是
+status-only/path-redacted：只查询 SLURM 状态，不让 agent 接触 Sherlock 上的真实
+run/data path。`DQMC_DEV_ROOT`、`DQMC_ALLOWED_ROOTS`、`DQMC_OUTPUT_ROOT`、
+`DQMC_REGISTRY_PATH` 默认不在 Sherlock status-only profile 中设置；只有进入单独
+data-reading/path-discovery/script profile 时才允许配置。
 
 ## 最重要的安全要求
 
@@ -36,19 +40,21 @@ Sherlock 上的文件可能包含重要模拟产物。尤其是任何 `/scratch`
 
 - 不运行 `rm -rf`、`git reset --hard`、`git clean -fdx`、`find ... -delete`、`rsync --delete`、`mv` 覆盖目录、批量 chmod/chown 等破坏性命令。
 - 不对 `/scratch` 下的任何现有目录做删除、移动、覆盖、清空或递归写入。
-- 不把 `DQMC_OUTPUT_ROOT` 指向已有的重要 run/output 目录。需要写文件时，只使用新建的、明确命名的专用目录，例如 repo 内 `outputs/sherlock-validation/`，或用户明确批准的新目录。
-- 不把 `DQMC_ALLOWED_ROOTS` 粗暴设成整个 `/scratch`。只允许设成当前要验证的少数明确 run/output 根目录。
+- 默认 status-only profile 不设置 `DQMC_OUTPUT_ROOT` 或 `DQMC_ALLOWED_ROOTS`。
+- 如果用户明确批准进入 data-reading/path-discovery/script profile，不把 `DQMC_OUTPUT_ROOT` 指向已有的重要 run/output 目录。需要写文件时，只使用新建的、明确命名的专用目录，例如 repo 内 `outputs/sherlock-validation/`，或用户明确批准的新目录。
+- 如果用户明确批准进入 data-reading/path-discovery profile，不把 `DQMC_ALLOWED_ROOTS` 粗暴设成整个 `/scratch`。只允许设成当前要验证的少数明确 run/output 根目录。
 - 不运行 `scancel`、`scontrol update`、`sbatch` 或任何会改变 SLURM 状态的命令。本轮只读验证为主。
 - 不运行任意 shell 拼接命令。项目代码中所有 SLURM/rsync 调用都应使用 argv list。
-- `sync_sherlock_artifacts` 真实同步前必须 dry-run，并需要明确 `user_confirmation`。在 Sherlock 上如果 MCP hands 本身就在 Sherlock，优先直接读远端文件，不需要同步。
-- 任何测试或 smoke 如果会写输出，必须先确认输出位置在专用 output root 内。
+- `sync_sherlock_artifacts` 不属于默认 status-only profile；真实同步前必须 dry-run，并需要明确 `user_confirmation`。
+- 任何测试或 smoke 如果会写输出，必须先确认已经进入对应非默认 profile，且输出位置在专用 output root 内。
+- 默认 status 响应必须 path-redacted：不得返回真实 `WorkDir`、stdout/stderr path、run path、output path 或 raw path fields。
 - 如果 git 工作区有用户改动，不要还原；先读 diff，无法判断时停下来问用户。
 
 ## 项目全局功能总览
 
 本 repo 是 DQMC agent 的“手”层实现：`dqmc_tools/` 是普通 Python 包，`dqmc_mcp_server.py` 是薄 MCP adapter。工具层只返回事实、路径、schema、provenance 和 structured errors，不做物理可靠性判断，不替用户修改集群任务。
 
-当前 MCP tool 面：
+完整本地 `dqmc-hands` MCP tool 面：
 
 - `summarize_run`
 - `inspect_hdf5`
@@ -156,13 +162,13 @@ Sherlock 上的 Codex 实例不是从零开发，而是完成真实环境验证�
 主要使命：
 
 1. 拉取当前 repo 最新 commit，确认工作区干净或只包含可解释的本地改动。
-2. 配好 Sherlock 上的 Python 环境、`DQMC_DEV_ROOT`、`DQMC_ALLOWED_ROOTS`、`DQMC_OUTPUT_ROOT`、`DQMC_REGISTRY_PATH`。
-3. 跑测试，确认本地 fixture 测试在 Sherlock 也能通过。
+2. 配好 Sherlock 上的 Python 环境；默认 status-only profile 不设置数据/脚本环境变量。
+3. 跑 status 相关测试，确认本地 fixture 测试在 Sherlock 也能通过。
 4. 对真实 `squeue` / `sacct` 输出做只读 smoke。
-5. 验证 `query_slurm`、`query_slurm_history`、`get_slurm_job_detail`、`infer_slurm_path_candidates` 在 Sherlock 上的真实行为。
+5. 验证默认 status tools：`query_slurm`、`query_slurm_history`、`get_slurm_job_detail`。
 6. 如果真实输出和本地 fixture 假设不同，脱敏保存最小 fixture，补本地 parser 测试，再做小修。
-7. 验证 script adapter 在 Sherlock 上能正确读取 `DQMC_DEV_ROOT/scripts/`，dry-run preflight 正常。
-8. 只在用户明确批准时，才对专用 output root 做真实执行或同步；默认不做。
+7. 验证默认响应不包含真实路径字段。
+8. 只在用户明确批准时，才进入 path-discovery、data-reading、script 或 sync profile；默认不做。
 9. 更新 `verification.md` 或新增 Sherlock observation 文档，记录命令、结果、字段形态、兼容修正。
 
 不属于本轮使命：
@@ -172,6 +178,8 @@ Sherlock 上的 Codex 实例不是从零开发，而是完成真实环境验证�
 - 不做大目录扫描。
 - 不对 `/scratch` 现有目录做清理或重排。
 - 不把 Slack/OpenACP 强行接进 MCP tools。
+- 不在默认 status-only profile 中设置 `DQMC_DEV_ROOT`、`DQMC_ALLOWED_ROOTS`、`DQMC_OUTPUT_ROOT`、`DQMC_REGISTRY_PATH`。
+- 不在默认 status 查询中调用 `infer_slurm_path_candidates`、`summarize_run`、script adapter 或 artifact sync。
 
 ## 推荐执行计划
 
@@ -227,7 +235,17 @@ python -m venv .venv
 
 ### 3. 配置环境变量
 
-`DQMC_DEV_ROOT` 必须指向 Sherlock 上的 `dqmc-dev` checkout：
+默认 status-only profile 不设置数据/脚本相关环境变量。不要在默认 Sherlock/Codex MCP
+配置中设置：
+
+- `DQMC_DEV_ROOT`
+- `DQMC_ALLOWED_ROOTS`
+- `DQMC_OUTPUT_ROOT`
+- `DQMC_REGISTRY_PATH`
+
+只有在用户明确批准进入 script 或 data-reading profile 后，才配置这些变量。
+
+非默认 script profile 中，`DQMC_DEV_ROOT` 必须指向 Sherlock 上的 `dqmc-dev` checkout：
 
 ```bash
 export DQMC_DEV_ROOT="/path/to/dqmc-dev"
@@ -235,7 +253,7 @@ export DQMC_REGISTRY_PATH="$PWD/registry.yaml"
 export DQMC_OUTPUT_ROOT="$PWD/outputs/sherlock-validation"
 ```
 
-`DQMC_ALLOWED_ROOTS` 要尽量窄。示例：
+非默认 data-reading/path-discovery profile 中，`DQMC_ALLOWED_ROOTS` 要尽量窄。示例：
 
 ```bash
 export DQMC_ALLOWED_ROOTS="/path/to/one/safe/run/root:/path/to/another/safe/root"
@@ -248,7 +266,11 @@ export DQMC_ALLOWED_ROOTS="/path/to/one/safe/run/root:/path/to/another/safe/root
 - 不要设置成用户整个 home 或整个 group scratch。
 - 如果只验证某个 run，就只设置到该 run 或该 run 的直接父目录。
 
-Codex MCP server 配置位置通常是 `~/.codex/config.toml`：
+默认 status-only Codex MCP server 配置应指向 SLURM-only server 或 gateway profile，
+不要指向完整 `dqmc_mcp_server.py`。如果当前还没有 SLURM-only server，只做 Python API
+smoke，不把完整 MCP server 作为默认产品形态。
+
+非默认完整 MCP server 配置位置通常是 `~/.codex/config.toml`：
 
 ```toml
 [mcp_servers.dqmc-hands]
@@ -264,13 +286,13 @@ DQMC_REGISTRY_PATH = "/absolute/path/to/repo/registry.yaml"
 
 ### 4. 跑测试
 
-先跑基础 import 和目标测试：
+先跑基础 import 和 status 目标测试：
 
 ```bash
-.venv/bin/python -m pytest tests/test_package_import.py tests/test_slurm.py tests/test_slurm_paths.py tests/test_sync.py tests/test_slurm_monitor.py -q
+.venv/bin/python -m pytest tests/test_package_import.py tests/test_slurm.py tests/test_slurm_presenter.py tests/test_slurm_monitor.py -q
 ```
 
-再跑全量：
+全量测试会涉及 HDF5/script/sync 等非默认能力，只在本地完整工具环境或单独 profile 中运行：
 
 ```bash
 DQMC_DEV_ROOT="$DQMC_DEV_ROOT" .venv/bin/python -m pytest
@@ -302,13 +324,15 @@ asyncio.run(main())
 PY
 ```
 
-期望看到 14 个工具，包含：
+完整 `dqmc_mcp_server.py` 会看到 14 个工具；这不是默认 Sherlock status profile。
+默认 Sherlock status profile 应只暴露 path-redacted SLURM status tools：
 
 - `query_slurm`
 - `query_slurm_history`
 - `get_slurm_job_detail`
-- `infer_slurm_path_candidates`
-- `sync_sherlock_artifacts`
+
+不要在默认 profile 中暴露 `infer_slurm_path_candidates`、HDF5/read tools、script adapters、
+`sync_sherlock_artifacts` 或 run summary。
 
 ### 6. 只读 SLURM 命令基线
 
@@ -326,7 +350,7 @@ squeue --me --json
 历史查询示例，选择较短窗口。建议手动设置日期，避免误查过大范围：
 
 ```bash
-sacct --parsable2 --noheader --user "$USER" --starttime YYYY-MM-DD --format=JobID,JobName,User,State,ExitCode,Elapsed,Timelimit,Submit,Start,End,Partition,NodeList,WorkDir
+sacct --parsable2 --noheader --user "$USER" --starttime YYYY-MM-DD --format=JobID,JobName,User,State,ExitCode,Elapsed,Timelimit,Submit,Start,End,Partition,NodeList
 ```
 
 注意：
@@ -381,7 +405,10 @@ for candidate in payload["candidates"]:
 PY
 ```
 
-Path candidates：
+默认 status smoke 到此为止。返回 payload 如果包含 `work_dir`、stdout/stderr path 或
+`raw` 中的真实 path，需要先修 redaction，再接 Slack/gateway。
+
+Path candidates 不属于默认 status profile。只有进入单独 path-discovery profile 时才运行：
 
 ```bash
 .venv/bin/python - <<'PY'
@@ -395,7 +422,8 @@ print(paths)
 PY
 ```
 
-如果候选路径在 allowed roots 内且是 DQMC run，可做 bounded read：
+bounded run read 不属于默认 status profile。只有进入单独 data-reading profile 且用户明确
+批准后，才可对 allowed roots 内的 DQMC run 做 bounded read：
 
 ```bash
 .venv/bin/python - <<'PY'
@@ -411,7 +439,7 @@ PY
 
 ### 8. Script adapter Sherlock 验证
 
-先只做 audit 和 dry-run：
+本节不属于默认 status-only profile。只有进入单独 script profile 后才执行。先只做 audit 和 dry-run：
 
 ```bash
 .venv/bin/python scripts/audit_script_adapters.py
@@ -450,9 +478,7 @@ PY
 
 ### 9. Artifact sync 验证
 
-如果 Codex/MCP hands 正在 Sherlock 上运行，通常不需要同步；直接用 allowed roots 读取远端文件。
-
-只有本地 agent 需要把 Sherlock 产物拉到本地时，才使用 `sync_sherlock_artifacts`。第一步永远 dry-run：
+本节不属于默认 status-only profile。只有本地 agent 需要把用户明确指定的 Sherlock 产物拉到本地时，才使用 `sync_sherlock_artifacts`。第一步永远 dry-run：
 
 ```python
 sync_sherlock_artifacts(
@@ -484,17 +510,15 @@ user_confirmation={"approved": True, "text": "I approve syncing this specific ru
 建议在 `specs/sherlock-slurm-sdd/verification.md` 追加 Sherlock 小节，或新增 `sherlock-observations-YYYY-MM-DD.md`。记录：
 
 - Sherlock hostname、repo commit hash、Python 版本。
-- `DQMC_DEV_ROOT` 是否存在，指向哪个 dqmc-dev checkout。
+- status-only profile 是否未设置 `DQMC_DEV_ROOT`、`DQMC_ALLOWED_ROOTS`、`DQMC_OUTPUT_ROOT`、`DQMC_REGISTRY_PATH`。
 - `squeue --me` 是否可用。
 - `squeue --json` 是否可用。
 - `squeue --json` 真实字段形态：`job_state`、`state_reason`、`array_job_id`、`array_task_id`、`nodes`。
 - `sacct` 是否可用。
-- `sacct` 的 `WorkDir` 是否开放。
 - array parent/task id 在 `sacct` 中的实际格式。
 - `State` 和 `ExitCode` 的真实样例。
-- `infer_slurm_path_candidates` 对真实 detail 的输出。
-- `summarize_run(max_files=1)` 是否能读取一个安全 run。
-- script adapter audit 是否通过。
+- status response 是否不含 `WorkDir`、stdout/stderr path、run path、output path 或 raw path fields。
+- 非默认 profile 如已单独审批：`infer_slurm_path_candidates`、`summarize_run(max_files=1)`、script adapter audit 的结果。
 
 所有真实 job id、路径、用户名、project 名称如果敏感，应脱敏后再提交 fixture。
 
@@ -502,7 +526,7 @@ user_confirmation={"approved": True, "text": "I approve syncing this specific ru
 
 ### `configuration_error: DQMC_DEV_ROOT must be set`
 
-原因：没有设置 `DQMC_DEV_ROOT`，或 Codex MCP config 没把 env 传给 server。
+原因：调用了 script adapter 或依赖 dqmc-dev 的非默认 profile，但没有设置 `DQMC_DEV_ROOT`，或 Codex MCP config 没把 env 传给 server。默认 status-only profile 不应需要该变量。
 
 处理：
 
@@ -512,7 +536,7 @@ user_confirmation={"approved": True, "text": "I approve syncing this specific ru
 
 ### `path_not_allowed`
 
-原因：目标路径不在 `DQMC_ALLOWED_ROOTS` 内，或 allowed root 未设置。
+原因：进入了 data-reading/path-discovery profile，目标路径不在 `DQMC_ALLOWED_ROOTS` 内，或 allowed root 未设置。默认 status-only profile 不应读取路径。
 
 处理：
 
@@ -547,7 +571,7 @@ user_confirmation={"approved": True, "text": "I approve syncing this specific ru
 处理：
 
 - 记录字段为空。
-- 尝试使用 stdout/stderr parent 或用户显式 path。
+- 只有在 path-discovery profile 中，才尝试使用 stdout/stderr parent 或用户显式 path。
 - 不扫描大目录猜测。
 
 ### full pytest 中 HDF5/script adapter 失败
@@ -596,14 +620,13 @@ user_confirmation={"approved": True, "text": "I approve syncing this specific ru
 Sherlock 最后一公里完成时，应满足：
 
 - Sherlock repo 在明确 commit 上。
-- `.venv/bin/python -m pytest` 通过，或失败项有清楚 root cause 和非破坏性处理建议。
-- MCP server 可枚举 14 个 tools。
+- status 相关 pytest 通过，或失败项有清楚 root cause 和非破坏性处理建议。
+- 默认 Sherlock status profile 可枚举 path-redacted status tools。
 - `query_slurm(filters={"me": true})` 在 Sherlock 上 smoke 成功，包括空队列情况。
 - `query_slurm_history({"me": true, "max_rows": N})` smoke 成功，或明确记录 `sacct` 不可用原因。
 - 至少一个真实 job id 经过 `get_slurm_job_detail` 验证；如果没有可用 job，则记录无法验证原因。
-- 对真实 job detail 尝试 `infer_slurm_path_candidates`，记录 `WorkDir` / stdout / stderr 是否可用。
-- 如果有安全 run path，`summarize_run(max_files=1)` bounded 验证通过。
-- `scripts/audit_script_adapters.py` 在 Sherlock 上通过，或记录 dqmc-dev 差异。
+- 默认 status response 不包含真实 `WorkDir`、stdout/stderr path、run path、output path 或 raw path fields。
+- `infer_slurm_path_candidates`、`summarize_run(max_files=1)`、`scripts/audit_script_adapters.py` 只在单独 profile 中验收。
 - 所有真实输出脱敏后写入 verification/observation 文档。
 - 没有任何 `/scratch` 重要目录被删除、移动、覆盖或递归写入。
 
@@ -614,7 +637,10 @@ Sherlock 最后一公里完成时，应满足：
 ```text
 请阅读 specs/sherlock-slurm-sdd/sherlock-validation-handoff.md、tasks.md、verification.md。
 你的任务是完成 Sherlock 真实环境验证，不要实现 sbatch，不要运行任何破坏性命令，
-不要修改或删除 /scratch 下任何现有文件或目录。先做 git/status/env/test 基线，
-然后按 handoff 的 R0/R1/L2-L4/R6 顺序做只读 smoke。所有真实输出要脱敏记录；
+不要修改或删除 /scratch 下任何现有文件或目录。默认只做 status-only/path-redacted
+验证，不设置 DQMC_DEV_ROOT、DQMC_ALLOWED_ROOTS、DQMC_OUTPUT_ROOT、DQMC_REGISTRY_PATH。
+先做 git/status/env/test 基线，然后按 handoff 的 R0/R1/L2/L3 顺序做只读 smoke。
+不要调用 infer_slurm_path_candidates、summarize_run、script adapter 或 sync，除非用户明确
+批准进入单独 profile。所有真实输出要脱敏记录；
 如果遇到不确定或需要写入 /scratch 的操作，先停止并询问。
 ```

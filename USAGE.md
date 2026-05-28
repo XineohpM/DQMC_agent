@@ -139,12 +139,17 @@ run/output path。它只做只读查询，不提交、不取消、不修改任�
 执行一次白名单 `dqmc_tools.remote_call`，拿到 JSON 后断开。这样 Sherlock 上不需要
 长期挂 Codex 或 MCP server。
 
-第一版 gateway 支持：
+默认 gateway profile 是 status-only/path-redacted，支持：
 
 - 查询当前 Sherlock SLURM 队列。
 - 查询近期 Sherlock SLURM 历史任务。
 - 查询某个 Sherlock job id 的详情。
-- 对明确给出的 Sherlock run path 做 bounded summary。
+
+默认 profile 不向远端注入 `DQMC_DEV_ROOT`、`DQMC_ALLOWED_ROOTS`、
+`DQMC_OUTPUT_ROOT` 或 `DQMC_REGISTRY_PATH`，返回结果也不会暴露 Sherlock
+`WorkDir`、stdout/stderr path、run/output path 或远端 repo cwd。对明确给出的
+Sherlock run path 做 bounded summary 的能力已实现，但只属于非默认
+`data-reading` profile，启用前需要单独审批和重新审查 allowed roots。
 
 它仍然只读，不提交、不取消、不修改任务。
 

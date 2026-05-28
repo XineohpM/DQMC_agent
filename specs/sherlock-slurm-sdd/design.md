@@ -8,7 +8,8 @@
 2. 代码开发不依赖 Sherlock；真实环境只用于 smoke、字段确认和 fixture 回流。
 3. 所有 SLURM 命令默认只读，子进程调用使用 argv list。
 4. parser 先 normalize SLURM 输出为稳定 facts，再生成 summary、detail 和 presenter 文本。
-5. 路径必须 fail closed：原始 run/HDF5 读取受 `DQMC_ALLOWED_ROOTS` 限制；输出写入受 `DQMC_OUTPUT_ROOT` 限制。
+5. 默认 Sherlock/Slack status profile 必须 path-redacted：不返回真实 `WorkDir`、stdout/stderr path、run path、output path 或 raw path fields。
+6. 数据读取、path discovery、artifact sync 和 script adapter 不属于默认 status profile；如需启用必须单独审批。
 
 ## 两条执行轨道
 
@@ -30,8 +31,9 @@ Sherlock 负责：
 
 - 确认远端仓库分支和 commit 与本地一致。
 - 运行真实 `squeue`、`sacct` 或 MCP smoke。
-- 记录字段形态、missing/extra fields、array job 表达方式、路径可用性。
-- 验证 `DQMC_DEV_ROOT`、`DQMC_ALLOWED_ROOTS`、`DQMC_OUTPUT_ROOT`、`DQMC_REGISTRY_PATH`。
+- 记录字段形态、missing/extra fields、array job 表达方式。
+- 默认 status-only 验证不设置 `DQMC_DEV_ROOT`、`DQMC_ALLOWED_ROOTS`、`DQMC_OUTPUT_ROOT`、`DQMC_REGISTRY_PATH`。
+- 路径可用性、数据读取和脚本环境验证只在单独 profile 中进行。
 - 对真实输出脱敏后回流为本地 fixture。
 
 ## 模块边界
@@ -76,7 +78,7 @@ Sherlock 负责：
 命令：
 
 - 优先 `sacct --parsable2 --noheader`。
-- 字段白名单建议：`JobID,JobName,User,State,ExitCode,Elapsed,Timelimit,Submit,Start,End,Partition,NodeList,WorkDir`。
+- 字段白名单建议：默认 status profile 使用不含 `WorkDir` 的字段；path-discovery profile 才允许查询 `WorkDir`。
 - filters 映射为 argv list，不使用 shell string。
 
 返回结构：
@@ -133,9 +135,18 @@ candidate schema：
 
 多个候选必须返回 candidates，不猜。查不到 job 时返回稳定空结构。
 
+默认 Sherlock gateway/status profile 应返回 redacted candidate schema，移除或脱敏：
+
+- `work_dir`
+- `stdout_path`
+- `stderr_path`
+- `standard_output`
+- `standard_error`
+- `raw` 中同类 path fields
+
 ## Job 到 run/output path 关联
 
-第一版只做候选推断，不做大目录扫描。
+该能力不属于默认 Sherlock/Slack status profile。第一版只做候选推断，不做大目录扫描。
 
 候选信息源：
 
@@ -159,6 +170,9 @@ candidate schema：
 
 路径必须通过 allowed roots 检查。越界路径拒绝或标记不可访问。
 
+在 Sherlock 场景中，`infer_slurm_path_candidates` 只能放入单独 path-discovery profile。
+普通 status 查询不得主动调用它，也不得把候选 path 返回给 agent。
+
 ## 产物同步
 
 同步能力需要单独 design doc 后再实现。当前设计文档：
@@ -173,7 +187,8 @@ candidate schema：
 - 真实同步必须逐次审批。
 - 返回 manifest，包含新增/更新/跳过文件、大小、mtime、命令和源/目标。
 
-如果 agent 和 MCP hands 都跑在 Sherlock，优先跳过同步，直接用远端文件工具。
+同步不属于默认 Sherlock/Slack status profile。如果 agent 和 MCP hands 都跑在 Sherlock，
+也不应默认直接用远端文件工具；只有用户明确要求读取数据时才进入 data-reading profile。
 
 ## 后处理脚本执行
 
@@ -183,6 +198,9 @@ Sherlock 上复用现有 `run_script_adapter`：
 - `describe_script_adapter` 和 dry-run 用于 preflight。
 - 真实执行必须传入 `user_confirmation`。
 - 输出写入 Sherlock 上的 `DQMC_OUTPUT_ROOT`。
+
+该能力不属于默认 Sherlock/Slack status profile。默认 status 环境不设置 `DQMC_DEV_ROOT`
+或 `DQMC_OUTPUT_ROOT`。
 
 ## 周期性状态查询
 

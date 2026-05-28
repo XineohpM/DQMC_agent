@@ -34,6 +34,20 @@ def test_sherlock_gateway_tool_set():
         "sherlock_query_slurm",
         "sherlock_query_slurm_history",
         "sherlock_get_slurm_job_detail",
+    }
+
+
+def test_sherlock_gateway_data_reading_profile_exposes_summarize_run():
+    async def run():
+        server = build_server(profile="data-reading")
+        return await server.list_tools()
+
+    tools = {tool.name for tool in _run(run())}
+
+    assert tools == {
+        "sherlock_query_slurm",
+        "sherlock_query_slurm_history",
+        "sherlock_get_slurm_job_detail",
         "sherlock_summarize_run",
     }
 
@@ -42,7 +56,7 @@ def test_sherlock_query_slurm_mcp_contract(monkeypatch):
     def fake_call(tool_name, args, *, config=None):
         return {
             "ok": True,
-            "remote": {"host": "sherlock", "cwd": "/repo", "tool": tool_name},
+            "remote": {"host": "sherlock", "tool": tool_name},
             "result": {"ok": True, "args": args},
         }
 
@@ -52,7 +66,7 @@ def test_sherlock_query_slurm_mcp_contract(monkeypatch):
 
     assert payload == {
         "ok": True,
-        "remote": {"host": "sherlock", "cwd": "/repo", "tool": "query_slurm"},
+        "remote": {"host": "sherlock", "tool": "query_slurm"},
         "result": {"ok": True, "args": {"filters": {"me": True}}},
     }
 
@@ -61,7 +75,7 @@ def test_sherlock_query_slurm_history_mcp_contract(monkeypatch):
     def fake_call(tool_name, args, *, config=None):
         return {
             "ok": True,
-            "remote": {"host": "sherlock", "cwd": "/repo", "tool": tool_name},
+            "remote": {"host": "sherlock", "tool": tool_name},
             "result": {"ok": True, "args": args},
         }
 
@@ -77,7 +91,7 @@ def test_sherlock_get_slurm_job_detail_mcp_contract(monkeypatch):
     def fake_call(tool_name, args, *, config=None):
         return {
             "ok": True,
-            "remote": {"host": "sherlock", "cwd": "/repo", "tool": tool_name},
+            "remote": {"host": "sherlock", "tool": tool_name},
             "result": {"ok": True, "args": args},
         }
 
@@ -93,16 +107,20 @@ def test_sherlock_get_slurm_job_detail_mcp_contract(monkeypatch):
 
 
 def test_sherlock_summarize_run_mcp_contract(monkeypatch):
-    def fake_call(tool_name, args, *, config=None):
+    def fake_call(tool_name, args, *, config=None, **_kwargs):
         return {
             "ok": True,
-            "remote": {"host": "sherlock", "cwd": "/repo", "tool": tool_name},
+            "remote": {"host": "sherlock", "tool": tool_name},
             "result": {"ok": True, "args": args},
         }
 
     monkeypatch.setattr("dqmc_tools.remote_gateway.call_sherlock_tool", fake_call)
 
-    payload = _run(_call_tool("sherlock_summarize_run", {"path": "/oak/run"}))
+    async def call_tool():
+        server = build_server(profile="data-reading")
+        return _tool_json(await server.call_tool("sherlock_summarize_run", {"path": "/oak/run"}))
+
+    payload = _run(call_tool())
 
     assert payload["remote"]["tool"] == "summarize_run"
     assert payload["result"]["args"] == {

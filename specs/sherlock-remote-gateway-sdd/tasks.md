@@ -15,6 +15,7 @@
 - [x] 明确本地 Codex 是唯一 agent 大脑。
 - [x] 明确 Sherlock 上不长期运行 MCP server。
 - [x] 明确第一版不做 `sbatch`、cancel、真实脚本执行或任意 shell。
+- [x] 更新规格，明确默认 Sherlock/Slack profile 是 status-only/path-redacted，不暴露 run summary、path discovery、script adapter 或 sync。
 
 ## Phase G1：远端短命 `remote_call` CLI
 
@@ -61,11 +62,20 @@
 - [x] 写 gateway error contract test。
 - [x] 实现 `dqmc_sherlock_gateway_mcp_server.py`。
 - [x] 每个 MCP tool 只做薄 adapter，错误使用 `error_dict`。
+- [x] 新增 status-only gateway profile 或配置入口，默认只暴露：
+  - `sherlock_query_slurm`
+  - `sherlock_query_slurm_history`
+  - `sherlock_get_slurm_job_detail`
+- [x] 默认 profile 中隐藏或禁用 `sherlock_summarize_run`，仅保留在单独 data-reading profile。
+- [x] 增加 path redaction contract tests，覆盖 history/detail 中的 `work_dir`、stdout/stderr path 和 `raw` path fields。
 
 验收：
 
-- [x] MCP server 暴露 4 个第一版 gateway tools。
+- [x] 默认 MCP server 暴露 3 个 status-only gateway tools。
+- [x] data-reading profile 暴露已实现的 `sherlock_summarize_run`。
+- [x] 默认 status-only profile 只暴露 3 个 path-redacted status tools。
 - [x] MCP descriptions 明确短 SSH、只读、不提交/取消。
+- [x] MCP descriptions 明确默认不返回 Sherlock 实际路径。
 
 ## Phase G4：文档和使用说明
 
@@ -73,11 +83,14 @@
 - [x] 更新 `USAGE.md`，说明 Slack -> 本地 Codex -> gateway -> Sherlock 的用户路径。
 - [x] 更新 `specs/backlog.md`，标记第一版 SDD 和本地实现进展。
 - [x] 更新 `specs/sherlock-remote-gateway-sdd/verification.md`，记录本地测试命令。
+- [x] 更新 gateway SDD，区分默认 status-only profile 和非默认 data-reading/path-discovery profile。
+- [x] 更新 Sherlock SLURM SDD 和 handoff，移除默认设置 `DQMC_*` 数据/脚本环境变量的要求。
 
 验收：
 
 - [x] 文档明确 gateway 和 `dqmc-hands` 的关系。
 - [x] 文档明确第一版仍不做真实写入和 `sbatch`。
+- [x] 文档明确默认 Sherlock/Slack status 查询不暴露真实 run/data path。
 
 ## Phase G5：本地验证
 
@@ -100,14 +113,17 @@
 - [ ] 在 Sherlock 上直接测试 `python -m dqmc_tools.remote_call`。
 - [ ] 从本地通过 gateway 调用 `sherlock_query_slurm(filters={"me": true})`。
 - [ ] 从本地通过 gateway 调用 `sherlock_query_slurm_history(filters={"me": true, "max_rows": 5})`。
-- [ ] 从本地通过 gateway 对一个 allowed run 调用 `sherlock_summarize_run(max_files=1)`。
-- [ ] 记录 stdout JSON、source、summary、字段形态和错误。
+- [ ] 从本地通过 gateway 调用 `sherlock_get_slurm_job_detail(job_id)`。
+- [ ] 确认默认 gateway 响应不包含 `work_dir`、stdout/stderr path、真实 run path 或 raw path fields。
+- [ ] 不默认调用 `sherlock_summarize_run`；如需验证，必须作为 data-reading profile 单独审批。
+- [ ] 记录 stdout JSON、source、summary、字段形态和错误；所有真实路径先脱敏。
 
 验收：
 
 - [ ] Gateway 能在 60 秒内返回 JSON。
 - [ ] Sherlock 上无常驻进程。
 - [ ] 没有 submit/cancel/mutate 命令。
+- [ ] 默认 status smoke 不接触 Sherlock 实际 run/data path。
 
 ## 推荐执行顺序
 
