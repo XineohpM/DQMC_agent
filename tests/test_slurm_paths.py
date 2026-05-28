@@ -1,6 +1,11 @@
 from pathlib import Path
 
+from dqmc_tools.runs import summarize_run
 from dqmc_tools.slurm_paths import infer_slurm_path_candidates
+
+
+ROOT = Path(__file__).resolve().parents[1]
+REAL_T01 = ROOT / "data" / "T_0.1"
 
 
 def test_infer_path_candidates_uses_sacct_work_dir(tmp_path: Path):
@@ -147,3 +152,25 @@ def test_infer_path_candidates_accepts_user_path(tmp_path: Path):
             "source_job_id": "",
         }
     ]
+
+
+def test_accessible_candidate_can_feed_bounded_summarize_run():
+    detail = {
+        "candidates": [
+            {
+                "source": "sacct",
+                "job_id": "1000",
+                "work_dir": str(REAL_T01),
+            }
+        ],
+    }
+
+    inferred = infer_slurm_path_candidates(detail, allowed_roots=[REAL_T01])
+    candidate_path = inferred["path_candidates"][0]["path"]
+    summary = summarize_run(candidate_path, allowed_roots=[candidate_path], max_files=1)
+
+    assert inferred["path_candidates"][0]["accessible"] is True
+    assert summary["ok"] is True
+    assert summary["path"] == str(REAL_T01.resolve())
+    assert summary["reported_hdf5_file_count"] == 1
+    assert summary["hdf5_files_truncated"] is True

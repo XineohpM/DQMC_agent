@@ -5,7 +5,7 @@
 ## 当前基线
 
 - [x] “手”层已经有第一版 MCP tools：`summarize_run`、`inspect_hdf5`、`read_dataset`、`resolve_registry_entry`、`read_registered_quantity`、`estimate_registered_observable`、`list_script_adapters`、`describe_script_adapter`、`run_script_adapter`、`query_slurm`、`query_slurm_history`、`get_slurm_job_detail`、`infer_slurm_path_candidates`。
-- [x] 当前测试可通过：`102 passed`。
+- [x] 当前测试可通过：`103 passed`。
 - [x] `registry.yaml` 是当前“手”层唯一被运行时代码真正读取的三份“眼睛”文件之一。
 - [x] `code_map.md` 和 `diagnostics_playbook.md` 目前没有被 `dqmc_tools/` 或 `dqmc_mcp_server.py` 运行时读取。
 - [x] `diagnostics_playbook.md` 当前只作为设计输入和人工知识来源；“手”层不自动执行 sign、Trotter、warmup、mu tuning、MaxEnt binning 等诊断判断。

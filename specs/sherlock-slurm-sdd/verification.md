@@ -38,7 +38,7 @@ DQMC_DEV_ROOT=/Users/phoenixm/Desktop/dqmc-dev .venv/bin/python -m pytest
 
 结果：
 
-- `102 passed in 8.52s`
+- `103 passed in 13.05s`
 
 ## Phase L1 本地 Presenter
 
@@ -117,7 +117,7 @@ DQMC_DEV_ROOT=/Users/phoenixm/Desktop/dqmc-dev .venv/bin/python -m pytest
 
 结果：
 
-- `8 passed`
+- `9 passed`
 
 覆盖：
 
@@ -126,6 +126,7 @@ DQMC_DEV_ROOT=/Users/phoenixm/Desktop/dqmc-dev .venv/bin/python -m pytest
 - allowed roots 外路径标记为 inaccessible 和 `outside_allowed_roots`。
 - 同一路径去重并保留更高 confidence evidence。
 - 用户显式 path 作为 high-confidence candidate。
+- accessible candidate 可作为 `summarize_run(max_files=1)` 输入做 bounded 验证。
 - MCP tool set 和 success contract。
 
 ## Sherlock 环境基线
