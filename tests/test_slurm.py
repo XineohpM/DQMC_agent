@@ -511,6 +511,50 @@ def test_get_slurm_job_detail_uses_history_when_current_queue_is_empty(monkeypat
     }
 
 
+def test_get_slurm_job_detail_uses_history_when_current_queue_lookup_fails(monkeypatch):
+    def fake_query_slurm(filters=None):
+        assert filters == {"job_id": "26238039"}
+        raise ToolUnavailableError("SLURM `squeue` query failed.")
+
+    monkeypatch.setattr("dqmc_tools.slurm.query_slurm", fake_query_slurm)
+    monkeypatch.setattr(
+        "dqmc_tools.slurm.query_slurm_history",
+        lambda filters=None: {
+            "ok": True,
+            "source": "sacct_parsable2",
+            "command": ["sacct", "--parsable2", "--jobs", filters["job_id"]],
+            "jobs": [
+                {
+                    "job_id": "26238039",
+                    "job_name": "finished_scan",
+                    "state": "COMPLETED",
+                    "exit_code": "0:0",
+                    "elapsed": "00:42:00",
+                    "time_limit": "01:00:00",
+                    "partition": "normal",
+                    "node_list": "node007",
+                }
+            ],
+            "warnings": [],
+        },
+    )
+
+    result = get_slurm_job_detail("26238039")
+
+    assert result["match_count"] == 1
+    assert result["queries"] == [
+        {
+            "source": "squeue",
+            "job_count": 0,
+            "error_type": "tool_unavailable",
+            "message": "SLURM `squeue` query failed.",
+        },
+        {"source": "sacct", "job_count": 1, "command": ["sacct", "--parsable2", "--jobs", "26238039"]},
+    ]
+    assert result["candidates"][0]["source"] == "sacct"
+    assert result["candidates"][0]["state"] == "COMPLETED"
+
+
 def test_get_slurm_job_detail_preserves_failed_history_candidate(monkeypatch):
     monkeypatch.setattr(
         "dqmc_tools.slurm.query_slurm",

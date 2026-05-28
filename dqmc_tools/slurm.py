@@ -153,8 +153,14 @@ def get_slurm_job_detail(job_id: str, include_history: bool = True) -> dict[str,
     queries = []
     warnings: list[str] = []
 
-    current_payload = query_slurm({"job_id": _current_queue_query_job_id(requested_job_id)})
-    queries.append(_query_record("squeue", current_payload))
+    try:
+        current_payload = query_slurm({"job_id": _current_queue_query_job_id(requested_job_id)})
+        queries.append(_query_record("squeue", current_payload))
+    except ToolUnavailableError as exc:
+        if not include_history:
+            raise
+        current_payload = {"jobs": []}
+        queries.append(_failed_query_record("squeue", exc))
     candidates = [
         _detail_candidate_from_current(row)
         for row in current_payload.get("jobs", [])
@@ -438,6 +444,15 @@ def _query_record(source: str, payload: dict[str, Any]) -> dict[str, Any]:
         "source": source,
         "job_count": len(payload.get("jobs") or []),
         "command": payload.get("command") or [],
+    }
+
+
+def _failed_query_record(source: str, exc: ToolUnavailableError) -> dict[str, Any]:
+    return {
+        "source": source,
+        "job_count": 0,
+        "error_type": exc.code,
+        "message": exc.message,
     }
 
 
