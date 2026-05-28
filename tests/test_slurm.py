@@ -619,12 +619,60 @@ def test_get_slurm_job_detail_filters_specific_array_task(monkeypatch):
             ],
         },
     )
+    monkeypatch.setattr(
+        "dqmc_tools.slurm.query_slurm_history",
+        lambda _filters=None: (_ for _ in ()).throw(AssertionError("history should not be queried")),
+    )
 
     result = get_slurm_job_detail("700_1")
 
     assert result["match_count"] == 1
     assert result["multiple_matches"] is False
     assert result["candidates"][0]["job_id"] == "700_1"
+
+
+def test_get_slurm_job_detail_filters_specific_array_task_from_separate_fields(monkeypatch):
+    captured_filters = []
+
+    def fake_query_slurm(filters=None):
+        captured_filters.append(filters)
+        return {
+            "ok": True,
+            "source": "squeue_json",
+            "command": ["squeue", "--json", "--jobs", filters["job_id"]],
+            "jobs": [
+                {
+                    "job_id": "900001",
+                    "name": "scan",
+                    "job_state": "RUNNING",
+                    "array_job_id": {"set": True, "number": 700},
+                    "array_task_id": {"set": True, "number": 0},
+                },
+                {
+                    "job_id": "900002",
+                    "name": "scan",
+                    "job_state": "PENDING",
+                    "array_job_id": {"set": True, "number": 700},
+                    "array_task_id": {"set": True, "number": 1},
+                },
+            ],
+        }
+
+    monkeypatch.setattr(
+        "dqmc_tools.slurm.query_slurm",
+        fake_query_slurm,
+    )
+    monkeypatch.setattr(
+        "dqmc_tools.slurm.query_slurm_history",
+        lambda _filters=None: (_ for _ in ()).throw(AssertionError("history should not be queried")),
+    )
+
+    result = get_slurm_job_detail("700_1")
+
+    assert captured_filters == [{"job_id": "700"}]
+    assert result["match_count"] == 1
+    assert result["multiple_matches"] is False
+    assert result["candidates"][0]["job_id"] == "900002"
 
 
 def test_get_slurm_job_detail_rejects_empty_job_id():

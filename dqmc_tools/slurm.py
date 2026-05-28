@@ -153,7 +153,7 @@ def get_slurm_job_detail(job_id: str, include_history: bool = True) -> dict[str,
     queries = []
     warnings: list[str] = []
 
-    current_payload = query_slurm({"job_id": requested_job_id})
+    current_payload = query_slurm({"job_id": _current_queue_query_job_id(requested_job_id)})
     queries.append(_query_record("squeue", current_payload))
     candidates = [
         _detail_candidate_from_current(row)
@@ -491,9 +491,33 @@ def _matches_requested_job_id(job: dict[str, Any], requested_job_id: str) -> boo
         return True
     if candidate_job_id.startswith(f"{requested_job_id}."):
         return True
+    requested_array_task = _requested_array_task(requested_job_id)
+    if requested_array_task is not None:
+        array_job_id, array_task_id = requested_array_task
+        return (
+            _slurm_text(job.get("array_job_id")) == array_job_id
+            and _slurm_text(job.get("array_task_id")) == array_task_id
+        )
     if "_" not in requested_job_id and candidate_job_id.startswith(f"{requested_job_id}_"):
         return True
     return _slurm_text(job.get("array_job_id")) == requested_job_id
+
+
+def _requested_array_task(job_id: str) -> tuple[str, str] | None:
+    if "_" not in job_id:
+        return None
+    array_job_id, array_task_id = job_id.split("_", maxsplit=1)
+    if not array_job_id or not array_task_id:
+        return None
+    return array_job_id, array_task_id
+
+
+def _current_queue_query_job_id(job_id: str) -> str:
+    requested_array_task = _requested_array_task(job_id)
+    if requested_array_task is None:
+        return job_id
+    array_job_id, _array_task_id = requested_array_task
+    return array_job_id
 
 
 def _candidate_job_id(job: dict[str, Any]) -> str:

@@ -178,8 +178,10 @@ def test_call_sherlock_tool_redacts_status_paths(monkeypatch):
                         "raw": {
                             "WorkDir": "/scratch/user/run",
                             "standard_error": "/scratch/user/run/slurm.err",
+                            "stderr_expanded": "/scratch/user/run/slurm-expanded.err",
                             "std_out": "/scratch/user/run/slurm.out",
                             "std_err": "/scratch/user/run/slurm.err",
+                            "stdout_expanded": "/scratch/user/run/slurm-expanded.out",
                             "state": "COMPLETED",
                         },
                     }
@@ -188,7 +190,9 @@ def test_call_sherlock_tool_redacts_status_paths(monkeypatch):
                     {
                         "job_id": "123",
                         "stdout_path": "/scratch/user/run/slurm.out",
+                        "stdout_expanded": "/scratch/user/run/slurm-expanded.out",
                         "stderr_path": "/scratch/user/run/slurm.err",
+                        "stderr_expanded": "/scratch/user/run/slurm-expanded.err",
                     }
                 ],
             }),
