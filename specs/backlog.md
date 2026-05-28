@@ -136,38 +136,38 @@
 
 目标：把 Slack/OpenACP -> 本地 Codex 的入口和 Sherlock 真实环境能力连起来，但不在 Sherlock login node 上长期运行 Codex 或长连接 MCP server。
 
-- [ ] 新增独立规格：`specs/sherlock-remote-gateway-sdd/`。
-  - [ ] 明确推荐架构：本地 Codex 是唯一 agent 大脑，本地 gateway MCP 按需 SSH 到 Sherlock。
-  - [ ] 明确非目标：不启动远端 Codex，不提供任意 shell，不实现 `sbatch`，不在 Sherlock 上常驻 daemon。
-  - [ ] 明确安全边界：远端短命进程、硬 timeout、窄 allowed roots、专用 output root、`/scratch` fail-closed。
+- [x] 新增独立规格：`specs/sherlock-remote-gateway-sdd/`。
+  - [x] 明确推荐架构：本地 Codex 是唯一 agent 大脑，本地 gateway MCP 按需 SSH 到 Sherlock。
+  - [x] 明确非目标：不启动远端 Codex，不提供任意 shell，不实现 `sbatch`，不在 Sherlock 上常驻 daemon。
+  - [x] 明确安全边界：远端短命进程、硬 timeout、窄 allowed roots、专用 output root、`/scratch` fail-closed。
 
-- [ ] 设计本地 gateway MCP 工具面。
-  - [ ] `sherlock_query_slurm`：短 SSH 调用远端 `query_slurm`。
-  - [ ] `sherlock_query_slurm_history`：短 SSH 调用远端 `query_slurm_history`。
-  - [ ] `sherlock_get_slurm_job_detail`：短 SSH 调用远端 `get_slurm_job_detail`。
-  - [ ] `sherlock_infer_path_candidates`：本地或远端均可；第一版明确数据流。
-  - [ ] `sherlock_summarize_run`：只允许 bounded summary，例如 `max_files` 默认很小。
-  - [ ] 第一版只做只读查询和 dry-run，不做真实 script execution。
+- [x] 实现第一版本地 gateway MCP 工具面。
+  - [x] `sherlock_query_slurm`：短 SSH 调用远端 `query_slurm`。
+  - [x] `sherlock_query_slurm_history`：短 SSH 调用远端 `query_slurm_history`。
+  - [x] `sherlock_get_slurm_job_detail`：短 SSH 调用远端 `get_slurm_job_detail`。
+  - [x] `sherlock_summarize_run`：只允许 bounded summary，例如 `max_files` 默认很小。
+  - [x] 第一版只做只读查询，不做真实 script execution。
+  - [ ] 后续评估 `sherlock_infer_path_candidates`：当前本地已有纯推断工具，只有需要 Sherlock 端路径可访问性语义时再补。
 
-- [ ] 设计远端短命 Python entrypoint。
-  - [ ] 形式建议：`.venv/bin/python -m dqmc_tools.remote_call <tool_name> <json_args>`。
-  - [ ] stdin/stdout 只传 JSON，不输出杂音。
-  - [ ] 只允许白名单 tool name。
-  - [ ] 返回 JSON-safe structured result 或 structured error。
-  - [ ] 远端进程受 `timeout 60s` 或 Python timeout 双层保护。
+- [x] 实现远端短命 Python entrypoint。
+  - [x] 形式：`.venv/bin/python -m dqmc_tools.remote_call --cwd <repo>`。
+  - [x] stdin/stdout 只传 JSON，不输出杂音。
+  - [x] 只允许白名单 tool name。
+  - [x] 返回 JSON-safe structured result 或 structured error。
+  - [x] 本地 gateway 对 SSH 子进程设置 timeout，默认 60 秒。
 
-- [ ] 设计 SSH 调用安全策略。
-  - [ ] 本地 subprocess 使用 argv list，不拼 shell string。
-  - [ ] SSH target 使用 allowlist，例如只允许 `sherlock`。
-  - [ ] 远端 repo path、`DQMC_DEV_ROOT`、`DQMC_ALLOWED_ROOTS`、`DQMC_OUTPUT_ROOT` 来自配置，不从用户消息直接拼接。
-  - [ ] 拒绝需要交互输入的 SSH 会话；失败时返回 structured error。
+- [x] 实现 SSH 调用安全策略。
+  - [x] 本地 subprocess 使用 argv list，不拼 shell string。
+  - [x] SSH target 使用 allowlist，例如只允许 `sherlock`。
+  - [x] 远端 repo path、`DQMC_DEV_ROOT`、`DQMC_ALLOWED_ROOTS`、`DQMC_OUTPUT_ROOT` 来自配置，不从用户消息直接拼接。
+  - [x] SSH unavailable、timeout、nonzero exit、非 JSON stdout 返回 structured error。
 
-- [ ] 实现前测试计划。
-  - [ ] 本地 gateway command builder test。
-  - [ ] remote_call whitelist/error contract tests。
-  - [ ] SSH unavailable / timeout / nonzero exit tests。
-  - [ ] JSON parse failure tests，防止 shell banner 或 `.bashrc` 输出污染协议。
-  - [ ] MCP contract tests。
+- [x] 实现本地测试计划。
+  - [x] 本地 gateway command builder test。
+  - [x] remote_call whitelist/error contract tests。
+  - [x] SSH unavailable / timeout / nonzero exit tests。
+  - [x] JSON parse failure tests，防止 shell banner 或 `.bashrc` 输出污染协议。
+  - [x] MCP contract tests。
 
 - [ ] Sherlock smoke。
   - [ ] 先用 `specs/sherlock-slurm-sdd/sherlock-validation-handoff.md` 完成环境基线验证。

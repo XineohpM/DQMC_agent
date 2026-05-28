@@ -81,6 +81,45 @@ MCP 暴露 14 个工具：
 `sync_sherlock_artifacts` 是受限 rsync 同步入口：默认 dry-run，要求 remote
 host/path allowlist 和本地 output root，真实同步必须逐次审批并返回 manifest。
 
+## Sherlock Remote Gateway MCP
+
+如果本地 Codex 需要按需查询 Sherlock 真实 `squeue` / `sacct`，推荐使用独立的
+`dqmc-sherlock-gateway` MCP server。它运行在本地，每次工具调用通过短命 SSH 到
+Sherlock，执行 `python -m dqmc_tools.remote_call`，收到 JSON 后立即断开；Sherlock
+上不需要长期运行 Codex 或 MCP server。
+
+Codex 配置示例：
+
+```toml
+[mcp_servers.dqmc-sherlock-gateway]
+command = "/Users/phoenixm/Desktop/DQMC_agent/.venv/bin/python"
+args = ["/Users/phoenixm/Desktop/DQMC_agent/dqmc_sherlock_gateway_mcp_server.py"]
+
+[mcp_servers.dqmc-sherlock-gateway.env]
+DQMC_SHERLOCK_REMOTE_HOST = "sherlock"
+DQMC_SHERLOCK_ALLOWED_HOSTS = "sherlock"
+DQMC_SHERLOCK_REMOTE_PYTHON = ".venv/bin/python"
+DQMC_SHERLOCK_REMOTE_CWD = "/absolute/path/to/DQMC_agent/on/sherlock"
+DQMC_SHERLOCK_TIMEOUT_SECONDS = "60"
+DQMC_SHERLOCK_REMOTE_ENV_JSON = "{\"DQMC_ALLOWED_ROOTS\":\"/one/explicit/run/root\",\"DQMC_OUTPUT_ROOT\":\"/absolute/path/to/DQMC_agent/on/sherlock/outputs/sherlock-gateway\",\"DQMC_REGISTRY_PATH\":\"/absolute/path/to/DQMC_agent/on/sherlock/registry.yaml\",\"DQMC_DEV_ROOT\":\"/absolute/path/to/dqmc-dev\"}"
+```
+
+启动命令：
+
+```bash
+.venv/bin/python dqmc_sherlock_gateway_mcp_server.py
+```
+
+第一版 gateway 暴露 4 个只读工具：
+
+- `sherlock_query_slurm`
+- `sherlock_query_slurm_history`
+- `sherlock_get_slurm_job_detail`
+- `sherlock_summarize_run`
+
+gateway 不暴露任意 shell，不提交或取消 SLURM job，不做真实远端脚本执行。远端 run
+读取仍受 Sherlock 端 `DQMC_ALLOWED_ROOTS` 限制。
+
 ## Slack/OpenACP 后端命令
 
 本项目可以通过 OpenACP Slack adapter 把本地 Codex session 暴露给 Slack。OpenACP

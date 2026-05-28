@@ -134,6 +134,20 @@ run/output path。它只做只读查询，不提交、不取消、不修改任�
 当前状态查询依赖本机或 Sherlock 环境中的 `squeue` / `sacct` 可用性。真实 Sherlock
 字段形态后续会在集群上继续验证，并补充到测试 fixture 中。
 
+如果你是在 Slack 里和本地 Codex 聊天，推荐的 Sherlock 查询路径是本地
+`dqmc-sherlock-gateway` MCP：本地 agent 收到请求后，通过短命 SSH 到 Sherlock
+执行一次白名单 `dqmc_tools.remote_call`，拿到 JSON 后断开。这样 Sherlock 上不需要
+长期挂 Codex 或 MCP server。
+
+第一版 gateway 支持：
+
+- 查询当前 Sherlock SLURM 队列。
+- 查询近期 Sherlock SLURM 历史任务。
+- 查询某个 Sherlock job id 的详情。
+- 对明确给出的 Sherlock run path 做 bounded summary。
+
+它仍然只读，不提交、不取消、不修改任务。
+
 ### 产物同步
 
 agent 可以把 allowlist 内的 Sherlock 产物通过受限 rsync 同步到本地 output root。同步默认
