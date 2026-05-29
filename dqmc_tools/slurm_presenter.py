@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections import Counter
 from typing import Any
 
 
@@ -41,6 +42,205 @@ def format_slurm_status_summary(
             f"Running: {_running_count(category_counts, summary.get('state_counts') or {})}",
         ]
     )
+
+
+def format_slurm_job_detail(
+    payload: dict[str, Any],
+    *,
+    max_sample_jobs: int = 5,
+    max_step_rows: int = 8,
+) -> str:
+    """Format a get_slurm_job_detail payload as a compact English summary."""
+
+    if payload.get("ok") is False:
+        message = _text(payload.get("message")) or "unknown error"
+        return f"SLURM job detail query failed: {message}"
+
+    job_id = _text(payload.get("job_id")) or "unknown"
+    candidates = [item for item in (payload.get("candidates") or []) if isinstance(item, dict)]
+    if not candidates:
+        return f"No SLURM job detail found for job {job_id}."
+
+    if len(candidates) == 1:
+        return _format_single_job_detail(job_id, candidates[0])
+    if _is_step_group(job_id, candidates):
+        return _format_step_group_detail(job_id, candidates, max_step_rows=max_step_rows)
+    return _format_multi_candidate_detail(job_id, candidates, max_sample_jobs=max_sample_jobs)
+
+
+def _format_single_job_detail(job_id: str, candidate: dict[str, Any]) -> str:
+    rows = [
+        ("Job ID", _candidate_text(candidate, "job_id")),
+        ("Job Name", _candidate_text(candidate, "job_name")),
+        ("Source", _candidate_text(candidate, "source")),
+        ("State", _candidate_text(candidate, "state")),
+        ("Category", _candidate_text(candidate, "category")),
+        ("Partition", _candidate_text(candidate, "partition")),
+        ("Elapsed", _candidate_text(candidate, "elapsed")),
+        ("Time Limit", _candidate_text(candidate, "time_limit")),
+        ("Node/Reason", _candidate_text(candidate, "node_or_reason")),
+        ("Exit Code", _candidate_text(candidate, "exit_code")),
+        ("Submit", _candidate_text(candidate, "submit")),
+        ("Start", _candidate_text(candidate, "start")),
+        ("End", _candidate_text(candidate, "end")),
+    ]
+    table = _format_key_value_table([(key, value) for key, value in rows if value])
+    return "\n".join([f"SLURM job detail for {job_id}", "```", *table, "```"])
+
+
+def _format_multi_candidate_detail(
+    job_id: str,
+    candidates: list[dict[str, Any]],
+    *,
+    max_sample_jobs: int,
+) -> str:
+    lines = [
+        f"SLURM job detail for {job_id}",
+        f"Job name: {_common_job_name(candidates)}",
+        f"Source: {_source_summary(candidates)}",
+        f"Matches: {len(candidates)}",
+        f"State counts: {_count_summary(_candidate_text(candidate, 'state') for candidate in candidates)}",
+        f"Category counts: {_count_summary(_candidate_text(candidate, 'category') for candidate in candidates)}",
+        f"Sample jobs: {_sample_jobs(candidates, max_sample_jobs=max_sample_jobs)}",
+    ]
+    return "\n".join(lines)
+
+
+def _format_step_group_detail(
+    job_id: str,
+    candidates: list[dict[str, Any]],
+    *,
+    max_step_rows: int,
+) -> str:
+    shown_rows = candidates[:max_step_rows]
+    table = _format_step_table(shown_rows)
+    lines = [
+        f"SLURM job detail for {job_id}",
+        f"Job name: {_common_job_name(candidates)}",
+        f"Source: {_source_summary(candidates)}",
+        f"Matches: {len(candidates)}",
+        "Step group: task-level sacct rows; no unique step row was guessed.",
+        f"State counts: {_count_summary(_candidate_text(candidate, 'state') for candidate in candidates)}",
+        f"Exit code counts: {_count_summary(_candidate_text(candidate, 'exit_code') for candidate in candidates)}",
+        "Rows:",
+        "```",
+        *table,
+        "```",
+    ]
+    if len(candidates) > len(shown_rows):
+        lines.append(f"Additional rows omitted: {len(candidates) - len(shown_rows)}")
+    return "\n".join(lines)
+
+
+def _format_key_value_table(rows: list[tuple[str, str]]) -> list[str]:
+    field_width = max(12, *(len(key) for key, _value in rows))
+    lines = [f"{'Field':<{field_width}}  Value"]
+    lines.extend(f"{key:<{field_width}}  {value}".rstrip() for key, value in rows)
+    return lines
+
+
+def _format_step_table(candidates: list[dict[str, Any]]) -> list[str]:
+    rows = [
+        {
+            "job_id": _candidate_text(candidate, "job_id"),
+            "state": _candidate_text(candidate, "state"),
+            "exit_code": _candidate_text(candidate, "exit_code"),
+            "elapsed": _candidate_text(candidate, "elapsed"),
+            "node_or_reason": _candidate_text(candidate, "node_or_reason"),
+        }
+        for candidate in candidates
+    ]
+    headers = {
+        "job_id": "Job ID",
+        "state": "State",
+        "exit_code": "Exit Code",
+        "elapsed": "Elapsed",
+        "node_or_reason": "Node/Reason",
+    }
+    widths = {
+        key: max(len(headers[key]), *(len(row[key]) for row in rows))
+        for key in headers
+    }
+    widths["job_id"] = max(21, widths["job_id"])
+    lines = [
+        (
+            f"{headers['job_id']:<{widths['job_id']}}  "
+            f"{headers['state']:<{widths['state']}}  "
+            f"{headers['exit_code']:<{widths['exit_code']}}  "
+            f"{headers['elapsed']:<{widths['elapsed']}}  "
+            f"{headers['node_or_reason']:<{widths['node_or_reason']}}"
+        ).rstrip()
+    ]
+    lines.extend(
+        (
+            f"{row['job_id']:<{widths['job_id']}}  "
+            f"{row['state']:<{widths['state']}}  "
+            f"{row['exit_code']:<{widths['exit_code']}}  "
+            f"{row['elapsed']:<{widths['elapsed']}}  "
+            f"{row['node_or_reason']:<{widths['node_or_reason']}}"
+        ).rstrip()
+        for row in rows
+    )
+    return lines
+
+
+def _is_step_group(job_id: str, candidates: list[dict[str, Any]]) -> bool:
+    candidate_ids = [_candidate_text(candidate, "job_id") for candidate in candidates]
+    if not job_id or len(candidates) <= 1:
+        return False
+    return any("." in candidate_id for candidate_id in candidate_ids) and all(
+        candidate_id == job_id or candidate_id.startswith(f"{job_id}.")
+        for candidate_id in candidate_ids
+        if candidate_id
+    )
+
+
+def _common_job_name(candidates: list[dict[str, Any]]) -> str:
+    for candidate in candidates:
+        job_name = _candidate_text(candidate, "job_name")
+        if job_name and job_name.lower() not in {"batch", "extern", "0"}:
+            return job_name
+    return "unknown"
+
+
+def _source_summary(candidates: list[dict[str, Any]]) -> str:
+    sources = [_candidate_text(candidate, "source") for candidate in candidates]
+    counts = _counts(source for source in sources if source)
+    if not counts:
+        return "unknown"
+    if len(counts) == 1:
+        return next(iter(counts))
+    return _count_summary(counts.elements())
+
+
+def _count_summary(values) -> str:
+    counts = _counts(value for value in values if value)
+    if not counts:
+        return "none"
+    return ", ".join(f"{key}={counts[key]}" for key in sorted(counts))
+
+
+def _sample_jobs(candidates: list[dict[str, Any]], *, max_sample_jobs: int) -> str:
+    job_ids = [_candidate_text(candidate, "job_id") for candidate in candidates]
+    job_ids = [job_id for job_id in job_ids if job_id]
+    if not job_ids:
+        return "none"
+    shown = job_ids[:max_sample_jobs]
+    sample = ", ".join(shown)
+    omitted = len(job_ids) - len(shown)
+    if omitted > 0:
+        sample = f"{sample}, ... (+{omitted} more)"
+    return sample
+
+
+def _candidate_text(candidate: dict[str, Any], key: str) -> str:
+    value = _text(candidate.get(key))
+    if value:
+        return value
+    raw = candidate.get("raw")
+    if isinstance(raw, dict):
+        return _text(raw.get(key))
+    return ""
 
 
 def _table_rows(groups: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -175,3 +375,7 @@ def _has_value(value: Any) -> bool:
     if value is None:
         return False
     return str(value).strip() not in {"", "N/A", "NONE"}
+
+
+def _counts(values) -> Counter[str]:
+    return Counter(value for value in values if value)

@@ -68,8 +68,8 @@
   - `sherlock_get_slurm_job_detail`
 - [x] 默认 profile 中隐藏或禁用 `sherlock_summarize_run`，仅保留在单独 data-reading profile。
 - [x] 增加 path redaction contract tests，覆盖 history/detail 中的 `work_dir`、stdout/stderr path 和 `raw` path fields。
-- [ ] 为 `sherlock_get_slurm_job_detail` 增加顶层 `formatted_detail` 或等价字段，作为 Slack/OpenACP 默认展示契约。
-- [ ] 覆盖大型 array parent detail 的 formatter test，防止 agent 因结果过大而追加 direct SSH/定制 `squeue` 查询。
+- [x] 为 `sherlock_get_slurm_job_detail` 增加顶层 `formatted_detail`，作为 Slack/OpenACP 默认展示契约。
+- [x] 覆盖大型 array parent detail 的 formatter test，防止 agent 因结果过大而追加 direct SSH/定制 `squeue` 查询。
 
 验收：
 
@@ -78,7 +78,7 @@
 - [x] 默认 status-only profile 只暴露 3 个 path-redacted status tools。
 - [x] MCP descriptions 明确短 SSH、只读、不提交/取消。
 - [x] MCP descriptions 明确默认不返回 Sherlock 实际路径。
-- [ ] Job detail 用户可见回复可直接来自 gateway formatter，不需要 direct SSH 或 shell pipeline fallback。
+- [x] Job detail 用户可见回复可直接来自 gateway formatter，不需要 direct SSH 或 shell pipeline fallback。
 
 ## Phase G4：文档和使用说明
 

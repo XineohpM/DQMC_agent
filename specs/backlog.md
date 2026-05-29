@@ -191,7 +191,7 @@ adapter、artifact sync、run summary、path discovery 等非默认能力。
     - [x] gateway wrapper 为当前队列查询生成顶层 `formatted_summary`；Slack/OpenACP 默认展示应直接使用该字段的固定英文表格，不再让 agent 自行重写摘要或请求 direct SSH/shell 压缩命令。
   - [x] `sherlock_query_slurm_history`：短 SSH 调用远端 `query_slurm_history`。
   - [x] `sherlock_get_slurm_job_detail`：短 SSH 调用远端 `get_slurm_job_detail`。
-    - [ ] 增加顶层 `formatted_detail` 或等价字段，作为 Slack/OpenACP 查询 job detail 的默认英文展示契约；当候选很多时按 array parent/task 分组压缩展示，而不是让 agent 追加 direct SSH/shell 查询。
+    - [x] 增加顶层 `formatted_detail`，作为 Slack/OpenACP 查询 job detail 的默认英文展示契约；当候选很多时按 array parent/task 分组压缩展示，而不是让 agent 追加 direct SSH/shell 查询。
   - [x] `sherlock_summarize_run`：已实现 bounded summary，但不应作为默认 Sherlock/Slack status profile 暴露。
   - [x] 第一版只做只读查询，不做真实 script execution。
   - [x] 新增 status-only gateway profile：默认只暴露 `sherlock_query_slurm`、`sherlock_query_slurm_history`、`sherlock_get_slurm_job_detail`，且返回 path-redacted payload。

@@ -121,9 +121,9 @@
 - [x] 基于 normalized facts 构造 detail candidate。
 - [x] raw rows 只作为 provenance 返回。
 - [x] 注册 MCP tool，并补 MCP contract tests。
-- [ ] 设计并实现 job detail 用户可见 formatter，供 `sherlock_get_slurm_job_detail` gateway wrapper 返回顶层 `formatted_detail` 或等价字段。
-- [ ] formatter tests 覆盖 array parent 多候选、具体 array task、completed task step group、查无结果和 path-redacted payload。
-- [ ] Slack/OpenACP contract：查询 job detail 时默认输出 formatter 字段；不得追加 direct SSH、定制 `squeue` 或 shell pipeline。
+- [x] 设计并实现 job detail 用户可见 formatter，供 `sherlock_get_slurm_job_detail` gateway wrapper 返回顶层 `formatted_detail`。
+- [x] formatter tests 覆盖 array parent 多候选、具体 array task、completed task step group、查无结果和 path-redacted payload。
+- [x] Slack/OpenACP contract：查询 job detail 时默认输出 formatter 字段；不得追加 direct SSH、定制 `squeue` 或 shell pipeline。
 
 验收：
 
@@ -131,7 +131,7 @@
 - [x] completed/failed job 从 `sacct` 返回详情。
 - [x] 查不到 job 时返回稳定结构。
 - [x] 不猜测多个候选中的唯一结果。
-- [ ] Slack/OpenACP job detail 回复可直接由 gateway formatter 生成，不需要 agent 重新查询或压缩原始 rows。
+- [x] Slack/OpenACP job detail 回复可直接由 gateway formatter 生成，不需要 agent 重新查询或压缩原始 rows。
 
 ## Phase L3 的 Sherlock 验证步骤
 

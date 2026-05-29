@@ -114,6 +114,31 @@ DQMC_DEV_ROOT=/Users/phoenixm/Desktop/dqmc-dev .venv/bin/python -m pytest
 - 空 job id structured error。
 - MCP tool set 和 success/error contract。
 
+### Phase L3 本地 Job Detail Formatter
+
+命令：
+
+```bash
+.venv/bin/python -m pytest tests/test_slurm_presenter.py \
+  tests/test_remote_gateway.py::test_call_sherlock_tool_adds_formatted_detail_after_redaction_without_extra_ssh \
+  tests/test_sherlock_gateway_mcp_server.py::test_sherlock_get_slurm_job_detail_description_requires_formatted_detail \
+  tests/test_sherlock_gateway_mcp_server.py::test_sherlock_get_slurm_job_detail_mcp_contract -q
+```
+
+结果：
+
+- `13 passed`
+
+覆盖：
+
+- `format_slurm_job_detail` 输出英文错误和查无结果消息。
+- array parent 多候选生成 compact summary 和 sample jobs，不 dump 全量 raw rows。
+- 具体 `parent_task` 生成固定字段表。
+- completed task step group 说明不猜唯一 step row，并列出 state/exit-code counts 和 step rows。
+- gateway 在 path redaction 后追加顶层 `formatted_detail`。
+- gateway wrapper 本地测试确认只执行一次短 SSH `remote_call`，不追加 direct SSH、定制 `squeue` 或 shell pipeline。
+- MCP description/contract 固定 `formatted_detail` 为 Slack/OpenACP 默认展示字段。
+
 ## Phase L4 本地 Path Candidates
 
 命令：
@@ -424,7 +449,7 @@ array parent/task job：
 - 端到端链路为 `Slack -> OpenACP -> 本地 Codex -> dqmc-sherlock-gateway -> 短 SSH -> Sherlock remote_call -> SLURM`。
 - Sherlock 上没有常驻 agent；查询期间只会出现短命 SSH/remote Python 调用。
 - 默认 status-only profile 不向远端注入 `DQMC_DEV_ROOT`、`DQMC_ALLOWED_ROOTS`、`DQMC_OUTPUT_ROOT` 或 `DQMC_REGISTRY_PATH`。
-- 观察到一个待修复的 job detail 展示缺口：用户请求两个 array parent job 的详细信息时，agent 先尝试使用 gateway MCP tool，但在压缩大结果时又尝试 direct SSH + 定制 `squeue`。该行为不符合 status-only gateway 展示契约；后续应让 `sherlock_get_slurm_job_detail` 返回固定英文 `formatted_detail`，并要求 Slack/OpenACP 直接使用该字段。
+- 此前观察到一个 job detail 展示缺口：用户请求两个 array parent job 的详细信息时，agent 先尝试使用 gateway MCP tool，但在压缩大结果时又尝试 direct SSH + 定制 `squeue`。该行为不符合 status-only gateway 展示契约；本地已实现 `sherlock_get_slurm_job_detail` 顶层英文 `formatted_detail`，后续 Sherlock/Slack smoke 应验证 OpenACP 直接使用该字段。
 - 该观察不表示可以把 direct SSH 作为 fallback；缺少紧凑字段时应扩展 gateway formatter 或 structured result。
 
 ## 后处理脚本 Smoke

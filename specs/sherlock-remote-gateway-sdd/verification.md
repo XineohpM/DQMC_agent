@@ -68,6 +68,26 @@
 
 - `7 passed`
 
+2026-05-28 追加 job detail formatter 覆盖：
+
+```bash
+.venv/bin/python -m pytest tests/test_slurm_presenter.py \
+  tests/test_remote_gateway.py::test_call_sherlock_tool_adds_formatted_detail_after_redaction_without_extra_ssh \
+  tests/test_sherlock_gateway_mcp_server.py::test_sherlock_get_slurm_job_detail_description_requires_formatted_detail \
+  tests/test_sherlock_gateway_mcp_server.py::test_sherlock_get_slurm_job_detail_mcp_contract -q
+```
+
+结果：
+
+- `13 passed`
+
+覆盖：
+
+- `sherlock_get_slurm_job_detail` gateway wrapper 返回顶层 `formatted_detail`。
+- formatter 覆盖 array parent 多候选、具体 array task、completed task step group、查无结果和错误消息。
+- path redaction 先于 `formatted_detail` 生成；测试确认格式化输出不包含 `/scratch` path。
+- 大型 array parent detail 只使用 gateway structured payload 压缩展示，不触发额外 direct SSH、定制 `squeue` 或 `awk` pipeline。
+
 ### Regression
 
 命令：
@@ -207,7 +227,7 @@ sherlock_get_slurm_job_detail(job_id="REDACTED_JOB_ID")
 - 用户确认通过 Slack/OpenACP 可正常查询 Sherlock SLURM 任务。
 - 端到端链路为 `Slack -> OpenACP -> 本地 Codex -> dqmc-sherlock-gateway -> 短 SSH -> Sherlock remote_call -> SLURM`。
 - Sherlock 上没有常驻 agent；查询只产生短命 SSH/remote Python 进程。
-- Job detail 展示仍有缺口：用户请求两个 array parent job 的详细信息时，agent 先尝试 gateway MCP tool，但在面对较大 detail payload 时又尝试 direct SSH + 定制 `squeue`。这是验证中发现的非目标 fallback；应通过 `sherlock_get_slurm_job_detail` 的固定 `formatted_detail` 展示契约修复。
+- 此前 job detail 展示存在缺口：用户请求两个 array parent job 的详细信息时，agent 先尝试 gateway MCP tool，但在面对较大 detail payload 时又尝试 direct SSH + 定制 `squeue`。这是验证中发现的非目标 fallback；本地已通过 `sherlock_get_slurm_job_detail` 的固定 `formatted_detail` 展示契约修复，仍需 Sherlock/Slack smoke 验证。
 - 后续 Slack/OpenACP job detail smoke 应验证：不出现 direct SSH approval request，不出现自定义 `squeue`/`awk` pipeline，用户回复直接来自 path-redacted gateway formatter。
 
 `sherlock_summarize_run` 不属于默认 status-only smoke。如需验证，必须作为单独

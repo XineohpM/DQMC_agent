@@ -120,7 +120,7 @@ Gateway helper 必须：
   - 远端调用 `get_slurm_job_detail`。
   - 用于查询 Sherlock job detail。
   - 返回结果必须移除或脱敏 `work_dir`、`stdout_path`、`stderr_path`、`standard_output`、`standard_error` 和 `raw` 中的同类字段。
-  - 应提供顶层 `formatted_detail` 或等价字段，作为 Slack/OpenACP 默认 job detail 展示契约。
+  - 提供顶层 `formatted_detail`，作为 Slack/OpenACP 默认 job detail 展示契约。
   - formatter 应基于 path-redacted structured candidates 生成英文摘要，覆盖 array parent 多候选、具体 array task、completed task step group 和查无结果。
   - Slack/OpenACP 不得为了补齐 compact detail 字段而运行 direct SSH、定制 `squeue`、`awk` pipeline 或其它 shell 命令；缺口应回到 gateway formatter/structured result 中修复。
 

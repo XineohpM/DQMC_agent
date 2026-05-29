@@ -74,7 +74,9 @@ def build_server(profile: str | None = None) -> FastMCP:
             "Get Sherlock SLURM job detail through a short-lived SSH remote_call. "
             "It checks current queue first, then historical sacct when enabled. "
             "This is read-only. Parameters: job_id, include_history. Sherlock path "
-            "fields are redacted."
+            "fields are redacted. The response includes a top-level formatted_detail; "
+            "for user-facing job detail replies, output formatted_detail verbatim "
+            "instead of running direct SSH, custom squeue, awk, or shell commands."
         ),
     )
     def sherlock_get_slurm_job_detail(job_id: str, include_history: bool = True) -> dict[str, Any]:

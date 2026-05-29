@@ -281,6 +281,66 @@ def test_call_sherlock_tool_redacts_status_paths(monkeypatch):
     }
 
 
+def test_call_sherlock_tool_adds_formatted_detail_after_redaction_without_extra_ssh(monkeypatch):
+    monkeypatch.setattr("dqmc_tools.remote_gateway.shutil.which", lambda _name: "/usr/bin/ssh")
+    calls = []
+
+    def fake_run(args, **_kwargs):
+        calls.append(args)
+        return subprocess.CompletedProcess(
+            args=args,
+            returncode=0,
+            stdout=json.dumps({
+                "ok": True,
+                "job_id": "25536166",
+                "match_count": 8,
+                "multiple_matches": True,
+                "candidates": [
+                    {
+                        "source": "squeue",
+                        "job_id": f"25536166_{task_id}",
+                        "job_name": "scan_mu",
+                        "state": "RUNNING",
+                        "category": "running",
+                        "partition": "owners",
+                        "elapsed": "00:01:00",
+                        "time_limit": "1-00:00:00",
+                        "node_or_reason": f"sh03-{task_id}",
+                        "stdout_path": f"/scratch/user/run/{task_id}.out",
+                        "raw": {"WorkDir": "/scratch/user/run", "state": "RUNNING"},
+                    }
+                    for task_id in range(8)
+                ],
+                "warnings": [],
+            }),
+            stderr="",
+        )
+
+    monkeypatch.setattr("dqmc_tools.remote_gateway.subprocess.run", fake_run)
+    config = SherlockGatewayConfig(
+        remote_host="sherlock",
+        allowed_hosts=["sherlock"],
+        remote_python=".venv/bin/python",
+        remote_cwd="/home/user/DQMC_agent",
+    )
+
+    result = call_sherlock_tool("get_slurm_job_detail", {"job_id": "25536166"}, config=config)
+
+    assert len(calls) == 1
+    assert calls[0][2:5] == [".venv/bin/python", "-m", "dqmc_tools.remote_call"]
+    assert all("squeue" not in str(part) for part in calls[0])
+    assert "/scratch" not in json.dumps(result)
+    assert result["formatted_detail"] == (
+        "SLURM job detail for 25536166\n"
+        "Job name: scan_mu\n"
+        "Source: squeue\n"
+        "Matches: 8\n"
+        "State counts: RUNNING=8\n"
+        "Category counts: running=8\n"
+        "Sample jobs: 25536166_0, 25536166_1, 25536166_2, 25536166_3, 25536166_4, ... (+3 more)"
+    )
+
+
 def test_call_sherlock_tool_rejects_host_outside_allowlist(monkeypatch):
     monkeypatch.setattr("dqmc_tools.remote_gateway.shutil.which", lambda _name: "/usr/bin/ssh")
     config = SherlockGatewayConfig(
