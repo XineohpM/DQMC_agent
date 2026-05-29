@@ -96,10 +96,11 @@
   - [x] 保留原始 structured rows，供 agent/transport 层展示 partition、reason/runtime/limit/nodes 等细节。
   - [x] 覆盖 `squeue --json` 和 fallback delimited output 两种路径。
   - [x] normalize `squeue --json` wrapped fields，例如 list `job_state` 和 dict `array_job_id`/`array_task_id`。
+    - [x] 2026-05-28：修复 Sherlock `sdev` 交互任务字段形态，`array_job_id=0` 视为非 array sentinel，汇总表 `Array Job ID` fallback 到真实 job id。
   - [x] 保持只读：不接入 `sbatch`、`scancel`、`scontrol update`。
   - [x] 在 Sherlock login node 上做真实 `squeue --me` 集成验证。
     - 2026-05-28 smoke 记录：`query_slurm(filters={"me": true})` 已跑通，source 为 `squeue_json`。
-    - 真实 Sherlock 字段出现 wrapped shape：`job_state` 为 list，`array_job_id` / `array_task_id` 为 dict。
+    - 真实 Sherlock 字段出现 wrapped/sentinel shape：`job_state` 为 list，`array_job_id` / `array_task_id` 为 dict；非 array 交互任务可出现 `array_job_id=0`。
   - [x] 周期性查询暂不做阻塞式 MCP watcher；agent 层按用户指定 interval 重复调用 `query_slurm(filters={"me": true})`，用 `diff_slurm_snapshots` 比较 snapshots。
 
 - [x] Sherlock 当前运行状态入口。
@@ -164,7 +165,8 @@ adapter、artifact sync、run summary、path discovery 等非默认能力。
 - [ ] Slack 只读命令优先。
   - [ ] `dqmc status`：在本地/普通环境调用 `query_slurm`；查询 Sherlock 时调用 `sherlock_query_slurm` 并分类显示。
   - [ ] `dqmc jobs`：列出 running/pending/other jobs；查询 Sherlock 时走 `dqmc-sherlock-gateway`。
-  - [ ] `dqmc job <id>`：查询 Sherlock 时调用 path-redacted `sherlock_get_slurm_job_detail`，不返回 work dir、stdout/stderr path 或 raw path fields。
+  - [ ] `dqmc job <id>`：查询 Sherlock 时调用 path-redacted `sherlock_get_slurm_job_detail`，不返回 work dir、stdout/stderr path 或 raw path fields；用户可见展示必须来自 gateway/agent 侧固定 detail formatter，不能为了补字段再运行 direct SSH 或自定义 `squeue` shell 命令。
+    - 2026-05-28 观察：Slack/OpenACP 在查询两个 array parent job detail 时，先使用 gateway MCP tool，但在压缩大结果时尝试追加 direct SSH + 定制 `squeue`。这不是目标行为；需要把 job detail formatter 升级成默认展示契约。
   - [ ] `dqmc run-summary <path>`：只作为本地/非 Sherlock 默认命令；不作为默认 Sherlock Slack 能力。
   - [ ] `dqmc adapter <script_id>`：只作为本地/非 Sherlock 默认命令；不作为默认 Sherlock Slack 能力。
 
@@ -189,6 +191,7 @@ adapter、artifact sync、run summary、path discovery 等非默认能力。
     - [x] gateway wrapper 为当前队列查询生成顶层 `formatted_summary`；Slack/OpenACP 默认展示应直接使用该字段的固定英文表格，不再让 agent 自行重写摘要或请求 direct SSH/shell 压缩命令。
   - [x] `sherlock_query_slurm_history`：短 SSH 调用远端 `query_slurm_history`。
   - [x] `sherlock_get_slurm_job_detail`：短 SSH 调用远端 `get_slurm_job_detail`。
+    - [ ] 增加顶层 `formatted_detail` 或等价字段，作为 Slack/OpenACP 查询 job detail 的默认英文展示契约；当候选很多时按 array parent/task 分组压缩展示，而不是让 agent 追加 direct SSH/shell 查询。
   - [x] `sherlock_summarize_run`：已实现 bounded summary，但不应作为默认 Sherlock/Slack status profile 暴露。
   - [x] 第一版只做只读查询，不做真实 script execution。
   - [x] 新增 status-only gateway profile：默认只暴露 `sherlock_query_slurm`、`sherlock_query_slurm_history`、`sherlock_get_slurm_job_detail`，且返回 path-redacted payload。

@@ -571,7 +571,7 @@ def _job_reason(job: dict[str, Any]) -> str:
 
 def _array_job_id(job: dict[str, Any], job_id: str) -> str:
     value = _slurm_scalar(job.get("array_job_id"))
-    if _has_slurm_value(value):
+    if _has_slurm_value(value) and str(value).strip() != "0":
         return str(value).strip()
     if "_" in job_id:
         return job_id.split("_", maxsplit=1)[0]
@@ -581,6 +581,9 @@ def _array_job_id(job: dict[str, Any], job_id: str) -> str:
 def _array_task_id(job: dict[str, Any], job_id: str) -> str | None:
     value = _slurm_scalar(job.get("array_task_id"))
     if _has_slurm_value(value):
+        array_job_id = _slurm_scalar(job.get("array_job_id"))
+        if str(value).strip() == "0" and str(array_job_id).strip() == "0" and "_" not in job_id:
+            return None
         return str(value).strip()
     if "_" in job_id:
         return job_id.split("_", maxsplit=1)[1]

@@ -39,8 +39,9 @@
 - [x] 运行 `query_slurm(filters={"me": true})`。
 - [x] 判断 Sherlock 是否支持 `squeue --json`。
 - [ ] 如果 `--json` 不可用，确认 fallback parser 的字段足够。
-- [ ] 确认 array job 的 `job_id`、`array_job_id`、`array_task_id` 形态。
-- [ ] 如果 `squeue --json` 可用，记录 `job_state`、`state_reason`、`array_job_id`、`array_task_id`、`nodes` 等字段是否为 list/dict/scalar。
+- [x] 确认 array job 的 `job_id`、`array_job_id`、`array_task_id` 形态。
+- [x] 如果 `squeue --json` 可用，记录 `job_state`、`state_reason`、`array_job_id`、`array_task_id`、`nodes` 等字段是否为 list/dict/scalar。
+  - 2026-05-28：`job_state` 可为 list，`array_job_id`/`array_task_id` 可为 dict；非 array `sdev` 交互任务可返回 `array_job_id=0` sentinel，应 fallback 到真实 job id。
 - [ ] 对 list/dict wrapped fields 脱敏保存一份最小 fixture。
 - [x] 补充 Sherlock-specific smoke 说明，不把真实集群状态写死进单元测试。
   - 2026-05-28：gateway 和 Slack/OpenACP smoke 已记录在 `verification.md`；真实队列数量只作为观察记录，不写入单元测试断言。
@@ -120,6 +121,9 @@
 - [x] 基于 normalized facts 构造 detail candidate。
 - [x] raw rows 只作为 provenance 返回。
 - [x] 注册 MCP tool，并补 MCP contract tests。
+- [ ] 设计并实现 job detail 用户可见 formatter，供 `sherlock_get_slurm_job_detail` gateway wrapper 返回顶层 `formatted_detail` 或等价字段。
+- [ ] formatter tests 覆盖 array parent 多候选、具体 array task、completed task step group、查无结果和 path-redacted payload。
+- [ ] Slack/OpenACP contract：查询 job detail 时默认输出 formatter 字段；不得追加 direct SSH、定制 `squeue` 或 shell pipeline。
 
 验收：
 
@@ -127,6 +131,7 @@
 - [x] completed/failed job 从 `sacct` 返回详情。
 - [x] 查不到 job 时返回稳定结构。
 - [x] 不猜测多个候选中的唯一结果。
+- [ ] Slack/OpenACP job detail 回复可直接由 gateway formatter 生成，不需要 agent 重新查询或压缩原始 rows。
 
 ## Phase L3 的 Sherlock 验证步骤
 

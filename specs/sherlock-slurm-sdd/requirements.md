@@ -49,6 +49,7 @@
 - 本地测试覆盖 `squeue` unavailable、unknown filter、JSON path、fallback path、`me` filter、array job grouping 和 wrapped JSON fields。
 - 本地 `dqmc-sherlock-gateway` status-only profile 已通过真实 Sherlock smoke：默认只暴露 `sherlock_query_slurm`、`sherlock_query_slurm_history`、`sherlock_get_slurm_job_detail`，返回 path-redacted payload。
 - `sherlock_query_slurm` gateway wrapper 返回顶层 `formatted_summary`，这是 Slack/OpenACP 默认用户展示契约；agent 不应自行重写当前状态摘要或运行 direct SSH/shell 命令压缩输出。
+- `sherlock_get_slurm_job_detail` 已能返回 path-redacted structured candidates，但尚缺少与当前状态查询同等级的默认 detail 展示契约；Slack/OpenACP 查询 job detail 时不应追加 direct SSH 或自定义 `squeue`，缺少字段时应扩展 gateway/detail formatter。
 - 真实 gateway smoke 确认 `query_slurm` 使用 `squeue_json`、`query_slurm_history` 使用 `sacct_parsable2`、`get_slurm_job_detail` 可从当前队列返回单个 candidate。
 - 2026-05-28 补充 smoke 确认：running `parent_task` id 可经 `squeue` 收敛到单个 candidate；completed parent/task id 可经 `sacct` 返回历史 detail，其中 completed task 返回 task-level step group，工具不猜唯一 step row。
 - Slack/OpenACP 新 session 已确认可通过本地 `dqmc-sherlock-gateway` 查询 Sherlock SLURM 状态；该事实验证部署链路，不把 Slack transport 逻辑纳入 MCP hands。
@@ -62,6 +63,7 @@
 - `job_state` 可能是 list，例如 `["PENDING"]`。
 - `array_job_id` / `array_task_id` 可能是 dict，例如 `{"set": true, "infinite": false, "number": 24884301}`。
 - `set=false` 的 dict 表示该字段没有有效值，不能把 `number` 当成真实 task id。
+- `array_job_id=0` 在 Sherlock `squeue --json` 中可表示非 array job 的 sentinel；不能把 `0` 当成 top-level array id，必须 fallback 到真实 `job_id`。当同一 row 也有 `array_task_id=0` 且 job id 本身不是 `parent_task` 形式时，该 task id 也应按 sentinel 处理。
 - wrapped dict 也可能通过 `name`、`id` 或 `infinite=true` 表示可显示值。
 
 当前 `query_slurm` 通过 `_slurm_scalar`、`_slurm_text`、`_has_slurm_value` 统一提取可用 scalar。后续 `query_slurm_history`、`get_slurm_job_detail` 和 presenter 应消费 normalized facts，不能在各处重复 ad hoc `str(value)`。
@@ -121,6 +123,8 @@
 - 多个 matching rows 返回 candidates，不猜。
 - raw rows 只作为 provenance 返回；展示和摘要应基于 normalized facts。
 - 默认 Sherlock gateway/status profile 必须从 candidates 和 `raw` 中移除或脱敏 path fields。
+- Slack/OpenACP 默认 job detail 回复必须只使用 `sherlock_get_slurm_job_detail` 的 path-redacted structured result 和固定 detail formatter；不得在 formatter 缺字段时退回 direct SSH、定制 `squeue` 或其它任意 shell 命令。
+- detail formatter 应覆盖 array parent 多候选、具体 `parent_task` 单候选、completed task step group 和查无结果四类情况，并用英文输出。
 
 ### R7 Job 到 run/output path 关联
 

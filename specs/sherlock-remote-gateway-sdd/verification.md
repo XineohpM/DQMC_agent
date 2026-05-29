@@ -207,6 +207,8 @@ sherlock_get_slurm_job_detail(job_id="REDACTED_JOB_ID")
 - 用户确认通过 Slack/OpenACP 可正常查询 Sherlock SLURM 任务。
 - 端到端链路为 `Slack -> OpenACP -> 本地 Codex -> dqmc-sherlock-gateway -> 短 SSH -> Sherlock remote_call -> SLURM`。
 - Sherlock 上没有常驻 agent；查询只产生短命 SSH/remote Python 进程。
+- Job detail 展示仍有缺口：用户请求两个 array parent job 的详细信息时，agent 先尝试 gateway MCP tool，但在面对较大 detail payload 时又尝试 direct SSH + 定制 `squeue`。这是验证中发现的非目标 fallback；应通过 `sherlock_get_slurm_job_detail` 的固定 `formatted_detail` 展示契约修复。
+- 后续 Slack/OpenACP job detail smoke 应验证：不出现 direct SSH approval request，不出现自定义 `squeue`/`awk` pipeline，用户回复直接来自 path-redacted gateway formatter。
 
 `sherlock_summarize_run` 不属于默认 status-only smoke。如需验证，必须作为单独
 data-reading profile，先明确 allowed roots、审批文本和响应脱敏策略。
@@ -226,3 +228,4 @@ data-reading profile，先明确 allowed roots、审批文本和响应脱敏策�
 - [x] 默认 status-only response 做 path redaction。
 - [x] 本地 Codex/OpenACP 实际配置使用 status-only profile 和空远端 env JSON。
 - [x] Slack/OpenACP 端到端 status 查询已通过，且不改变 MCP hands 的边界。
+- [ ] Slack/OpenACP job detail 查询只使用 gateway formatter，不触发 direct SSH 或任意 shell fallback。

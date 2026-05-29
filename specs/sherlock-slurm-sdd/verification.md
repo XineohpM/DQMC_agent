@@ -308,6 +308,12 @@ query_slurm(filters={"me": True})
 }
 ```
 
+2026-05-28 追加字段形态：
+
+- 非 array `sdev` 交互任务可在 `squeue --json` 中返回 `array_job_id=0`。
+- `array_job_id=0` 是 non-array sentinel；`query_slurm` 应 fallback 到真实 `job_id`，避免当前状态表格的 `Array Job ID` 显示为 `0`。
+- 如果同一 row 也有 `array_task_id=0`，且 `job_id` 本身不是 `parent_task` 形式，该 task id 也应按 sentinel 处理；`array_task_id=0` 对真实 array task 仍可能是有效 task id。
+
 处理要求：
 
 - 脱敏后补入本地 fixture。
@@ -418,6 +424,8 @@ array parent/task job：
 - 端到端链路为 `Slack -> OpenACP -> 本地 Codex -> dqmc-sherlock-gateway -> 短 SSH -> Sherlock remote_call -> SLURM`。
 - Sherlock 上没有常驻 agent；查询期间只会出现短命 SSH/remote Python 调用。
 - 默认 status-only profile 不向远端注入 `DQMC_DEV_ROOT`、`DQMC_ALLOWED_ROOTS`、`DQMC_OUTPUT_ROOT` 或 `DQMC_REGISTRY_PATH`。
+- 观察到一个待修复的 job detail 展示缺口：用户请求两个 array parent job 的详细信息时，agent 先尝试使用 gateway MCP tool，但在压缩大结果时又尝试 direct SSH + 定制 `squeue`。该行为不符合 status-only gateway 展示契约；后续应让 `sherlock_get_slurm_job_detail` 返回固定英文 `formatted_detail`，并要求 Slack/OpenACP 直接使用该字段。
+- 该观察不表示可以把 direct SSH 作为 fallback；缺少紧凑字段时应扩展 gateway formatter 或 structured result。
 
 ## 后处理脚本 Smoke
 

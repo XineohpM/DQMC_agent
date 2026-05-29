@@ -208,7 +208,7 @@ SherlockGatewayConfig(
 | --- | --- | --- |
 | `sherlock_query_slurm` | `query_slurm` | 当前队列，只读；gateway wrapper 增加 `formatted_summary` 作为默认用户展示文本 |
 | `sherlock_query_slurm_history` | `query_slurm_history` | 历史队列，只读 |
-| `sherlock_get_slurm_job_detail` | `get_slurm_job_detail` | job detail，只读 |
+| `sherlock_get_slurm_job_detail` | `get_slurm_job_detail` | job detail，只读；应增加 `formatted_detail` 作为默认用户展示文本 |
 | `sherlock_summarize_run` | `summarize_run` | 已实现，非默认 data-reading profile |
 
 默认 status-only profile 只暴露前三个 status tools。`sherlock_summarize_run` 已经实现，
@@ -238,6 +238,23 @@ detail candidate 还是 `raw` 中：
 
 redaction 后的 payload 仍应保留 job id、job name、state、partition、elapsed、time limit、
 node/reason、summary 和 grouping，足够回答 Slack 中的状态问题。
+
+## User-Facing Formatting
+
+`sherlock_query_slurm` 已返回顶层 `formatted_summary`，Slack/OpenACP 默认应直接展示该字段。
+同样，`sherlock_get_slurm_job_detail` 需要提供顶层 `formatted_detail` 或等价字段，避免
+agent 在面对大型 array parent detail 时自行追加 direct SSH 或定制 `squeue` 命令。
+
+detail formatter 的输入只能是已经 path-redacted 的 structured candidates；输出保持英文，
+并覆盖：
+
+- array parent 多候选：显示 parent id、job name、候选/子任务数量、状态计数和必要的样例 task id。
+- 具体 `parent_task`：显示 job/task id、job name、state/category、partition、elapsed、time limit、nodes 或 reason。
+- completed task step group：说明返回的是 task-level step group，列出 step 数量、states 和 exit codes，不猜唯一 step row。
+- 查无结果或远端错误：输出稳定英文错误/空结果消息。
+
+如果 formatter 缺少字段，修复位置是 gateway formatter 或远端 structured result，不是
+Slack/OpenACP agent 侧的任意 shell fallback。
 
 ## 错误模型
 

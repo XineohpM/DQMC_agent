@@ -149,6 +149,36 @@ def test_query_slurm_normalizes_slurm_json_wrapped_fields(monkeypatch):
     assert _array_group(_group_by_name(result, "U6_8x8"), "26224762")["array_task_ids"] == []
 
 
+def test_query_slurm_treats_zero_array_job_id_as_non_array_sentinel(monkeypatch):
+    monkeypatch.setattr("dqmc_tools.slurm.shutil.which", lambda _name: "squeue")
+
+    def fake_run(args, **_kwargs):
+        return subprocess.CompletedProcess(
+            args=args,
+            returncode=0,
+            stdout=json_jobs([
+                {
+                    "job_id": 34567,
+                    "name": "sdev",
+                    "job_state": "RUNNING",
+                    "array_job_id": 0,
+                    "array_task_id": 0,
+                }
+            ]),
+            stderr="",
+        )
+
+    monkeypatch.setattr("dqmc_tools.slurm.subprocess.run", fake_run)
+
+    result = query_slurm({"me": True})
+
+    sdev_group = _group_by_name(result, "sdev")
+    assert sdev_group["array_job_count"] == 1
+    array_group = _array_group(sdev_group, "34567")
+    assert array_group["total_jobs"] == 1
+    assert array_group["array_task_ids"] == []
+
+
 def test_query_slurm_falls_back_to_delimited_output(monkeypatch):
     monkeypatch.setattr("dqmc_tools.slurm.shutil.which", lambda _name: "squeue")
 
