@@ -245,6 +245,7 @@ adapter、artifact sync、run summary、path discovery 等非默认能力。
   - [x] running array parent id 返回多候选，符合“不猜唯一结果”；running `parent_task` id 可从 parent 多候选收敛到单个 `squeue` candidate。
   - [x] completed array parent id 可 fallback 到 `sacct` 并返回多候选；completed `parent_task` id 收敛到该 task 的 `sacct` step group，而不是单条 row。
   - [x] 所有补充 smoke 的 status-only gateway response 均确认不包含 work dir、stdout/stderr path、raw path fields 或 path-like values。
+  - [x] Slack/OpenACP job detail formatter smoke 已完成：array parent 多候选使用 `formatted_detail` compact summary；completed `parent_task` 使用 `sacct` step group summary；没有出现 direct SSH/定制 `squeue` approval request。
   - [ ] 默认不 smoke `sherlock_summarize_run`；如果需要验证，应作为 data-reading profile 的单独任务并先取得明确审批。
   - [ ] 不继续把完整 `dqmc-hands` 的非 SLURM tools 作为 Sherlock login node smoke 默认项；如需验证 HDF5/script/sync，应单独审批并记录原因。
   - [ ] 记录真实字段形态时必须先脱敏；fixture 不得包含真实 Sherlock path、用户名、project 名称或 job 输出路径。

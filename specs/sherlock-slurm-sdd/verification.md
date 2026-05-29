@@ -412,6 +412,22 @@ array parent/task job：
   - interpretation：已结束 array task 在 `sacct` 中收敛到 task-level step group，不是单条 row；工具继续返回 candidates，不猜唯一 step。
   - path redaction check：`sensitive_path_keys_present=[]`，`path_like_value_count=0`。
 
+Slack/OpenACP formatted detail smoke：
+
+- 2026-05-28：用户通过 Slack/OpenACP 查询一个当前队列 array parent job。
+  - 输出使用 `formatted_detail` compact summary。
+  - 样例结构：`SLURM job detail for <ARRAY_PARENT_ID>`、`Job name`、`Source: squeue`、`Matches`、`State counts`、`Category counts`、`Sample jobs`。
+  - 没有出现 direct SSH、定制 `squeue` 或 `awk` permission request。
+  - 输出没有 Sherlock path、`WorkDir`、stdout/stderr path。
+- 2026-05-28：用户先查询不存在的 completed task id，输出 `No SLURM job detail found ...`，后确认该 task id 本身不存在。
+- 2026-05-28：用户改查真实 completed `parent_task` id。
+  - 输出使用 `formatted_detail` completed step group。
+  - `Source: sacct`，`Matches: 4`。
+  - 输出明确说明 `Step group: task-level sacct rows; no unique step row was guessed.`
+  - rows 包含 task 本体、`.batch`、`.extern`、`.0`，state 全部为 `COMPLETED`，exit code 全部为 `0:0`。
+  - 未返回 `WorkDir`、stdout/stderr path 或 run/output path。
+  - Slack 渲染中 code fence 可能显示为 `Rows:text`，这是展示细节；结构化内容和安全边界符合预期。
+
 验收：
 
 - 当前队列 job 从 `squeue` 返回详情。
@@ -449,8 +465,14 @@ array parent/task job：
 - 端到端链路为 `Slack -> OpenACP -> 本地 Codex -> dqmc-sherlock-gateway -> 短 SSH -> Sherlock remote_call -> SLURM`。
 - Sherlock 上没有常驻 agent；查询期间只会出现短命 SSH/remote Python 调用。
 - 默认 status-only profile 不向远端注入 `DQMC_DEV_ROOT`、`DQMC_ALLOWED_ROOTS`、`DQMC_OUTPUT_ROOT` 或 `DQMC_REGISTRY_PATH`。
-- 此前观察到一个 job detail 展示缺口：用户请求两个 array parent job 的详细信息时，agent 先尝试使用 gateway MCP tool，但在压缩大结果时又尝试 direct SSH + 定制 `squeue`。该行为不符合 status-only gateway 展示契约；本地已实现 `sherlock_get_slurm_job_detail` 顶层英文 `formatted_detail`，后续 Sherlock/Slack smoke 应验证 OpenACP 直接使用该字段。
+- 此前观察到一个 job detail 展示缺口：用户请求两个 array parent job 的详细信息时，agent 先尝试使用 gateway MCP tool，但在压缩大结果时又尝试 direct SSH + 定制 `squeue`。该行为不符合 status-only gateway 展示契约；本地已实现 `sherlock_get_slurm_job_detail` 顶层英文 `formatted_detail`，并已通过 Sherlock/Slack smoke 验证 OpenACP 直接使用该字段。
 - 该观察不表示可以把 direct SSH 作为 fallback；缺少紧凑字段时应扩展 gateway formatter 或 structured result。
+- 2026-05-28：Slack/OpenACP job detail formatter smoke 已通过。
+  - 当前队列 array parent 输出 `formatted_detail` compact summary。
+  - completed `parent_task` 输出 `sacct` step group summary，不猜唯一 step row。
+  - 错误 task id 返回稳定查无结果消息，经用户确认是输入 id 不存在。
+  - 未出现 direct SSH/定制 `squeue` approval request。
+  - 未返回 Sherlock path、`WorkDir`、stdout/stderr path。
 
 ## 后处理脚本 Smoke
 
