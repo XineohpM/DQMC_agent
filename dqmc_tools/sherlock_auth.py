@@ -144,6 +144,7 @@ def start_keepalive(
     timeout_seconds: int = DEFAULT_PREFLIGHT_TIMEOUT_SECONDS,
     krb5_config_path: str = DEFAULT_KRB5_CONFIG_PATH,
     logger: Callable[[str], None] | None = None,
+    run_immediately: bool = False,
 ) -> KeepaliveHandle | None:
     if interval_seconds <= 0:
         return None
@@ -151,16 +152,21 @@ def start_keepalive(
     stop_event = threading.Event()
     log = logger or _default_logger
 
+    def check_once() -> None:
+        result = run_preflight(
+            remote_host=remote_host,
+            allowed_hosts=allowed_hosts,
+            timeout_seconds=timeout_seconds,
+            krb5_config_path=krb5_config_path,
+        )
+        if not result["ok"]:
+            log(_format_result(result))
+
     def loop() -> None:
+        if run_immediately:
+            check_once()
         while not stop_event.wait(interval_seconds):
-            result = run_preflight(
-                remote_host=remote_host,
-                allowed_hosts=allowed_hosts,
-                timeout_seconds=timeout_seconds,
-                krb5_config_path=krb5_config_path,
-            )
-            if not result["ok"]:
-                log(_format_result(result))
+            check_once()
 
     thread = threading.Thread(target=loop, name="sherlock-ssh-keepalive", daemon=True)
     thread.start()
@@ -186,18 +192,6 @@ def start_monitor_from_env(logger: Callable[[str], None] | None = None) -> Keepa
         log(f"Unsupported {PREFLIGHT_ENV} value {preflight_mode!r}; using warn.")
         preflight_mode = "warn"
 
-    if preflight_mode != "off":
-        result = run_preflight(
-            remote_host=host,
-            allowed_hosts=allowed_hosts,
-            timeout_seconds=timeout_seconds,
-            krb5_config_path=krb5_config_path,
-        )
-        if not result["ok"]:
-            log(_format_result(result))
-            if preflight_mode == "require":
-                raise SystemExit(1)
-
     return start_keepalive(
         remote_host=host,
         allowed_hosts=allowed_hosts,
@@ -205,6 +199,7 @@ def start_monitor_from_env(logger: Callable[[str], None] | None = None) -> Keepa
         timeout_seconds=timeout_seconds,
         krb5_config_path=krb5_config_path,
         logger=log,
+        run_immediately=preflight_mode != "off",
     )
 
 

@@ -1,4 +1,5 @@
 import subprocess
+import time
 
 from dqmc_tools import sherlock_auth
 
@@ -147,3 +148,32 @@ def test_start_keepalive_runs_noninteractive_checks_until_stop(monkeypatch, tmp_
     assert all(call["remote_host"] == "sherlock" for call in calls)
     assert all(call["timeout_seconds"] == 8 for call in calls)
     assert all(call["krb5_config_path"] == str(krb5_conf) for call in calls)
+
+
+def test_start_monitor_from_env_does_not_block_on_startup_preflight(monkeypatch, tmp_path):
+    krb5_conf = tmp_path / "krb5.conf"
+    krb5_conf.write_text("[libdefaults]\n", encoding="utf-8")
+    calls = []
+
+    monkeypatch.setenv("DQMC_SHERLOCK_REMOTE_HOST", "sherlock")
+    monkeypatch.setenv("DQMC_SHERLOCK_ALLOWED_HOSTS", "sherlock")
+    monkeypatch.setenv("DQMC_SHERLOCK_PREFLIGHT", "warn")
+    monkeypatch.setenv("DQMC_SHERLOCK_KEEPALIVE_SECONDS", "100")
+    monkeypatch.setenv("DQMC_SHERLOCK_KRB5_CONFIG", str(krb5_conf))
+
+    def fake_run_preflight(**kwargs):
+        calls.append(kwargs)
+        time.sleep(1)
+        return {"ok": True, "status": "ok", "message": "ok", "details": {}}
+
+    monkeypatch.setattr("dqmc_tools.sherlock_auth.run_preflight", fake_run_preflight)
+
+    started_at = time.monotonic()
+    handle = sherlock_auth.start_monitor_from_env()
+    elapsed = time.monotonic() - started_at
+
+    assert handle is not None
+    handle.stop()
+    handle.thread.join(timeout=2)
+    assert elapsed < 0.2
+    assert calls

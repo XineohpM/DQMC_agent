@@ -1,0 +1,19 @@
+{
+  "name": "@dqmc-agent/openacp-agent-instructions",
+  "version": "0.1.0",
+  "description": "Injects workspace AGENTS.md into OpenACP agent prompts.",
+  "type": "module",
+  "main": "./index.js",
+  "exports": {
+    ".": "./index.js"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.js"
+  },
+  "files": [
+    "index.js",
+    "src"
+  ],
+  "license": "UNLICENSED",
+  "private": true
+}

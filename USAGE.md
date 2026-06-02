@@ -159,7 +159,8 @@ Sherlock run path 做 bounded summary 的能力已实现，但只属于非默认
 它仍然只读，不提交、不取消、不修改任务。
 
 本地 Sherlock SSH 认证由用户完成，agent 不接触密码或 Duo。`dqmc-sherlock-gateway`
-启动时会做一次非交互 preflight，并按 `DQMC_SHERLOCK_KEEPALIVE_SECONDS` 定期 keepalive：
+启动时会在后台立即做一次非交互 preflight，并按 `DQMC_SHERLOCK_KEEPALIVE_SECONDS`
+定期 keepalive；这不会阻塞 MCP server startup：
 
 ```bash
 ssh -o BatchMode=yes -o ConnectTimeout=8 sherlock true
