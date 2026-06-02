@@ -53,6 +53,88 @@ port_listening() {
   lsof -nP -iTCP:"$API_PORT" -sTCP:LISTEN >/dev/null 2>&1
 }
 
+port_pid() {
+  command -v lsof >/dev/null 2>&1 || return 1
+  lsof -tiTCP:"$API_PORT" -sTCP:LISTEN 2>/dev/null | head -n 1
+}
+
+valid_pid() {
+  [[ "${1:-}" =~ ^[0-9]+$ ]]
+}
+
+pid_from_start_output() {
+  local output="$1"
+  local pid
+  pid="$(printf '%s\n' "$output" | sed -nE 's/.*"pid"[[:space:]]*:[[:space:]]*([0-9]+).*/\1/p' | head -n 1)"
+  if valid_pid "$pid"; then
+    printf '%s\n' "$pid"
+  fi
+}
+
+pid_from_file() {
+  local pid_file="$INSTANCE_ROOT/openacp.pid"
+  local pid
+  [[ -r "$pid_file" ]] || return 1
+  IFS= read -r pid < "$pid_file" || return 1
+  if valid_pid "$pid"; then
+    printf '%s\n' "$pid"
+  fi
+}
+
+backend_pid_for_caffeinate() {
+  local start_output="$1"
+  local pid
+
+  pid="$(pid_from_start_output "$start_output" || true)"
+  if [[ -n "$pid" ]]; then
+    printf '%s\n' "$pid"
+    return 0
+  fi
+
+  pid="$(pid_from_file || true)"
+  if [[ -n "$pid" ]]; then
+    printf '%s\n' "$pid"
+    return 0
+  fi
+
+  pid="$(port_pid || true)"
+  if [[ -n "$pid" ]] && valid_pid "$pid"; then
+    printf '%s\n' "$pid"
+    return 0
+  fi
+}
+
+start_caffeinate() {
+  local start_output="$1"
+  local mode="${DQMC_SLACKBOT_CAFFEINATE:-on}"
+  local backend_pid
+
+  case "$mode" in
+    on)
+      ;;
+    off)
+      return 0
+      ;;
+    *)
+      echo "start-slackbot-backend: unsupported DQMC_SLACKBOT_CAFFEINATE=$mode; using on." >&2
+      ;;
+  esac
+
+  if ! command -v caffeinate >/dev/null 2>&1; then
+    echo "start-slackbot-backend: caffeinate not found; macOS sleep prevention skipped." >&2
+    return 0
+  fi
+
+  backend_pid="$(backend_pid_for_caffeinate "$start_output" || true)"
+  if [[ -z "$backend_pid" ]]; then
+    echo "start-slackbot-backend: could not determine backend pid; macOS sleep prevention skipped." >&2
+    return 0
+  fi
+
+  caffeinate -is -w "$backend_pid" >/dev/null 2>&1 &
+  echo "start-slackbot-backend: macOS sleep prevention active via caffeinate -is -w ${backend_pid}." >&2
+}
+
 if port_listening; then
   echo "Slack bot backend appears to be running on 127.0.0.1:${API_PORT}."
   exit 0
@@ -74,4 +156,17 @@ export OPENACP_RUN_MODE="${OPENACP_RUN_MODE:-daemon}"
 run_sherlock_preflight
 
 cd "$PROJECT_ROOT"
-exec "$OPENACP_BIN" start --json --local
+set +e
+START_OUTPUT="$("$OPENACP_BIN" start --json --local)"
+START_STATUS=$?
+set -e
+
+if [[ -n "$START_OUTPUT" ]]; then
+  printf '%s\n' "$START_OUTPUT"
+fi
+
+if (( START_STATUS != 0 )); then
+  exit "$START_STATUS"
+fi
+
+start_caffeinate "$START_OUTPUT"

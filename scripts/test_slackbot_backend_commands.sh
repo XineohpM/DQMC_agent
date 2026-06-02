@@ -18,14 +18,28 @@ assert_contains() {
   fi
 }
 
+wait_for_file() {
+  local path="$1"
+  local attempts=20
+  while (( attempts > 0 )); do
+    [[ -f "$path" ]] && return 0
+    sleep 0.05
+    attempts=$((attempts - 1))
+  done
+  fail "expected file to be created: $path"
+}
+
 TMPDIR="$(mktemp -d)"
 trap 'rm -rf "$TMPDIR"' EXIT
 
 PROJECT="$TMPDIR/project"
 ENV_FILE="$TMPDIR/openacp-env"
 OPENACP_LOG="$TMPDIR/openacp-call.log"
+CAFFEINATE_LOG="$TMPDIR/caffeinate-call.log"
+FAKE_BIN="$TMPDIR/bin"
 FAKE_OPENACP="$PROJECT/.openacp/plugins/node_modules/.bin/openacp"
 FAKE_PYTHON="$PROJECT/.venv/bin/python"
+mkdir -p "$FAKE_BIN"
 mkdir -p "$(dirname "$FAKE_OPENACP")"
 mkdir -p "$(dirname "$FAKE_PYTHON")"
 
@@ -72,6 +86,13 @@ esac
 FAKE_PYTHON
 chmod +x "$FAKE_PYTHON"
 
+cat > "$FAKE_BIN/caffeinate" <<'FAKE_CAFFEINATE'
+#!/usr/bin/env bash
+set -euo pipefail
+printf 'caffeinate_args=%s\n' "$*" >> "$CAFFEINATE_TEST_LOG"
+FAKE_CAFFEINATE
+chmod +x "$FAKE_BIN/caffeinate"
+
 cat > "$ENV_FILE" <<'ENV'
 OPENACP_SLACK_BOT_TOKEN=xoxb-test
 OPENACP_SLACK_APP_TOKEN=xapp-test
@@ -85,9 +106,12 @@ start_output="$(
     OPENACP_ENV_FILE="$ENV_FILE" \
     OPENACP_API_PORT=29998 \
     OPENACP_TEST_LOG="$OPENACP_LOG" \
-    "$START"
+    CAFFEINATE_TEST_LOG="$CAFFEINATE_LOG" \
+    PATH="$FAKE_BIN:$PATH" \
+    "$START" 2>&1
 )"
 assert_contains "$start_output" '"success":true'
+assert_contains "$start_output" "start-slackbot-backend: macOS sleep prevention active via caffeinate -is -w 12345."
 
 call_log="$(cat "$OPENACP_LOG")"
 assert_contains "$call_log" "python_args=-m dqmc_tools.sherlock_auth preflight --timeout-seconds 8"
@@ -97,6 +121,10 @@ assert_contains "$call_log" "instance=$PROJECT/.openacp"
 assert_contains "$call_log" "port=29998"
 assert_contains "$call_log" "mode=daemon"
 assert_contains "$call_log" "bot_token=set"
+
+wait_for_file "$CAFFEINATE_LOG"
+caffeinate_log="$(cat "$CAFFEINATE_LOG")"
+assert_contains "$caffeinate_log" "caffeinate_args=-is -w 12345"
 
 stop_output="$(
   cd "$TMPDIR"
