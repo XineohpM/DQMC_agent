@@ -7,7 +7,13 @@
 ```bash
 python -m venv .venv
 . .venv/bin/activate
-pip install -e ".[mcp,test]"
+pip install -r requirements.txt
+```
+
+也可以用 `uv` 直接把同一份依赖安装进项目虚拟环境：
+
+```bash
+uv pip install --python .venv/bin/python -r requirements.txt
 ```
 
 运行测试：
