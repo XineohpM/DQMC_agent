@@ -19,6 +19,7 @@ def test_builtin_catalog_paths_exist_and_excludes_deferred_workflows():
     assert "check_warm" in script_ids
     assert "plot_JNJN" in script_ids
     assert "gen_beta_mu_scan" in script_ids
+    assert "compute_specific_heat" in script_ids
     assert "make_bootstrap" not in script_ids
     assert "save_boot_stats" not in script_ids
     assert "run_maxent" not in script_ids
@@ -80,6 +81,29 @@ def test_check_warm_schema_uses_positional_root_and_output_dir():
 
     assert description["args_schema"]["properties"]["root"]["positional"] is True
     assert description["args_schema"]["properties"]["output_dir"]["path_role"] == "output"
+
+
+def test_compute_specific_heat_documents_scan_input_and_outputs():
+    description = describe_script_adapter("compute_specific_heat")
+
+    assert description["category"] == "analysis"
+    assert description["mode"] == "writes_output"
+    assert description["args_schema"]["required"] == ["path", "mode"]
+    assert description["args_schema"]["properties"]["path"]["path_role"] == "input"
+    assert description["args_schema"]["properties"]["mode"]["choices"] == ["fluc", "diff", "both"]
+    assert description["required_inputs"] == [{
+        "name": "path",
+        "kind": "directory",
+        "path_template": "{path}",
+        "required": True,
+        "shape_hint": None,
+    }]
+    assert description["output_patterns"] == [
+        "{path}/*_T_*.npy",
+        "{path}/*_E_*_diff.npy",
+        "{path}/*_specific_heat_*.npy",
+        "{path}/*_C_vs_T_*.png",
+    ]
 
 
 def test_builtin_catalog_adapter_audit_passes():

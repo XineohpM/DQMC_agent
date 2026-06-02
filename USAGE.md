@@ -103,7 +103,7 @@ agent 可以列出和解释当前接入的 dqmc-dev 脚本 adapter。用户可�
 
 - input generation：beta scan、beta-mu scan。
 - 诊断：HDF5 completion、warmup。
-- 后处理：energy、local moment、local Green function、per-bin current-current。
+- 后处理：energy、specific heat、local moment、local Green function、per-bin current-current。
 - MaxEnt 和图像输出：DOS、conductivity、resistivity、double occupancy、charge order。
 - workflow 文件操作：stack owner/worker、multi-dir push stack。
 

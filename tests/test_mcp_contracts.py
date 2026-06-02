@@ -194,7 +194,7 @@ def test_script_adapter_mcp_contracts_for_list_describe_and_dry_run(tmp_path: Pa
     assert set(list_payload) == {"result"}
     scripts = list_payload["result"]
     assert isinstance(scripts, list)
-    assert len(scripts) == 20
+    assert len(scripts) == 21
     assert all("args_schema" not in item for item in scripts)
     assert set(scripts[0]) == {
         "script_id",

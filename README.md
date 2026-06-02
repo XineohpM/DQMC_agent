@@ -203,6 +203,8 @@ registry 解析只使用真实字段：`id`、`aliases`、`code.generation.varia
 ## 脚本执行流程
 
 已有 `dqmc-dev/scripts` 是复用资产，不把每个脚本都重写成独立 MCP tool。统一入口是 `run_script_adapter`。
+当前白名单覆盖 input generation、HDF5/warmup 诊断、energy/specific-heat/local-observable
+后处理、MaxEnt/transport 绘图，以及受控 workflow 文件操作。
 
 推荐流程：
 

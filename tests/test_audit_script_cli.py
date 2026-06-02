@@ -23,7 +23,7 @@ def test_audit_script_adapters_json_reports_argparse_sync():
 
     payload = json.loads(completed.stdout)
     assert payload["argparse_sync"]["parsed"] >= 1
-    assert payload["adapter_count"] == 20
+    assert payload["adapter_count"] == 21
     run_maxent = next(item for item in payload["argparse_parsers"] if item["script_id"] == "run_maxent_anneal")
     assert run_maxent["status"] == "parsed"
     assert "schema_diff" in run_maxent
