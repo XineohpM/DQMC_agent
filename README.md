@@ -4,15 +4,21 @@
 
 ## 安装
 
+标准 `venv` / `pip` 方式：
+
 ```bash
+# Create the project virtual environment
 python -m venv .venv
-. .venv/bin/activate
-pip install -r requirements.txt
+# Install dependencies into the venv with pip
+.venv/bin/python -m pip install -r requirements.txt
 ```
 
-也可以用 `uv` 直接把同一份依赖安装进项目虚拟环境：
+`uv` 方式：
 
 ```bash
+# Create the project virtual environment with uv
+uv venv .venv
+# Install dependencies into the venv with uv
 uv pip install --python .venv/bin/python -r requirements.txt
 ```
 
