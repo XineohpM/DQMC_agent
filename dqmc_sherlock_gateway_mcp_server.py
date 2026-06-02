@@ -8,6 +8,7 @@ from typing import Any
 from mcp.server.fastmcp import FastMCP
 
 from dqmc_tools import remote_gateway
+from dqmc_tools import sherlock_auth
 from dqmc_tools.errors import InvalidArgumentError, error_dict
 
 
@@ -141,5 +142,10 @@ def _normalize_profile(profile: str) -> str:
 mcp = build_server()
 
 
-if __name__ == "__main__":
+def run_main() -> None:
+    sherlock_auth.start_monitor_from_env()
     mcp.run()
+
+
+if __name__ == "__main__":
+    run_main()

@@ -158,6 +158,24 @@ Sherlock run path 做 bounded summary 的能力已实现，但只属于非默认
 
 它仍然只读，不提交、不取消、不修改任务。
 
+本地 Sherlock SSH 认证由用户完成，agent 不接触密码或 Duo。`dqmc-sherlock-gateway`
+启动时会做一次非交互 preflight，并按 `DQMC_SHERLOCK_KEEPALIVE_SECONDS` 定期 keepalive：
+
+```bash
+ssh -o BatchMode=yes -o ConnectTimeout=8 sherlock true
+```
+
+如果失败，恢复步骤是在本机 terminal 中重新完成交互认证：
+
+```bash
+kinit <sunetid>@stanford.edu
+ssh sherlock hostname
+```
+
+`start-slackbot-backend` 也会在启动 OpenACP 前运行 preflight。默认
+`DQMC_SHERLOCK_PREFLIGHT=warn`，失败只提示；设为 `require` 时失败会阻止 backend 启动。
+`DQMC_SHERLOCK_KEEPALIVE_SECONDS=0` 可关闭 gateway 运行中的 keepalive。
+
 ### 产物同步
 
 agent 可以把 allowlist 内的 Sherlock 产物通过受限 rsync 同步到本地 output root。同步默认

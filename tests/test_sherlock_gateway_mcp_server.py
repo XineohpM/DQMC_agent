@@ -173,3 +173,20 @@ def test_sherlock_gateway_mcp_returns_json_safe_gateway_error(monkeypatch):
         "message": "boom",
         "details": {},
     }
+
+
+def test_run_main_starts_auth_monitor_before_mcp_run(monkeypatch):
+    import dqmc_sherlock_gateway_mcp_server as server_module
+
+    events = []
+
+    monkeypatch.setattr(
+        server_module.sherlock_auth,
+        "start_monitor_from_env",
+        lambda: events.append("monitor"),
+    )
+    monkeypatch.setattr(server_module.mcp, "run", lambda: events.append("run"))
+
+    server_module.run_main()
+
+    assert events == ["monitor", "run"]

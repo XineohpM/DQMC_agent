@@ -103,6 +103,9 @@ DQMC_SHERLOCK_REMOTE_CWD = "/absolute/path/to/DQMC_agent/on/sherlock"
 DQMC_SHERLOCK_TIMEOUT_SECONDS = "60"
 DQMC_SHERLOCK_GATEWAY_PROFILE = "status-only"
 DQMC_SHERLOCK_REMOTE_ENV_JSON = "{}"
+DQMC_SHERLOCK_PREFLIGHT = "warn"
+DQMC_SHERLOCK_PREFLIGHT_TIMEOUT_SECONDS = "8"
+DQMC_SHERLOCK_KEEPALIVE_SECONDS = "1800"
 ```
 
 启动命令：
@@ -131,6 +134,26 @@ Slack/OpenACP 面向用户展示当前 Sherlock 队列状态时，应直接输�
 才应考虑设置 `DQMC_SHERLOCK_REMOTE_ENV_JSON`。
 
 gateway 不暴露任意 shell，不提交或取消 SLURM job，不做真实远端脚本执行。
+
+gateway 启动时默认执行一次非交互 SSH preflight：
+
+```bash
+ssh -o BatchMode=yes -o ConnectTimeout=8 sherlock true
+```
+
+如果已有 Sherlock ControlMaster 连接，preflight 应成功；如果首次登录仍需要密码或
+Duo，preflight 只会在 stderr 打印恢复提示，不会尝试输入密码或处理 Duo。恢复流程仍由用户
+在本机 terminal 中完成：
+
+```bash
+kinit <sunetid>@stanford.edu
+ssh sherlock hostname
+```
+
+`DQMC_SHERLOCK_PREFLIGHT` 支持 `warn`、`require`、`off`，默认 `warn`；`require`
+会在 preflight 失败时阻止 gateway 启动。`DQMC_SHERLOCK_KEEPALIVE_SECONDS` 控制运行中
+keepalive 间隔，默认 1800 秒，设置为 `0` 可关闭。keepalive 只重复执行同一个
+BatchMode SSH 检查，用于维持已经建立的 ControlMaster 连接，不做交互认证。
 
 2026-05-28 状态：本地 Codex/OpenACP 实际配置已使用 status-only profile 跑通
 Slack/OpenACP -> 本地 Codex -> `dqmc-sherlock-gateway` -> Sherlock SLURM 查询链路。
@@ -162,6 +185,10 @@ token 和 allowlist 等本地私密配置。启动和停止：
 start-slackbot-backend
 stop-slackbot-backend
 ```
+
+`start-slackbot-backend` 会在启动 OpenACP 前运行同样的 Sherlock SSH preflight。默认
+`warn` 模式下，preflight 失败不会阻止 Slack backend 启动；如果希望认证失败时直接退出，
+可在本地 env 文件中设置 `DQMC_SHERLOCK_PREFLIGHT=require`。
 
 ## Registry 和 HDF5
 

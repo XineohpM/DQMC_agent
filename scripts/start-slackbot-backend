@@ -12,6 +12,42 @@ fail() {
   exit 1
 }
 
+run_sherlock_preflight() {
+  local mode="${DQMC_SHERLOCK_PREFLIGHT:-warn}"
+  local timeout_seconds="${DQMC_SHERLOCK_PREFLIGHT_TIMEOUT_SECONDS:-8}"
+  local python_bin="${DQMC_SHERLOCK_PREFLIGHT_PYTHON:-$PROJECT_ROOT/.venv/bin/python}"
+
+  case "$mode" in
+    off)
+      return 0
+      ;;
+    warn|require)
+      ;;
+    *)
+      echo "start-slackbot-backend: unsupported DQMC_SHERLOCK_PREFLIGHT=$mode; using warn." >&2
+      mode="warn"
+      ;;
+  esac
+
+  if [[ ! -x "$python_bin" ]]; then
+    if [[ "$mode" == "require" ]]; then
+      fail "Sherlock auth preflight Python not executable: $python_bin"
+    fi
+    echo "start-slackbot-backend: Sherlock auth preflight skipped; Python not executable: $python_bin" >&2
+    return 0
+  fi
+
+  if "$python_bin" -m dqmc_tools.sherlock_auth preflight --timeout-seconds "$timeout_seconds" >&2; then
+    return 0
+  fi
+
+  if [[ "$mode" == "require" ]]; then
+    fail "Sherlock auth preflight failed."
+  fi
+
+  echo "start-slackbot-backend: Sherlock auth preflight failed; backend will start, but Sherlock gateway may require interactive auth." >&2
+}
+
 port_listening() {
   command -v lsof >/dev/null 2>&1 || return 1
   lsof -nP -iTCP:"$API_PORT" -sTCP:LISTEN >/dev/null 2>&1
@@ -34,6 +70,8 @@ set +a
 export OPENACP_INSTANCE_ROOT="$INSTANCE_ROOT"
 export OPENACP_API_PORT="$API_PORT"
 export OPENACP_RUN_MODE="${OPENACP_RUN_MODE:-daemon}"
+
+run_sherlock_preflight
 
 cd "$PROJECT_ROOT"
 exec "$OPENACP_BIN" start --json --local
